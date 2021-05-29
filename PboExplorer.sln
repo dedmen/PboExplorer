@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31313.381
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PboExplorer", "PboExplorer.vcxproj", "{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		DebugAsan|x64 = DebugAsan|x64
+		DebugAsan|x86 = DebugAsan|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.Debug|x64.ActiveCfg = Debug|x64
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.Debug|x64.Build.0 = Debug|x64
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.Debug|x86.ActiveCfg = Debug|Win32
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.Debug|x86.Build.0 = Debug|Win32
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.DebugAsan|x64.ActiveCfg = DebugAsan|x64
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.DebugAsan|x64.Build.0 = DebugAsan|x64
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.DebugAsan|x86.ActiveCfg = DebugAsan|Win32
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.DebugAsan|x86.Build.0 = DebugAsan|Win32
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.Release|x64.ActiveCfg = Release|x64
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.Release|x64.Build.0 = Release|x64
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.Release|x86.ActiveCfg = Release|Win32
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C11CCBDF-6FB8-4D1A-908A-7CE8D4AA8555}
+	EndGlobalSection
+EndGlobal
