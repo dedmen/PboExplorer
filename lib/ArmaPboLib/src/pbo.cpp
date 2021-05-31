@@ -57,6 +57,7 @@ void PboEntry::write(std::ostream& out, bool noDate) const {
         case PboEntryPackingMethod::version: header.method = 'Vers'; break;
         case PboEntryPackingMethod::compressed: header.method = 'Cprs'; break;
         case PboEntryPackingMethod::encrypted: header.method = 'Encr'; break;
+        default: __debugbreak();
     }
     header.originalsize = original_size;
     header.reserved = 0;// '3ECA'; //#TODO remove dis?
@@ -389,6 +390,11 @@ struct hashing_ostreambuf : public std::streambuf
         SHA1Reset(&context);
     }
 
+    // Writes data to SHA1 hasher but not to final output
+    void AddDataNoOutput(const char_type* s, std::streamsize n) {
+        SHA1Input(&context, reinterpret_cast<const unsigned char*>(s), n);
+    }
+
 protected:
     std::streamsize xsputn(const char_type* s, std::streamsize n) override {
         SHA1Input(&context, reinterpret_cast<const unsigned char*>(s), n);
@@ -442,6 +448,76 @@ void PboFTW_CopyFromFile::writeDataTo(std::ostream& output) {
     } while (inp.gcount() > 0);
 }
 
+
+void PboFTW_FromString::writeDataTo(std::ostream& output) {
+    std::istringstream inp(data, std::istringstream::binary);
+
+    std::array<char, 4096> buf;
+    do {
+        inp.read(buf.data(), buf.size());
+        output.write(buf.data(), inp.gcount());
+    } while (inp.gcount() > 0);
+}
+
+
+
+void PboFTW_NoTouch::processData(std::iostream& output
+#ifdef ARMA_PBO_LIB_SHA1
+    , hashing_ostreambuf& hashOutbuf
+#endif        
+) {
+    auto p1 = output.tellp();
+    auto g1 = output.tellg();
+
+    output.seekg(p1);
+
+    size_t sizeLeft = entryInfo.data_size;
+
+    std::array<char, 4096> buf;
+    do {
+        output.read(buf.data(), std::min(buf.size(), sizeLeft));
+        auto bad = output.bad();
+        auto eof = output.eof();
+        auto fail = output.fail();
+        auto ex = output.exceptions();
+
+
+        if (std::min(buf.size(), sizeLeft) != output.gcount())
+            __debugbreak();
+        hashOutbuf.AddDataNoOutput(buf.data(), output.gcount());
+        sizeLeft -= output.gcount();
+    } while (output.gcount() > 0 && sizeLeft > 0);
+
+    auto p = output.tellp();
+    auto g = output.tellg();
+
+    output.seekp(g);
+}
+
+void PboFTW_DummySpace::writeDataTo(std::ostream& output) {
+    std::array<char, 4096> buf;
+    buf.fill(0);
+
+    size_t sizeLeft = entryInfo.data_size;
+
+    do {
+        output.write(buf.data(), std::min(buf.size(), sizeLeft));
+        sizeLeft -= std::min(buf.size(), sizeLeft);
+    } while (sizeLeft > 0);
+}
+
+struct pboEntryHeader {
+    uint32_t method;
+    uint32_t originalsize;
+    uint32_t reserved;
+    uint32_t timestamp;
+    uint32_t datasize;
+    void write(std::ostream& output) const {
+        output.write(reinterpret_cast<const char*>(this), sizeof(pboEntryHeader));
+    }
+};
+
+
 void PboWriter::writePbo(std::ostream& output) {
 
 #ifdef ARMA_PBO_LIB_SHA1
@@ -451,17 +527,6 @@ void PboWriter::writePbo(std::ostream& output) {
 #else
     auto& out = output;
 #endif
-
-    struct pboEntryHeader {
-        uint32_t method;
-        uint32_t originalsize;
-        uint32_t reserved;
-        uint32_t timestamp;
-        uint32_t datasize;
-        void write(std::ostream& output) const {
-            output.write(reinterpret_cast<const char*>(this), sizeof(pboEntryHeader));
-        }
-    };
 
     pboEntryHeader versHeader {
         'Vers',
@@ -523,7 +588,146 @@ void PboWriter::writePbo(std::ostream& output) {
     output.write("\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 20);
 #endif
 
+}
 
+void PboWriter::writePboEx(std::iostream& output) {
+#ifdef ARMA_PBO_LIB_SHA1
+    hashing_ostreambuf hashOutbuf(output);
+
+    std::ostream out(&hashOutbuf);
+#else
+    auto& out = output;
+#endif
+
+    pboEntryHeader versHeader{
+        'Vers',
+        //'amra','!!ek', 0, 0
+        //'UHTC',' UHL', 0, 0
+        0,0,0,0
+    };
+
+    //Write a "dummy" Entry which is used as header.
+    //#TODO this should use pboEntry class to write. But I want a special "reserved" value here
+    out.put(0); //name
+    versHeader.write(out);
+
+    for (auto& it : properties)
+        it.write(out);
+    out.put(0); //properties endmarker
+
+    for (auto& it : filesToWrite) {
+        auto& prop = it->getEntryInformation();
+
+        prop.write(out);
+    }
+
+    //End is indicated by empty name
+    out.put(0);
+    //Rest of the header after that is ignored, so why not have fun?
+    pboEntryHeader endHeader{
+        //'sihT','t si','b eh',' tse','gnat'
+        0,0,0,0,0
+    };
+    endHeader.write(out);
+
+
+    for (auto& it : filesToWrite) {
+
+        uint32_t curP = output.tellp();
+        auto curS = it->getEntryInformation().startOffset;
+
+        if (curS != curP)
+            __debugbreak();
+
+        if (auto noTouchWriter = dynamic_cast<PboFTW_NoTouch*>(it.get())) {
+            noTouchWriter->processData(output
+#ifdef ARMA_PBO_LIB_SHA1
+                , hashOutbuf
+#endif
+            );
+        } else
+            it->writeDataTo(out);
+    }
+
+
+#ifdef ARMA_PBO_LIB_SHA1
+    auto hash = hashOutbuf.getResult();
+
+    //no need to write to hashing buf anymore
+    output.put(0); //file hash requires leading zero which doesn't contribute to hash data
+    output.write(hash.data(), hash.size());
+
+#else
+    output.put(0); //file hash requires leading zero which doesn't contribute to hash data
+    output.write("\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 20);
+#endif
+
+}
+
+struct counting_ostreambuf : public std::streambuf
+{
+    counting_ostreambuf(): counter(0) {}
+protected:
+    std::streamsize xsputn(const char_type* s, std::streamsize n) override {
+        counter += n;
+        //Yes return result is fake, but meh.
+        return n; // returns the number of characters successfully written.
+    }
+
+    int_type overflow(int_type ch) override {
+        counter++;
+        return 1;
+    }
+
+public:
+
+    uint32_t getResult() {
+        return counter;
+    }
+
+
+private:
+    uint32_t counter;
+};
+
+
+uint32_t PboWriter::calculateHeaderSize(const std::vector<PboProperty>& properties, const std::vector<std::shared_ptr<PboFileToWrite>>& filesToWrite)
+{
+    counting_ostreambuf countBuf;
+    std::ostream out(&countBuf);
+
+    pboEntryHeader versHeader{
+        'Vers',
+        //'amra','!!ek', 0, 0
+        //'UHTC',' UHL', 0, 0
+        0,0,0,0
+    };
+
+    //Write a "dummy" Entry which is used as header.
+    //#TODO this should use pboEntry class to write. But I want a special "reserved" value here
+    out.put(0); //name
+    versHeader.write(out);
+
+    for (auto& it : properties)
+        it.write(out);
+    out.put(0); //properties endmarker
+
+    for (auto& it : filesToWrite) {
+        auto& prop = it->getEntryInformation();
+
+        prop.write(out);
+    }
+
+    //End is indicated by empty name
+    out.put(0);
+    //Rest of the header after that is ignored, so why not have fun?
+    pboEntryHeader endHeader{
+        //'sihT','t si','b eh',' tse','gnat'
+        0,0,0,0,0
+    };
+    endHeader.write(out);
+
+    return countBuf.getResult();
 }
 
 #endif // ARMA_PBO_LIB_WRITE

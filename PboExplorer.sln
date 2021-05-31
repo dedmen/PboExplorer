@@ -11,6 +11,8 @@ Global
 		Debug|x86 = Debug|x86
 		DebugAsan|x64 = DebugAsan|x64
 		DebugAsan|x86 = DebugAsan|x86
+		DebugExe|x64 = DebugExe|x64
+		DebugExe|x86 = DebugExe|x86
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
 	EndGlobalSection
@@ -23,6 +25,10 @@ Global
 		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.DebugAsan|x64.Build.0 = DebugAsan|x64
 		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.DebugAsan|x86.ActiveCfg = DebugAsan|Win32
 		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.DebugAsan|x86.Build.0 = DebugAsan|Win32
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.DebugExe|x64.ActiveCfg = DebugExe|x64
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.DebugExe|x64.Build.0 = DebugExe|x64
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.DebugExe|x86.ActiveCfg = DebugExe|Win32
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.DebugExe|x86.Build.0 = DebugExe|Win32
 		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.Release|x64.ActiveCfg = Release|x64
 		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.Release|x64.Build.0 = Release|x64
 		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.Release|x86.ActiveCfg = Release|Win32

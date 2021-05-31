@@ -144,6 +144,69 @@ public:
         std::replace(entryInfo.name.begin(), entryInfo.name.end(), '/', '\\');
         entryInfo.data_size = entryInfo.original_size = data.length();
     }
+
+    PboFTW_FromString(const PboEntry& entry, std::string input) : data(std::move(input)) {
+        entryInfo.name = entry.name;
+        //only backslash in pbo
+        std::replace(entryInfo.name.begin(), entryInfo.name.end(), '/', '\\');
+        entryInfo.startOffset = entry.startOffset;
+        entryInfo.data_size = entryInfo.original_size = data.length();
+    }
+
+    void writeDataTo(std::ostream& output) override;
+};
+
+class hashing_ostreambuf;
+
+// This file writer just skips over the files space, not touching any data but reading the data into the SHA1 hasher
+// Only used in pboWriter::writePboEx when overwriting/patching a existing pbo
+class PboFTW_NoTouch : public PboFileToWrite {
+public:
+    PboFTW_NoTouch(const PboEntry& entry) {
+        entryInfo.name = entry.name;
+        //only backslash in pbo
+        std::replace(entryInfo.name.begin(), entryInfo.name.end(), '/', '\\');
+        entryInfo.startOffset = entry.startOffset;
+        entryInfo.data_size = entry.data_size;
+        entryInfo.original_size = entry.original_size;
+    }
+    void writeDataTo(std::ostream& output) override {};
+    void processData(std::iostream& output
+#ifdef ARMA_PBO_LIB_SHA1
+        , hashing_ostreambuf& hashOutbuf
+#endif        
+        );
+};
+
+
+// This file writer just skips over the files space, not touching any data but reading the data into the SHA1 hasher
+// Only used in pboWriter::writePboEx when overwriting/patching a existing pbo
+class PboFTW_DummySpace : public PboFileToWrite {
+public:
+    PboFTW_DummySpace(std::string filename, uint32_t dataSize) {
+        entryInfo.name = std::move(filename);
+        //only backslash in pbo
+        std::replace(entryInfo.name.begin(), entryInfo.name.end(), '/', '\\');
+        entryInfo.data_size = entryInfo.original_size = dataSize;
+    }
+    PboFTW_DummySpace(const PboEntry& entry) {
+        entryInfo.name = entry.name;
+        //only backslash in pbo
+        std::replace(entryInfo.name.begin(), entryInfo.name.end(), '/', '\\');
+        entryInfo.startOffset = entry.startOffset;
+        entryInfo.data_size = entry.data_size;
+        entryInfo.original_size = entry.original_size;
+    }
+
+    PboFTW_DummySpace(std::string filename, const PboEntry& entry) {
+        entryInfo.name = std::move(filename);
+        //only backslash in pbo
+        std::replace(entryInfo.name.begin(), entryInfo.name.end(), '/', '\\');
+        entryInfo.startOffset = entry.startOffset;
+        entryInfo.data_size = entry.data_size;
+        entryInfo.original_size = entry.original_size;
+    }
+
     void writeDataTo(std::ostream& output) override;
 };
 
@@ -158,6 +221,11 @@ public:
     void addProperty(PboProperty prop) { properties.emplace_back(std::move(prop)); }
     void addFile(std::shared_ptr<PboFileToWrite> file) { filesToWrite.emplace_back(std::move(file)); }
     void writePbo(std::ostream &output);
+    // overwrite/patch a existing pbo, supports PboFTW_NoTouch and PboFTW_DummySpace
+    void writePboEx(std::iostream& output);
+
+    // precalculate size of header/offset to start of first file
+    static uint32_t calculateHeaderSize(const std::vector<PboProperty>& properties, const std::vector<std::shared_ptr<PboFileToWrite>>& filesToWrite);
 };
 
 #endif

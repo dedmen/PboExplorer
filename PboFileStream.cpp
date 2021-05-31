@@ -87,6 +87,9 @@ HRESULT PboFileStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
 }
 HRESULT PboFileStream::Write(void const*, ULONG, ULONG*)
 {
+    // write into memory buffer
+
+
     return(E_NOTIMPL);
 }
 HRESULT PboFileStream::Seek(
@@ -121,6 +124,7 @@ HRESULT PboFileStream::CopyTo(
 }
 HRESULT PboFileStream::Commit(DWORD)
 {
+    // write to pbo file
     return(E_NOTIMPL);
 }
 HRESULT PboFileStream::Revert(void)
