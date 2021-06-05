@@ -54,6 +54,15 @@
     <ClInclude Include="PboPatcher.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TempDiskFile.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FileWatcher.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="resource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -89,5 +98,16 @@
     <ClCompile Include="TestExe.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TempDiskFile.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FileWatcher.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Resource.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
   </ItemGroup>
 </Project>

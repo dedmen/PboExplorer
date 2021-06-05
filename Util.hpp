@@ -42,5 +42,54 @@ public:
         return str;
     }
 
+    static void TryDebugBreak() {
+        if (IsDebuggerPresent())
+            __debugbreak();
+    }
+
+    static void WaitForDebuggerSilent();
+    static void WaitForDebuggerPrompt();
+
+
+    static auto splitArgs (std::wstring_view cmdLine) {
+        std::vector<std::wstring_view> ret;
+
+        auto subRange = cmdLine;
+
+        while (!subRange.empty()) {
+            if (subRange[0] == L' ') { // skip whitespace
+                subRange = subRange.substr(1);
+            }
+            else if (subRange[0] == L'"') { // quoted string
+                auto endStr = subRange.find(L'"', 1);
+
+                if (endStr == std::string::npos) {
+                    ret.emplace_back(subRange);
+                    break;
+                }
+
+                ret.emplace_back(subRange.substr(0, endStr + 1));
+
+                subRange = subRange.substr(endStr + 1);
+            }
+            else {
+                // non quoted, whitespace delimited string
+                auto endStr = subRange.find(L' ', 1);
+
+                if (endStr == std::string::npos) {
+                    ret.emplace_back(subRange);
+                    break;
+                }
+
+                ret.emplace_back(subRange.substr(0, endStr + 1));
+
+                subRange = subRange.substr(endStr + 1);
+            }
+        }
+
+        return ret;
+    };
+
+
 };
 

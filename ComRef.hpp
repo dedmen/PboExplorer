@@ -16,7 +16,8 @@ public:
 	
 	ComRef (T* ref) : _ref(ref)
 	{
-		ref->AddRef();
+		if (ref)
+		    ref->AddRef();
 	}
 
 	~ComRef()

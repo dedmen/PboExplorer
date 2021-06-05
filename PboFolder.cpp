@@ -16,6 +16,8 @@
 
 #include "Util.hpp"
 
+#include <ranges>
+#include <utility>
 
 PboFile::PboFile()
 {
@@ -74,10 +76,9 @@ void PboFile::ReadFrom(std::filesystem::path inputPath)
 }
 
 
-#include <ranges>
-#include <utility>
 
-PboSubFile& PboFile::GetFileByPath(std::filesystem::path inputPath) const
+//#TODO We need to make PboFile's re-scan if their origin pbo was repacked by FileWatcher
+std::optional<std::reference_wrapper<PboSubFile>> PboFile::GetFileByPath(std::filesystem::path inputPath) const
 {
     std::shared_ptr<PboSubFolder> curFolder = rootFolder;
 
@@ -101,10 +102,13 @@ PboSubFile& PboFile::GetFileByPath(std::filesystem::path inputPath) const
             {
                 return subf.filename == it;
             });
-		
+
+        if (subfileFound == curFolder->subfiles.end())
+            return {};
+
         return *subfileFound;		
 	}
-    __debugbreak(); // folder not found
+    return {};
 }
 
 std::shared_ptr<PboSubFolder> PboFile::GetFolderByPath(std::filesystem::path inputPath) const
@@ -125,16 +129,48 @@ std::shared_ptr<PboSubFolder> PboFile::GetFolderByPath(std::filesystem::path inp
     return curFolder;
 }
 
+std::vector<PboPidl> PboFile::GetPidlListFromPath(std::filesystem::path inputPath) const {
+
+    std::vector<PboPidl> resultPidl;
+
+    std::shared_ptr<PboSubFolder> curFolder = rootFolder;
+
+    // get proper root directory in case we are a subfolder inside a pbo
+    auto relPath = inputPath.lexically_relative(rootFolder->fullPath);
+
+    for (auto& it : relPath)
+    {
+        auto subfolderFound = std::find_if(curFolder->subfolders.begin(), curFolder->subfolders.end(), [it](const std::shared_ptr<PboSubFolder>& subf)
+            {
+                return subf->filename == it;
+            });
+
+        if (subfolderFound != curFolder->subfolders.end())
+        {
+            // every pidl has fullpath, can't we just shorten this to 1 pidl, lets try...
+            //resultPidl.emplace_back(PboPidl{ sizeof(PboPidl), PboPidlFileType::Folder, (*subfolderFound)->fullPath, -1 });
+            curFolder = *subfolderFound;
+            continue;
+        }
+
+        auto subfileFound = std::find_if(curFolder->subfiles.begin(), curFolder->subfiles.end(), [it](const PboSubFile& subf)
+            {
+                return subf.filename == it;
+            });
 
 
+        if (subfileFound != curFolder->subfiles.end()) {
+
+            resultPidl.emplace_back(PboPidl{ sizeof(PboPidl), PboPidlFileType::File, (*subfileFound).fullPath, -1 });
+            return resultPidl;
+        }
+    }
 
 
-
-
-
-
-
-
+    Util::TryDebugBreak();
+    // not found, pidl is still valid, just not for full path
+    return resultPidl;
+}
 
 
 #define CHECK_INIT() \
@@ -186,96 +222,44 @@ HRESULT PboFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayName
 	ULONG* pdwAttributes)
 {
     CHECK_INIT();
-    //
-    //wchar_t* dnCopy = wcsdup(pszDisplayName);
-    //wchar_t* pos = dnCopy;
-    //Dir* dir = m_dir;
-    //
-    //dirMutex.lock();
-    //dir->countUp();
-    //dirMutex.unlock();
-    //
-    //LPITEMIDLIST pidl = NULL;
-    //while (1)
-    //{
-    //    wchar_t* delim = wcschr(pos, '\\');
-    //    wchar_t* slash = wcschr(pos, '/');
-    //    if (slash && slash < delim) delim = slash;
-    //    if (!delim) break;
-    //    slash = delim;
-    //    *(delim++) = 0;
-    //    if (!delim[0]) break;
-    //
-    //    PboPidl* qp = getQiewerPidlByName(pos, dir);
-    //    Dir* nextDir = childDir(dir, qp);
-    //
-    //    dirMutex.lock();
-    //    dir->countDown();
-    //    dirMutex.unlock();
-    //
-    //    dir = nextDir;
-    //    if (!dir)
-    //    {
-    //        CoTaskMemFree(qp);
-    //        break;
-    //    }
-    //
-    //    if (!pidl)
-    //        pidl = (LPITEMIDLIST)qp;
-    //    else
-    //    {
-    //        LPITEMIDLIST oldPidl = pidl;
-    //        pidl = ILCombine(oldPidl, (LPITEMIDLIST)qp);
-    //        CoTaskMemFree(oldPidl);
-    //        CoTaskMemFree(qp);
-    //    }
-    //
-    //    *slash = '\\';
-    //    pos = delim;
-    //}
-    //
-    //if (!dir)
-    //{
-    //    free(dnCopy);
-    //    CoTaskMemFree(pidl);
-    //    return(E_FAIL);
-    //}
 
-    //PboPidl* qp = getQiewerPidlByName(pos, dir);
-    //ULONG eaten = 0;
-    //if (qp)
-    //{
-    //    if (pdwAttributes)
-    //        GetAttributesOf(1, (LPCITEMIDLIST*)&qp, pdwAttributes);
-    //
-    //    if (!pidl)
-    //        pidl = (LPITEMIDLIST)qp;
-    //    else
-    //    {
-    //        LPITEMIDLIST oldPidl = pidl;
-    //        pidl = ILCombine(oldPidl, (LPITEMIDLIST)qp);
-    //        CoTaskMemFree(oldPidl);
-    //        CoTaskMemFree(qp);
-    //    }
-    //
-    //    eaten = (ULONG)wcslen(dnCopy);
-    //}
-    //
-    //dirMutex.lock();
-    //dir->countDown();
-    //dirMutex.unlock();
-    //
-    //free(dnCopy);
 
-    //if (!qp)
-    //{
-    //    CoTaskMemFree(pidl);
-    //    return(E_FAIL);
-    //}
-    //
-    //if (pchEaten) *pchEaten = eaten;
-    //*ppidl = pidl;
+    std::filesystem::path subPath(pszDisplayName);
+    auto pidlList = pboFile->GetPidlListFromPath(subPath.lexically_normal());
 
+
+    if (pidlList.empty())
+        return(E_FAIL); // doesn't exist
+
+
+    //#TODO if we didn't find the final file (might be a file inside a zip file INSIDE a pbo that we don't have access to) we need to set pchEaten to the end of the path we were able to resolve...
+    // just get relative path between last pidlList entry and pszDisplayName, then scan from end? problem is stuff like /../ which can be anywhere in path
+
+
+
+    auto resPidl = (LPITEMIDLIST)CoTaskMemAlloc(pidlList.size() * sizeof(PboPidl) + sizeof(PboPidl::cb));
+    std::memset(resPidl, 0, pidlList.size() * sizeof(PboPidl) + sizeof(PboPidl::cb));
+    *ppidl = resPidl;
+
+    char* outputBuf = (char*)resPidl;
+    for (auto& it : pidlList) {
+        *((PboPidl*)outputBuf) = it; //#TODO convert pidl to store filepath as dynamic length string, we cannot store std::filesystem::path pointer to disk
+        outputBuf += sizeof(it);
+    }
+    ((PboPidl*)outputBuf)->cb = 0;
+
+
+    PboPidl* qp = (PboPidl*)ILFindLastID(*ppidl);
+    ULONG eaten = 0;
+    if (qp)
+    {
+        if (pdwAttributes)
+            GetAttributesOf(1, (LPCITEMIDLIST*)&qp, pdwAttributes);
+    
+        eaten = (ULONG)wcslen(pszDisplayName); // #TODO do this properly
+    }
+    
+    if (pchEaten) *pchEaten = eaten;
     return(S_OK);
 }
 
@@ -455,7 +439,7 @@ HRESULT PboFolder::EnumObjects(HWND hwnd, DWORD grfFlags, IEnumIDList** ppenumID
     return(S_OK);
 }
 
-HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC, const IID& riid, void** ppv)
+HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID& riid, void** ppv)
 {
     CHECK_INIT();
 
@@ -501,6 +485,9 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC, const IID& riid, void*
     }
     else if (IsEqualIID(riid, IID_IStream))
     {
+
+        Util::WaitForDebuggerPrompt();
+
         LPITEMIDLIST pidld = ILClone(pidl);
         ILRemoveLastID(pidld);
         const PboPidl* qp = (const PboPidl*)pidld;
@@ -526,6 +513,7 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC, const IID& riid, void*
         HRESULT hr = E_FAIL;
         if (stream)
         {
+            stream->AddRef();
             *ppv = static_cast<IStream*>(stream);
             hr = S_OK;
         }
@@ -730,12 +718,12 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
     {
 
 
-        //auto dcm = new DEFCONTEXTMENU{ hwndOwner, nullptr, m_pidl, this, 1, apidl, nullptr,0 ,nullptr };
+        auto dcm = new DEFCONTEXTMENU{ hwndOwner, nullptr, m_pidl, this, 1, apidl, nullptr,0 ,nullptr };
         //return SHCreateDefaultContextMenu(dcm, riid, ppv);
 
-
-    	
-        *ppv = static_cast<IContextMenu*>(new PboContextMenu(this, hwndOwner, m_pidl, cidl, apidl));
+        auto ret = new PboContextMenu(this, hwndOwner, m_pidl, cidl, apidl);
+        ret->AddRef();
+        *ppv = static_cast<IContextMenu*>(ret);
         return(S_OK);
     }
     //else if (IsEqualIID(riid, IID_IExtractIconW))
@@ -747,8 +735,10 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
     else if (IsEqualIID(riid, IID_IDataObject))
     {
         CHECK_INIT();
-    
-        *ppv = (IDataObject*)new PboDataObject(pboFile->rootFolder, this, m_pidl, cidl, apidl);
+
+        auto ret = new PboDataObject(pboFile->rootFolder, this, m_pidl, cidl, apidl);
+        ret->AddRef();
+        *ppv = (IDataObject*)ret;
         return(S_OK);
     }
 
@@ -832,6 +822,13 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
 	
     else if (IsEqualIID(riid, IID_IQueryAssociations))
     {
+    // ??????!
+    // We can use SHAssocEnumHandlers interface to get the file association with specific file extension, ex .png
+
+    //Then use IAssocHandlerand can retrieves the full pathand file name of the executable file associated with the file type(.png).ex: ['Paint':'C:\\Windows\\system32\\mspaint.exe', ...]
+
+
+
         if (cidl != 1) return(E_INVALIDARG);
     
         CHECK_INIT();
@@ -1102,8 +1099,12 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
     else if (pscid->fmtid == PKEY_Size.fmtid && pscid->pid == PKEY_Size.pid)
     {
         if (!qp->IsFile()) return(E_FAIL);
-    
-        auto size = pboFile->GetFileByPath(qp->filePath).filesize;
+
+        auto file = pboFile->GetFileByPath(qp->filePath);
+        if (!file)
+            return E_FAIL;
+
+        auto size = file->get().filesize;
     
         pv->vt = VT_I8;
         pv->llVal = size;
@@ -1258,7 +1259,10 @@ HRESULT PboFolder::GetDetailsOf(LPCITEMIDLIST pidl, UINT iColumn, SHELLDETAILS* 
     {
         if (!qp->IsFile()) return(E_FAIL);
 
-        auto size = pboFile->GetFileByPath(qp->filePath).filesize;
+        auto file = pboFile->GetFileByPath(qp->filePath);
+        if (!file)
+            return E_FAIL;
+        auto size = file->get().filesize;
         if (size < 0) return(E_FAIL);
 
 #define SIZE_STR_SIZE 40

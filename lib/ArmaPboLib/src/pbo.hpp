@@ -1,3 +1,4 @@
+#pragma once
 #define MAXFILES 4096
 
 #include <fstream>

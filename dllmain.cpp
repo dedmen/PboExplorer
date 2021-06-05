@@ -10,6 +10,7 @@
 #include <string>
 
 #include "ClassFactory.hpp"
+#include "FileWatcher.hpp"
 #include "guid.hpp"
 #include "PboFolder.hpp"
 #pragma data_seg()
@@ -26,6 +27,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     {
     case DLL_PROCESS_ATTACH:
         g_hInst = hModule;
+		GFileWatcher.Startup();
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
     case DLL_PROCESS_DETACH:
@@ -141,6 +143,7 @@ STDAPI DllRegisterServer(VOID)
 		HKEY_CLASSES_ROOT, L"PboExplorer\\DefaultIcon",     L"",                   L"%s,0",
 		//HKEY_CLASSES_ROOT, L"PboExplorer\\shell\\open\\command",     L"DelegateExecute",                   szCLSID,
 		HKEY_CLASSES_ROOT, L"PboExplorer\\shell",     L"",                   L"open",
+		HKEY_CLASSES_ROOT, L"PboExplorer\\shellex\\PropertySheetHandlers\\%s",     L"",                   L"",
 
 
 	};

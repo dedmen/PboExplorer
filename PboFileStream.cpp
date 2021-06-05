@@ -1,19 +1,15 @@
 #include "PboFileStream.hpp"
 
-
-/*
- * Copyright (C) 2012-2015 Hannes Domani.
- * For conditions of distribution and use, see copyright notice in LICENSE.txt
- */
-
-#include "PboFileStream.hpp"
-#include <shlwapi.h>
+#include <Shlwapi.h>
 
 #include "ClassFactory.hpp"
+#include "PboPatcher.hpp"
 #include "Util.hpp"
+#include "lib/ArmaPboLib/src/pbo.hpp"
 
 
-PboFileStream::PboFileStream(std::shared_ptr<PboFile> pboFile, std::filesystem::path filePath):
+PboFileStream::PboFileStream(std::shared_ptr<PboFile> pboFile, std::filesystem::path filePath) :
+    pboFile(pboFile),
     filePath(filePath),
     pboInputStream(pboFile->diskPath, std::ios::in | std::ios::binary),
 	pboReader(pboInputStream),
@@ -69,14 +65,22 @@ HRESULT PboFileStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
 {
     ULONG didRead = 0;
 
-    //dirMutex.lock();
-    if (sourceStream.seekg(m_pos))
-    {
-        sourceStream.read((char*)pv, cb);
-        didRead = sourceStream.gcount();
+    if (tempFile) {
+        if (tempFileStream.seekg(m_pos))
+        {
+            tempFileStream.read(static_cast<char*>(pv), cb);
+            didRead = tempFileStream.gcount();
+        }
+    } else {
+        //dirMutex.lock();
+        if (sourceStream.seekg(m_pos))
+        {
+            sourceStream.read((char*)pv, cb);
+            didRead = sourceStream.gcount();
+        }
+
+        //dirMutex.unlock();
     }
-    
-    //dirMutex.unlock();
 
     if (!didRead && !m_pos) return(E_FAIL);
 
@@ -85,12 +89,30 @@ HRESULT PboFileStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
 
     return(cb == didRead ? S_OK : S_FALSE);
 }
-HRESULT PboFileStream::Write(void const*, ULONG, ULONG*)
+
+//#TODO const void*
+HRESULT PboFileStream::Write(void const* pv, ULONG cb, ULONG* pcbWritten)
 {
+    // https://docs.microsoft.com/en-us/windows/win32/api/objidl/nf-objidl-isequentialstream-write
+    TransformToWritable();
+
+    ULONG didWrite = 0;
+
+    if (tempFileStream.seekp(m_pos))
+    {
+        tempFileStream.write(static_cast<const char*>(pv), cb);
+        didWrite = cb; //#TODO check properly
+    }
+
     // write into memory buffer
 
 
-    return(E_NOTIMPL);
+    if (!didWrite && !m_pos) return(E_FAIL);
+
+    m_pos += didWrite;
+    *pcbWritten = didWrite;
+
+    return(cb == didWrite ? S_OK : S_FALSE);
 }
 HRESULT PboFileStream::Seek(
     LARGE_INTEGER dlibMove, DWORD dwOrigin, ULARGE_INTEGER* plibNewPosition)
@@ -113,19 +135,39 @@ HRESULT PboFileStream::Seek(
 
     return(S_OK);
 }
-HRESULT PboFileStream::SetSize(ULARGE_INTEGER)
+HRESULT PboFileStream::SetSize(ULARGE_INTEGER newSize)
 {
+   
+
+
+
+
     return(E_NOTIMPL);
 }
-HRESULT PboFileStream::CopyTo(
-    IStream*, ULARGE_INTEGER, ULARGE_INTEGER*, ULARGE_INTEGER*)
+HRESULT PboFileStream::CopyTo(IStream*, ULARGE_INTEGER, ULARGE_INTEGER*, ULARGE_INTEGER*)
 {
     return(E_NOTIMPL);
 }
 HRESULT PboFileStream::Commit(DWORD)
 {
+    //https://docs.microsoft.com/en-us/windows/win32/api/wtypes/ne-wtypes-stgc
     // write to pbo file
-    return(E_NOTIMPL);
+
+    if (!tempFile)
+        __debugbreak();
+
+    tempFileStream.flush();
+    tempFileStream.close();
+
+    (*tempFile)->PatchToOrigin();
+
+    // BLURP
+
+    tempFileStream.open((*tempFile)->GetPath(), std::ifstream::binary | std::ifstream::in | std::ifstream::out);
+    tempFileStream.seekg(m_pos);
+    tempFileStream.seekp(m_pos);
+
+    return S_OK;
 }
 HRESULT PboFileStream::Revert(void)
 {
@@ -166,4 +208,14 @@ HRESULT PboFileStream::Stat(STATSTG* pstatstg, DWORD grfStatFlag)
 HRESULT PboFileStream::Clone(IStream**)
 {
     return(E_NOTIMPL);
+}
+
+void PboFileStream::TransformToWritable() {
+    if (tempFile)
+        return;
+
+    tempFile = TempDiskFile::GetFile(*pboFile, filePath);
+    tempFileStream = std::fstream((*tempFile)->GetPath(), std::ifstream::binary | std::ifstream::in | std::ifstream::out);
+
+    pboInputStream.close(); //invalidates pboReader, sourceStream!
 }

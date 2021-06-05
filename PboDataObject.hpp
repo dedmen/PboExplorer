@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 #include "ClassFactory.hpp"
 #include "ComRef.hpp"
 

@@ -86,8 +86,10 @@ void PboPatcher::MoveFileToEndOrDummy(std::filesystem::path file, uint32_t index
 
     if (!haveFreeSpace) {
         // no dummy space to insert, just append old file at end
+        oldFile->getEntryInformation().startOffset = endStartOffset;
         filesToWrite.emplace_back(oldFile);
         endStartOffset += oldFile->getEntryInformation().data_size;
+        return;
     }
 
     // insert into free space
@@ -337,6 +339,10 @@ void PatchUpdateFileFromDisk::Process(PboPatcher& patcher) {
         *foundFile = newFile;
 
         auto newDummySpace = std::make_shared<PboFTW_DummySpace>(patcher.GetNewDummyFileName((*foundFile)->getEntryInformation().startOffset).string(), (*foundFile)->getEntryInformation());
+        newDummySpace->getEntryInformation().startOffset += newFileSize;
+        newDummySpace->getEntryInformation().data_size = newDummySpace->getEntryInformation().original_size = oldFileSize - newFileSize;
+
+        patcher.filesToWrite.insert(foundFile + 1, newDummySpace);
         return;
     }
 
@@ -348,10 +354,11 @@ void PatchUpdateFileFromDisk::Process(PboPatcher& patcher) {
     // first try if we can fit into dummy space
     if (patcher.InsertFileIntoDummySpace(newFile))
         return; // successfully placed into dummyspace
-
+    //
     // didn't fit into any dummy space. Append to end.
     std::unique_lock ftwLock(patcher.ftwMutex);
 
+    newFile->getEntryInformation().startOffset = patcher.endStartOffset;
     patcher.filesToWrite.emplace_back(newFile);
     patcher.endStartOffset += newFile->getEntryInformation().data_size;
 }

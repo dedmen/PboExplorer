@@ -1,5 +1,10 @@
 #include "ShellExt.hpp"
 
+#include "resource.h"
+
+// CreatePropertySheetPageW
+#pragma comment( lib, "Comctl32" )
+
 ShellExt::ShellExt()
 {
 
@@ -33,6 +38,8 @@ STDMETHODIMP ShellExt::QueryInterface(REFIID riid, LPVOID* ppReturn)
 		*ppReturn = (IContextMenu*)this;
 	else if (IsEqualIID(riid, IID_IShellFolder2))
 		*ppReturn = (IShellFolder2*)this;
+	else if (IsEqualIID(riid, IID_IShellPropSheetExt))
+		*ppReturn = (IShellPropSheetExt*)this;
 	else
 		__debugbreak();
 	
@@ -101,6 +108,141 @@ STDMETHODIMP ShellExt::QueryContextMenu(
 	InsertMenu(hmenu, uMenuIndex, MF_BYPOSITION, uidFirstCmd, L"PboExplorer Test Item");
 
 	return MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, 1);
+}
+
+BOOL OnInitDialog(HWND hwnd, LPARAM lParam);
+BOOL OnApply(HWND hwnd, PSHNOTIFY* phdr);
+
+BOOL OnInitDialog(HWND hwnd, LPARAM lParam)
+{
+	PROPSHEETPAGE* ppsp = (PROPSHEETPAGE*)lParam;
+	LPCTSTR         szFile = (LPCTSTR)ppsp->lParam;
+	HANDLE          hFind;
+	WIN32_FIND_DATA rFind;
+
+	// Store the filename in this window's user data area, for later use.
+	//SetWindowLong(hwnd, GWL_USERDATA, (LONG)szFile);
+
+	//hFind = FindFirstFile(szFile, &rFind);
+
+	//if (INVALID_HANDLE_VALUE != hFind)
+	//{
+	//	// Initialize the DTP controls.
+	//	SetDTPCtrl(hwnd, IDC_MODIFIED_DATE, IDC_MODIFIED_TIME,
+	//		&rFind.ftLastWriteTime);
+	//
+	//	SetDTPCtrl(hwnd, IDC_ACCESSED_DATE, 0,
+	//		&rFind.ftLastAccessTime);
+	//
+	//	SetDTPCtrl(hwnd, IDC_CREATED_DATE, IDC_CREATED_TIME,
+	//		&rFind.ftCreationTime);
+	//
+	//	FindClose(hFind);
+	//}
+	//PathSetDlgItemPath(hwnd, IDC_FILENAME, szFile);
+	return FALSE;
+}
+
+BOOL OnApply(HWND hwnd, PSHNOTIFY* phdr)
+{
+	//LPCTSTR  szFile = (LPCTSTR)GetWindowLong(hwnd, GWL_USERDATA);
+	//HANDLE   hFile;
+	//FILETIME ftModified, ftAccessed, ftCreated;
+
+	// Open the file.
+	//hFile = CreateFile(szFile, GENERIC_WRITE, FILE_SHARE_READ, NULL,
+	//	OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	//if (INVALID_HANDLE_VALUE != hFile)
+	//{
+	//	// Retrieve the dates/times from the DTP controls.
+	//	ReadDTPCtrl(hwnd, IDC_MODIFIED_DATE, IDC_MODIFIED_TIME, &ftModified);
+	//	ReadDTPCtrl(hwnd, IDC_ACCESSED_DATE, 0, &ftAccessed);
+	//	ReadDTPCtrl(hwnd, IDC_CREATED_DATE, IDC_CREATED_TIME, &ftCreated);
+	//
+	//	// Change the file's created, accessed, and last modified times.
+	//	SetFileTime(hFile, &ftCreated, &ftAccessed, &ftModified);
+	//	CloseHandle(hFile);
+	//}
+	//else
+	//	// <<Error handling omitted>>
+	//
+	//  // Return PSNRET_NOERROR to allow the sheet to close if the user clicked OK.
+	//	SetWindowLong(hwnd, DWL_MSGRESULT, PSNRET_NOERROR);
+	return TRUE;
+}
+
+INT_PTR CALLBACK PropPageDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+	BOOL bRet = FALSE;
+
+	switch (uMsg)
+	{
+	case WM_INITDIALOG:
+		bRet = OnInitDialog(hwnd, lParam);
+		break;
+	case WM_NOTIFY:
+	{
+		NMHDR* phdr = (NMHDR*)lParam;
+
+		switch (phdr->code)
+		{
+		case PSN_APPLY:
+			bRet = OnApply(hwnd, (PSHNOTIFY*)phdr);
+			break;
+		case DTN_DATETIMECHANGE:
+			// If the user changes any of the DTP controls, enable
+			// the Apply button.
+			SendMessage(GetParent(hwnd), PSM_CHANGED, (WPARAM)hwnd, 0);
+			break;
+		}  // end switch
+	}  // end case WM_NOTIFY
+	break;
+	}  // end switch
+
+	return bRet;
+}
+
+UINT CALLBACK PropPageCallbackProc(HWND hwnd, UINT uMsg, LPPROPSHEETPAGE ppsp)
+{
+	//if (PSPCB_RELEASE == uMsg)
+	//	free((void*)ppsp->lParam);
+
+	return 1;
+}
+
+extern HINSTANCE   g_hInst;
+
+HRESULT ShellExt::AddPages(LPFNADDPROPSHEETPAGE lpfnAddPageProc, LPARAM lParam) {
+
+	PROPSHEETPAGE  psp;
+	HPROPSHEETPAGE hPage;
+	TCHAR          szPageTitle[MAX_PATH];
+
+
+		// 'it' points at the next filename. Allocate a new copy of the string
+		// that the page will own.
+		//LPCTSTR szFile = _tcsdup(it->c_str());
+		psp.dwSize = sizeof(PROPSHEETPAGE);
+		psp.dwFlags =PSP_USETITLE |
+			PSP_USECALLBACK; // PSP_USEICONID | PSP_USEREFPARENT | 
+		psp.hInstance = g_hInst;
+		psp.pszTemplate = MAKEINTRESOURCE(IDD_PROPPAGE_LARGE);
+		psp.pszIcon = nullptr; // MAKEINTRESOURCE(IDI_TAB_ICON);
+		psp.pszTitle = L"PboExplorer";
+		psp.pfnDlgProc = PropPageDlgProc;
+		//psp.lParam = (LPARAM)szFile;
+		psp.pfnCallback = PropPageCallbackProc;
+		psp.pcRefParent = nullptr; // (UINT*)&_Module.m_nLockCnt;
+		hPage = CreatePropertySheetPage(&psp);
+		if (NULL != hPage)
+		{
+			// Call the shell's callback function, so it adds the page to
+			// the property sheet.
+			if (!lpfnAddPageProc(hPage, lParam))
+				DestroyPropertySheetPage(hPage);
+		}
+
+	return S_OK;
 }
 
 STDMETHODIMP ShellExt::GetCommandString(

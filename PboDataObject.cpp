@@ -1,6 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include "PboDataObject.hpp"
 
+#define NOMINMAX
 #include <utility>
 
 #include "PboFileStream.hpp"

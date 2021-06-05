@@ -1,12 +1,12 @@
 #pragma once
+#define NOMINMAX
 #include <ShlObj.h>
 #include <Windows.h>
-#include "guid.hpp"
-
-#include "lib/ArmaPboLib/src/pbo.hpp"
 #include <filesystem>
 
 #include "ComRef.hpp"
+#include "PboPidl.hpp"
+#include "TempDiskFile.hpp"
 
 
 class IPboSub
@@ -41,8 +41,9 @@ public:
     std::filesystem::path selfRelPath;
 	
     void ReadFrom(std::filesystem::path inputPath);
-    PboSubFile& GetFileByPath(std::filesystem::path inputPath) const;
+    std::optional<std::reference_wrapper<PboSubFile>> GetFileByPath(std::filesystem::path inputPath) const;
     std::shared_ptr<PboSubFolder> GetFolderByPath(std::filesystem::path inputPath) const;
+    std::vector<PboPidl> GetPidlListFromPath(std::filesystem::path inputPath) const;
 };
 
 
@@ -141,4 +142,8 @@ public:
 
 
     std::filesystem::path GetTempDir();
+    std::vector<std::shared_ptr<TempDiskFile>> tempFileRefs; //#TODO private
+    void KeepTempFileRef(const std::shared_ptr<TempDiskFile>& shared) {
+        tempFileRefs.emplace_back(shared);
+    }
 };

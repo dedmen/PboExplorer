@@ -60,13 +60,13 @@ public:
 			auto newFolder = new PboFolder();
 			*ppvObject = (IShellFolder2*)newFolder;
 
-			newFolder->AddRef();
+			newFolder->AddRef(); //#TODO CreateForReturn method somewhere that adds ref and assigns ppv
 			return S_OK;
 		}
 		
 		
 
-		if (!IsEqualIID(riid, IID_IUnknown) && !IsEqualIID(riid, IID_IContextMenu))
+		if (!IsEqualIID(riid, IID_IUnknown) && !IsEqualIID(riid, IID_IContextMenu) && !IsEqualIID(riid, IID_IShellPropSheetExt))
 			__debugbreak();
 
 
@@ -74,13 +74,12 @@ public:
 
 		
 		// creates the namespace's main class
-		ShellExt* pShellExt = new ShellExt();
+		ComRef<ShellExt> pShellExt = new ShellExt();
 		if (!pShellExt)
 			return E_OUTOFMEMORY;
 
 		// query interface for the return value
 		HRESULT hResult = pShellExt->QueryInterface(riid, ppvObject);
-		pShellExt->Release();
 		return hResult;
 	}
 

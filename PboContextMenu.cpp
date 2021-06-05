@@ -1,9 +1,13 @@
 
 #include "PboContextMenu.hpp"
 
+#include <shlwapi.h>
+
 #include "ClassFactory.hpp"
+#include "FileWatcher.hpp"
 #include "PboFolder.hpp"
 #include "PboPidl.hpp"
+#include "TempDiskFile.hpp"
 #include "Util.hpp"
 
 #ifndef SEE_MASK_NOASYNC
@@ -172,7 +176,7 @@ static const wchar_t* getContextText(int idx)
 
 // IContextMenu
 HRESULT PboContextMenu::QueryContextMenu(
-    HMENU hmenu, UINT indexMenu, UINT idCmdFirst, UINT, UINT uFlags)
+    HMENU hmenu, UINT indexMenu, UINT idCmdFirst, UINT idCmdLast, UINT uFlags)
 {
 
     //#TODO query filetype contextmenu and use them?
@@ -325,15 +329,27 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
         }
         else
         {
-            ComRef<IStream> is;
-            hr = m_folder->BindToObject(
-                m_apidl[0], nullptr, IID_IStream, is.AsQueryInterfaceTarget());
-            if (FAILED(hr)) return(hr);
+            
+            auto tempFile = TempDiskFile::GetFile(*m_folder->pboFile, qp->filePath);       
+            fileTarget = tempFile->GetPath();
+            GFileWatcher.WatchFile(tempFile);
 
-            auto tempDir = m_folder->GetTempDir();
-            fileTarget = tempDir / qp->filePath;
-        	
-            copyIStreamToFile(is, fileTarget);
+            //ComRef<IStream> is;
+            //hr = m_folder->BindToObject(
+            //    m_apidl[0], nullptr, IID_IStream, is.AsQueryInterfaceTarget());
+            //if (FAILED(hr))
+            //    return(hr);
+            //
+            //auto tempDir = m_folder->GetTempDir();
+            //fileTarget = tempDir / qp->filePath;
+        	//
+            //copyIStreamToFile(is, fileTarget);
+
+
+
+
+            //fileTarget = m_folder->pboFile->diskPath / qp->filePath;
+            // notepad++.exe "O:\dev\pbofolder\test\ace_advanced_ballistics.pbox\README.md" This works for read only
         }
 
         if (fileTarget.empty())
@@ -346,7 +362,83 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
             sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
             if (cmd == CONTEXT_OPEN_WITH)
                 sei.lpVerb = L"openas";
-            sei.lpFile = fileTarget.c_str();
+
+            std::wstring bufferString; // to keep data alive till shellexec.. oof.
+            std::wstring bufferString2; // to keep data alive till shellexec.. oof.
+
+            //if (cmd == CONTEXT_OPEN) {
+                // find file assoc
+
+                //ComRef<IQueryAssociations> dataObject;
+                //HRESULT hr = m_folder->GetUIObjectOf(
+                //    hwnd, m_apidl.size(), const_cast<LPCITEMIDLIST*>(&m_apidl[0]),
+                //    IID_IQueryAssociations, nullptr, dataObject.AsQueryInterfaceTarget<>());
+                //if (FAILED(hr)) 
+                //    return(hr);
+                //
+                //
+                ////#TODO properly handled long file string
+                //wchar_t buffer[512];
+                //DWORD bufferSz = 510;
+                //hr = dataObject->GetString(ASSOCF_INIT_DEFAULTTOSTAR, ASSOCSTR_COMMAND, nullptr, buffer, &bufferSz);
+                //
+                //if (FAILED(hr)) {
+                //    Util::TryDebugBreak();
+                //    return(hr);
+                //}
+                //   
+                //
+                ////cmd = buffer;
+                ////cmd.replace()
+                //
+                //std::wstring_view cmd(buffer);
+                //
+                //
+                //auto split = Util::splitArgs(buffer);
+                //
+                //if (split.empty()) {
+                //    Util::TryDebugBreak();
+                //}
+                //
+                //bufferString = split.front(); // exe name
+                //split.erase(split.begin());
+                //
+                //sei.lpFile = bufferString.c_str();
+                ////#TODO thats not valid, not every program JUST takes the file path as argument and thats it, need to properly grab the args from above, parse out the %1 and inject into that.
+                //
+                //// args
+                //
+                //// arg buffer
+                //bufferString2 = L"";
+                //
+                //for (auto& it : split) {
+                //    auto foundMarker = it.find(L"%1");
+                //    if (foundMarker == std::string::npos) {
+                //        bufferString2 += it;
+                //        bufferString2 += L" ";
+                //    } else {
+                //        bufferString2 += it.substr(0, foundMarker);
+                //        bufferString2 += fileTarget.c_str();
+                //        bufferString2 += it.substr(foundMarker + 2);
+                //    }
+                //}
+                //
+                //
+                //sei.lpParameters = bufferString2.c_str();
+
+
+
+
+
+            //} else {
+                sei.lpFile = fileTarget.c_str();
+            //}
+
+
+
+            // launch properties https://docs.microsoft.com/en-us/windows/win32/api/shellapi/ns-shellapi-shellexecuteinfoa
+
+           
             sei.hwnd = hwnd;
             sei.nShow = SW_SHOWNORMAL;
 

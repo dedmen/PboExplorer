@@ -1,10 +1,13 @@
 #pragma once
+#define NOMINMAX
 #include <memory>
 #include <ShlObj.h>
 #include <Windows.h>
 
 #include "ComRef.hpp"
 #include "PboFolder.hpp"
+#include "PboPatcher.hpp"
+#include "TempDiskFile.hpp"
 class PboFile;
 
 class PboFileStream :
@@ -16,29 +19,31 @@ public:
     ~PboFileStream() override;
 
     // IUnknown
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override;
 
     // IStream
-    HRESULT STDMETHODCALLTYPE Read(void* pv, ULONG cb, ULONG* pcbRead);
+    HRESULT STDMETHODCALLTYPE Read(void* pv, ULONG cb, ULONG* pcbRead) override;
     HRESULT STDMETHODCALLTYPE Write(
-        void const* pv, ULONG cb, ULONG* pcbWritten);
+        void const* pv, ULONG cb, ULONG* pcbWritten) override;
     HRESULT STDMETHODCALLTYPE Seek(
         LARGE_INTEGER dlibMove, DWORD dwOrigin,
-        ULARGE_INTEGER* plibNewPosition);
-    HRESULT STDMETHODCALLTYPE SetSize(ULARGE_INTEGER libNewSize);
+        ULARGE_INTEGER* plibNewPosition) override;
+    HRESULT STDMETHODCALLTYPE SetSize(ULARGE_INTEGER libNewSize) override;
     HRESULT STDMETHODCALLTYPE CopyTo(
         IStream* pstm, ULARGE_INTEGER cb,
-        ULARGE_INTEGER* pcbRead, ULARGE_INTEGER* pcbWritten);
-    HRESULT STDMETHODCALLTYPE Commit(DWORD grfCommitFlags);
-    HRESULT STDMETHODCALLTYPE Revert(void);
+        ULARGE_INTEGER* pcbRead, ULARGE_INTEGER* pcbWritten) override;
+    HRESULT STDMETHODCALLTYPE Commit(DWORD grfCommitFlags) override;
+    HRESULT STDMETHODCALLTYPE Revert(void) override;
     HRESULT STDMETHODCALLTYPE LockRegion(
-        ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType);
+        ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType) override;
     HRESULT STDMETHODCALLTYPE UnlockRegion(
-        ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType);
-    HRESULT STDMETHODCALLTYPE Stat(STATSTG* pstatstg, DWORD grfStatFlag);
-    HRESULT STDMETHODCALLTYPE Clone(IStream** ppstm);
+        ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType) override;
+    HRESULT STDMETHODCALLTYPE Stat(STATSTG* pstatstg, DWORD grfStatFlag) override;
+    HRESULT STDMETHODCALLTYPE Clone(IStream** ppstm) override;
 
 private:
+
+    void TransformToWritable();
 
 
     LONGLONG m_pos;
@@ -49,5 +54,10 @@ private:
     std::istream sourceStream;
     uint32_t fileSize;
     std::filesystem::path filePath;
+
+    std::shared_ptr<PboFile> pboFile;
+
+    std::optional<std::shared_ptr<TempDiskFile>> tempFile;
+    std::fstream tempFileStream;
 };
 
