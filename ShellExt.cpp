@@ -1,6 +1,7 @@
 #include "ShellExt.hpp"
 
 #include "resource.h"
+#include "DebugLogger.hpp"
 
 // CreatePropertySheetPageW
 #pragma comment( lib, "Comctl32" )
@@ -18,6 +19,7 @@ ShellExt::~ShellExt()
 
 STDMETHODIMP ShellExt::QueryInterface(REFIID riid, LPVOID* ppReturn)
 {
+	DebugLogger_OnQueryInterfaceEntry(riid);
 	*ppReturn = nullptr;
 
 #ifdef _DEBUG
@@ -27,19 +29,16 @@ STDMETHODIMP ShellExt::QueryInterface(REFIID riid, LPVOID* ppReturn)
 		return E_NOINTERFACE;
 #endif
 
-	
-	if (IsEqualIID(riid, IID_IUnknown))
-		*ppReturn = this;
-	else if (IsEqualIID(riid, IID_IClassFactory))
-		*ppReturn = (IClassFactory*)this;
-	else if (IsEqualIID(riid, IID_IShellExtInit))
-		*ppReturn = (IShellExtInit*)this;
-	else if (IsEqualIID(riid, IID_IContextMenu))
-		*ppReturn = (IContextMenu*)this;
-	else if (IsEqualIID(riid, IID_IShellFolder2))
-		*ppReturn = (IShellFolder2*)this;
-	else if (IsEqualIID(riid, IID_IShellPropSheetExt))
-		*ppReturn = (IShellPropSheetExt*)this;
+	if (COMJoiner::QueryInterfaceJoiner(riid, ppReturn)) {
+		AddRef();
+		return S_OK;
+	}
+		
+
+	//if (IsEqualIID(riid, IID_IClassFactory))
+	//	*ppReturn = static_cast<IClassFactory*>(this);
+	//else if (IsEqualIID(riid, IID_IShellFolder2))
+	//	*ppReturn = static_cast<IShellFolder2*>(this);
 	else
 		__debugbreak();
 	
@@ -52,6 +51,7 @@ STDMETHODIMP ShellExt::QueryInterface(REFIID riid, LPVOID* ppReturn)
 		return S_OK;
 	}
 
+	DebugLogger_OnQueryInterfaceExitUnhandled(riid);
 	return E_NOINTERFACE;
 }
 

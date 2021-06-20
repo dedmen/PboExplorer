@@ -3,6 +3,20 @@
 
 #include "ClassFactory.hpp"
 
+using namespace std::string_view_literals;
+
+template<char... Cs>
+struct CharSeq
+{
+    static constexpr const char s[] = { Cs..., 0 }; // The unique address
+};
+
+// That template uses the extension
+template<char... Cs>
+constexpr CharSeq<Cs...> operator"" _cs() {
+    return {};
+}
+
 class Util
 {
 public:
@@ -89,6 +103,51 @@ public:
 
         return ret;
     };
+
+
+    template <typename T, size_t N>
+    class FlagSeperator {
+        std::array<std::pair<T, char[32]>, N> dataHolder;
+    public:
+        consteval FlagSeperator(std::initializer_list<std::pair<T, std::string_view>> data) noexcept {
+
+            int idx = 0;
+            for (auto& it : data) {
+                dataHolder[idx].first = it.first;
+
+                int i = 0;
+                for (auto& ch : it.second) {
+                    dataHolder[idx].second[i++] = ch;
+                }
+                dataHolder[idx].second[i] = 0;
+
+                ++idx;
+            }
+        
+            if (idx != N)
+                throw std::logic_error("Array size doesn't match provided arguments");
+        }
+
+        std::string SeperateToString(T flags) const {
+            std::string result;
+
+            for (auto& it : dataHolder) {
+                if (flags & it.first) {
+                    result += it.second;
+                    result += "|";
+                }
+            }
+
+            if (!result.empty())
+                result.pop_back();
+            return result;
+        }
+
+
+
+
+    };
+
 
 
 };

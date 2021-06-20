@@ -13,6 +13,7 @@
 #ifndef SEE_MASK_NOASYNC
 #define SEE_MASK_NOASYNC 0x00000100
 #endif
+#include "DebugLogger.hpp"
 #ifndef CMF_EXTENDEDVERBS
 #define CMF_EXTENDEDVERBS 0x00000100
 #endif
@@ -122,12 +123,15 @@ PboContextMenu::~PboContextMenu()
 // IUnknown
 HRESULT PboContextMenu::QueryInterface(REFIID riid, void** ppvObject)
 {
-    if (IsEqualIID(riid, IID_IContextMenu))
-        *ppvObject = (IContextMenu*)this;
-    else if (IsEqualIID(riid, IID_IUnknown))
-        *ppvObject = (IUnknown*)this;
+    DebugLogger_OnQueryInterfaceEntry(riid);
+
+    if (COMJoiner::QueryInterfaceJoiner(riid, ppvObject)) {
+        AddRef();
+        return S_OK;
+    }
     else
     {
+        DebugLogger_OnQueryInterfaceExitUnhandled(riid);
         *ppvObject = nullptr;
         return(E_NOINTERFACE);
     }
@@ -142,6 +146,7 @@ enum
     CONTEXT_OPEN,
     CONTEXT_OPEN_WITH,
     CONTEXT_COPY,
+    CONTEXT_DELETE,
     CONTEXT_QTY,
 };
 
@@ -182,14 +187,10 @@ HRESULT PboContextMenu::QueryContextMenu(
     //#TODO query filetype contextmenu and use them?
     // add notepad++ manually?
 
-
-
-
-
-
-
     if (m_apidl.size() == 1)
     {
+        DebugLogger::TraceLog(std::format("file {}", ((PboPidl*)m_apidl[0].GetRef())->filePath.string()), std::source_location::current(), __FUNCTION__);
+
         InsertMenu(hmenu, indexMenu++, MF_STRING | MF_BYPOSITION,
             idCmdFirst + CONTEXT_OPEN, getContextText(CONTEXT_OPEN));
         if (!(uFlags & CMF_NODEFAULT))
@@ -209,6 +210,9 @@ HRESULT PboContextMenu::QueryContextMenu(
 
     InsertMenu(hmenu, indexMenu++, MF_STRING | MF_BYPOSITION,
         idCmdFirst + CONTEXT_COPY, getContextText(CONTEXT_COPY));
+
+    InsertMenu(hmenu, indexMenu++, MF_STRING | MF_BYPOSITION,
+        idCmdFirst + CONTEXT_DELETE, getContextText(CONTEXT_DELETE));
 
     return(MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, CONTEXT_QTY));
 }
@@ -237,8 +241,17 @@ HRESULT PboContextMenu::QueryContextMenu(
 
 HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
 {
+    // https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-icontextmenu-invokecommand
+    //#TODO Check the cbSize member of pici to determine which structure (CMINVOKECOMMANDINFO or CMINVOKECOMMANDINFOEX) was passed in. 
+
+
+    DebugLogger::TraceLog(std::format("verb {}, dir {}, parms {}", pici->lpVerb, pici->lpDirectory ? pici->lpDirectory : "", pici->lpParameters ? pici->lpParameters : ""), std::source_location::current(), __FUNCTION__);
+
     int cmd = -1;
-    if (HIWORD(pici->lpVerb))
+
+    
+
+    if (HIWORD(pici->lpVerb)) //IS_INTRESOURCE()
     {
         if (!lstrcmpiA(pici->lpVerb, "open"))
             cmd = CONTEXT_OPEN;
@@ -246,10 +259,22 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
             cmd = CONTEXT_OPEN_WITH;
         else if (!lstrcmpiA(pici->lpVerb, "copy"))
             cmd = CONTEXT_COPY;
+        else if (!lstrcmpiA(pici->lpVerb, "delete"))
+            cmd = CONTEXT_DELETE;
+        else
+            Util::TryDebugBreak(); // rename, refresh, paste, explore, find? properties.
+        //#TODO "delete"
+
     }
     else cmd = LOWORD(pici->lpVerb);
 
-    if (cmd < 0 || cmd >= CONTEXT_QTY) return(E_INVALIDARG);
+    if (cmd < 0 || cmd >= CONTEXT_QTY) {
+
+
+        DebugLogger::TraceLog(std::format("NOT IMPLEMENTED COMMAND"), std::source_location::current(), __FUNCTION__);
+        //#TODO warn log
+        return(E_INVALIDARG);
+    }
 
     HWND hwnd = pici->hwnd;
     if (!hwnd) hwnd = m_hwnd;
@@ -268,6 +293,16 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
 
         return(hr);
     }
+
+
+    if (cmd == CONTEXT_DELETE)
+    {
+        //#TODO deletion
+
+        return E_FAIL;
+    }
+
+
 
     PboPidl* qp = (PboPidl*)m_apidl[0].GetRef();
     if (qp->IsFile())

@@ -29,6 +29,8 @@ class PboSubFolder : public IPboSub
 public:
     std::vector<PboSubFile> subfiles;
     std::vector<std::shared_ptr<PboSubFolder>> subfolders;
+
+    std::optional<std::reference_wrapper<const PboSubFile>> GetFileByPath(std::filesystem::path inputPath) const;
 };
 
 
@@ -50,14 +52,16 @@ public:
 
 
 
-
+//todo IDropTarget
+//https ://docs.microsoft.com/en-us/windows/win32/api/oleidl/nn-oleidl-idroptarget
 class PboFolder:
 	GlobalRefCounted,
 	public RefCountedCOM<PboFolder,
 	                     IShellFolder2,
 	                     IPersistFolder3,
 	                     IShellFolderViewCB,
-	                     IThumbnailHandlerFactory
+	                     IThumbnailHandlerFactory,
+                         IDropTarget
 	>
 {
     bool checkInit(void);
@@ -139,6 +143,11 @@ public:
     HRESULT WINAPI GetThumbnailHandler(
         PCUITEMID_CHILD pidlChild, IBindCtx* pbc, REFIID riid, void** ppv);
 
+    // Inherited via IDropTarget
+    HRESULT STDMETHODCALLTYPE DragEnter(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect) override;
+    HRESULT STDMETHODCALLTYPE DragOver(DWORD grfKeyState, POINTL pt, DWORD* pdwEffect) override;
+    HRESULT STDMETHODCALLTYPE DragLeave(void) override;
+    HRESULT STDMETHODCALLTYPE Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect) override;
 
 
     std::filesystem::path GetTempDir();
@@ -146,4 +155,5 @@ public:
     void KeepTempFileRef(const std::shared_ptr<TempDiskFile>& shared) {
         tempFileRefs.emplace_back(shared);
     }
-};
+
+    };

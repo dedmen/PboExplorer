@@ -41,6 +41,14 @@ public:
     void Process(PboPatcher& patcher) override;
 };
 
+class PatchRenameFile final : public IPatchOperation {
+    std::filesystem::path pboFilePathOld;
+    std::filesystem::path pboFilePathNew;
+public:
+    PatchRenameFile(std::filesystem::path pboFilePathOld, std::filesystem::path pboFilePathNew) : IPatchOperation(PatchType::Update), pboFilePathOld(std::move(pboFilePathOld)), pboFilePathNew(std::move(pboFilePathNew)) {}
+    void Process(PboPatcher& patcher) override;
+};
+
 class PatchDeleteFile final : public IPatchOperation {
     std::filesystem::path pboFilePath;
 public:
@@ -75,6 +83,7 @@ class PboPatcher
     friend class IPatchOperation;
     friend class PatchAddFileFromDisk;
     friend class PatchUpdateFileFromDisk;
+    friend class PatchRenameFile;
     friend class PatchDeleteFile;
     friend class PatchAddProperty;
     friend class PatchDeleteProperty;

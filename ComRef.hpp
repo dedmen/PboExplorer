@@ -212,14 +212,52 @@ public:
 	}
 };
 
+template<class ...T>
+class COMJoiner : public T... {
+
+
+	template<class ST>
+	__forceinline bool CheckSingle(const IID& riid, void** ppv) {
+
+		if (IsEqualIID(riid, __uuidof(ST))) {
+			*ppv = static_cast<ST*>(this);
+			return true;
+		}
+
+		return false;
+	}
+
+	template<class ST>
+	__forceinline bool CheckSingleIUnknown(void** ppv) {
+		if (std::is_convertible_v<ST*, IUnknown*>) {
+			*ppv = static_cast<IUnknown*>(static_cast<ST*>(this));
+			return true;
+		}
+		return false;
+	}
 
 
 
+public:
+
+	bool QueryInterfaceJoiner(const IID& riid, void** ppv) {
+		if ((CheckSingle<T>(riid, ppv) || ...))
+			return true;
+
+		if (IsEqualIID(riid, __uuidof(IUnknown))) {
+			// use IUnknown of first COM base that implements it
+			return (CheckSingleIUnknown<T>(ppv) || ...);
+		}
+
+		return false;
+	}
+
+};
 
 
 
 template<class Base, class ...T>
-class RefCountedCOM : public T... {
+class RefCountedCOM : public COMJoiner<T...> {
 	std::atomic_uint32_t refCount;
 
 public:

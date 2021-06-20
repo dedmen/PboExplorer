@@ -331,6 +331,11 @@ STDAPI DllRegisterServer(VOID)
 	//		return SELFREG_E_CLASS;
 	//}
 
+
+
+	SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, 0, 0);
+
+
 	return S_OK;
 }
 

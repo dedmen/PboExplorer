@@ -363,6 +363,17 @@ void PatchUpdateFileFromDisk::Process(PboPatcher& patcher) {
     patcher.endStartOffset += newFile->getEntryInformation().data_size;
 }
 
+void PatchRenameFile::Process(PboPatcher& patcher)
+{
+    // get iterator to our file
+    std::shared_lock ftwLockS(patcher.ftwMutex);
+    auto foundFile = patcher.GetFTWIteratorToFile(pboFilePathOld);
+    (*foundFile)->getEntryInformation().name = pboFilePathNew.string();
+
+    ftwLockS.unlock();
+
+}
+
 void PatchDeleteFile::Process(PboPatcher& patcher) {
     // simply remove the file from FTW
     patcher.ReplaceWithDummyFile(pboFilePath);
@@ -433,6 +444,23 @@ void PboPatcher::ProcessPatches() {
 
     for (auto& it : addPatches)
         it->Process(*this);
+
+
+    // Sort for signature V3, some file types need to be sorted by name
+
+    // We don't actually need to sort, the order just needs to match with order on server.
+    // "sqf", "inc", "bikb", "ext", "fsm", "sqm", "hpp", "cfg", "sqs", "h", "sqfc"
+
+    //std::ranges::is_sorted
+    //if (!std::is_sorted(filesToWrite.begin(), filesToWrite.end(), [](const std::shared_ptr<PboFileToWrite>& l, const std::shared_ptr<PboFileToWrite>& r) {
+    //        return l->getEntryInformation().name < r->getEntryInformation().name;
+    //    })) {
+    //
+    //}
+
+
+
+
 
     // potential defragment step here
 

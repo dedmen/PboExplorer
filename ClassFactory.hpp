@@ -7,6 +7,8 @@
 #include "PboFolder.hpp"
 #include "ShellExt.hpp"
 
+#include "DebugLogger.hpp"
+
 extern HINSTANCE  g_hInst;
 
 class ClassFactory :
@@ -24,6 +26,7 @@ public:
 	//IUnknown methods
 	HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override
 	{
+		DebugLogger_OnQueryInterfaceEntry(riid);
 		*ppvObject = nullptr;
 
 		if (IsEqualIID(riid, IID_IUnknown))
@@ -40,6 +43,8 @@ public:
 			pUnk->AddRef();
 			return S_OK;
 		}
+
+		DebugLogger_OnQueryInterfaceExitUnhandled(riid);
 
 		return E_NOINTERFACE;
 	}

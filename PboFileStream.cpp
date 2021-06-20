@@ -6,6 +6,7 @@
 #include "PboPatcher.hpp"
 #include "Util.hpp"
 #include "lib/ArmaPboLib/src/pbo.hpp"
+#include "DebugLogger.hpp"
 
 
 PboFileStream::PboFileStream(std::shared_ptr<PboFile> pboFile, std::filesystem::path filePath) :
@@ -45,12 +46,14 @@ PboFileStream::~PboFileStream()
 // IUnknown
 HRESULT PboFileStream::QueryInterface(REFIID riid, void** ppvObject)
 {
+    DebugLogger_OnQueryInterfaceEntry(riid);
     if (IsEqualIID(riid, IID_IStream))
         *ppvObject = (IStream*)this;
     else if (IsEqualIID(riid, IID_IUnknown))
         *ppvObject = (IUnknown*)this;
     else
     {
+        DebugLogger_OnQueryInterfaceExitUnhandled(riid);
         *ppvObject = nullptr;
         return(E_NOINTERFACE);
     }

@@ -316,6 +316,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="ComRef.hpp" />
+    <ClInclude Include="DebugLogger.hpp" />
     <ClInclude Include="FileWatcher.hpp" />
     <ClInclude Include="guid.hpp" />
     <ClInclude Include="ClassFactory.hpp" />
@@ -332,6 +333,7 @@
     <ClInclude Include="Util.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="DebugLogger.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="FileWatcher.cpp" />
     <ClCompile Include="lib\ArmaPboLib\lib\sha1.c" />

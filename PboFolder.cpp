@@ -4,6 +4,8 @@
 #include <Shlwapi.h>
 #pragma comment( lib, "Shlwapi" )
 
+#include <propkey.h>
+
 #include "ClassFactory.hpp"
 #include <functional>
 #include <mutex>
@@ -18,6 +20,47 @@
 
 #include <ranges>
 #include <utility>
+#include "DebugLogger.hpp"
+
+
+
+std::optional<std::reference_wrapper<const PboSubFile>> PboSubFolder::GetFileByPath(std::filesystem::path inputPath) const
+{
+    auto relPath = inputPath.lexically_relative(fullPath);
+
+    auto elementCount = std::distance(relPath.begin(), relPath.end());
+
+    if (elementCount == 1) {
+        // only a filename
+
+
+        auto subfileFound = std::find_if(subfiles.begin(), subfiles.end(), [relPath](const PboSubFile& subf)
+            {
+                return subf.filename == relPath;
+            });
+
+        if (subfileFound == subfiles.end())
+            return {};
+
+        return *subfileFound;
+    } else {
+        auto folderName = *relPath.begin();
+
+        auto subfolderFound = std::find_if(subfolders.begin(), subfolders.end(), [folderName](const std::shared_ptr<PboSubFolder>& subf)
+            {
+                return subf->filename == folderName;
+            });
+
+        if (subfolderFound != subfolders.end())
+        {
+            return (*subfolderFound)->GetFileByPath(inputPath);
+        }
+    }
+
+
+    return {};
+}
+
 
 PboFile::PboFile()
 {
@@ -189,27 +232,58 @@ PboFolder::~PboFolder()
 
 HRESULT PboFolder::QueryInterface(const IID& riid, void** ppvObject)
 {
-    if (IsEqualIID(riid, IID_IUnknown))
-        *ppvObject = (IUnknown*)(IShellFolder*)this;
-    else if (IsEqualIID(riid, IID_IShellFolder))
+    DebugLogger_OnQueryInterfaceEntry(riid);
+    *ppvObject = nullptr;
+
+    if (COMJoiner::QueryInterfaceJoiner(riid, ppvObject)) {
+        AddRef();
+        return S_OK;
+    }
+
+    // https://gist.github.com/hfiref0x/a77584e47b0feb3779f47c8d7609d4c4
+    //#TODO ? IFolderView https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-ifolderview
+
+
+    if (IsEqualIID(riid, IID_IShellFolder))
         *ppvObject = (IShellFolder*)this;
-    else if (IsEqualIID(riid, IID_IShellFolder2))
-        *ppvObject = (IShellFolder2*)this;
     else if (IsEqualIID(riid, IID_IPersist))
         *ppvObject = (IPersist*)this;
     else if (IsEqualIID(riid, IID_IPersistFolder))
         *ppvObject = (IPersistFolder*)this;
     else if (IsEqualIID(riid, IID_IPersistFolder2))
         *ppvObject = (IPersistFolder2*)this;
-    else if (IsEqualIID(riid, IID_IPersistFolder3))
-        *ppvObject = (IPersistFolder3*)this;
-    else if (IsEqualIID(riid, IID_IThumbnailHandlerFactory))
-        *ppvObject = (IThumbnailHandlerFactory*)this;
 
-    //IID_IObjectWithFolderEnumMode 
-	
+    else if (DebugLogger::IsIIDUninteresting(riid)) {
+        return(E_NOINTERFACE);
+    }
+
+    else RIID_TODO(IID_IObjectWithFolderEnumMode);
+    else RIID_TODO(IID_IExplorerPaneVisibility);
+    else RIID_TODO(IID_IFolderView);
+    else RIID_TODO(IID_IPersistIDList);
+    else RIID_TODO(IID_IShellIcon); //#TODO performance improvement https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-ishellicon see remarks last line
+    else RIID_TODO(IID_IShellIconOverlay); // not sure if I want this? Don't actually think so
+    else RIID_TODO(IID_IShellItem); //#TODO
+
+    //#TODO  //IID_IObjectWithFolderEnumMode 
+        // https://github.com/vbaderks/msf/blob/master/Undocumented%20Shell%20Interfaces%20Windows%208.reg
+    // https://www.geoffchappell.com/studies/windows/shell/shell32/interfaces/ishellfolder3.htm
+    // https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-iexplorerpanevisibility-getpanestate
+
+     // can be used to auto-show preview pane when paa is selected?
+    //else if (IsEqualIID(riid, IID_IExplorerPaneVisibility)) {
+
+    //else if (IsEqualIID(riid, IID_IUpdateIDList)) { // riid = {6589B6D2-5F8D-4B9E-B7E0-23CDD9717D8C} IUpdateIDList //#TODO make it a static
+    //    *ppvObject = nullptr; //#TODO https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-iupdateidlist
+    //    return(E_NOINTERFACE);
+    //}
+
+    // #TODO thumbnail http://svn.swordofmoonlight.net/code/Somplayer/Somthumb.cpp
+    // #TODO read over this. See also the registration SHSetValueW(clsid,L"ShellFolder",L"Attributes",REG_DWORD,(BYTE*)&sfgao,sizeof(DWORD));
+
     else
     {
+        DebugLogger_OnQueryInterfaceExitUnhandled(riid);
         *ppvObject = nullptr;
         return(E_NOINTERFACE);
     }
@@ -311,12 +385,14 @@ QiewerEnumIDList::~QiewerEnumIDList()
 // IUnknown
 HRESULT QiewerEnumIDList::QueryInterface(REFIID riid, void** ppvObject)
 {
+    DebugLogger_OnQueryInterfaceEntry(riid);
     if (IsEqualIID(riid, IID_IEnumIDList))
         *ppvObject = (IEnumIDList*)this;
     else if (IsEqualIID(riid, IID_IUnknown))
         *ppvObject = (IUnknown*)this;
     else
     {
+        DebugLogger_OnQueryInterfaceExitUnhandled(riid);
         *ppvObject = nullptr;
         return(E_NOINTERFACE);
     }
@@ -441,6 +517,7 @@ HRESULT PboFolder::EnumObjects(HWND hwnd, DWORD grfFlags, IEnumIDList** ppenumID
 
 HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID& riid, void** ppv)
 {
+    DebugLogger_OnQueryInterfaceEntry(riid);
     CHECK_INIT();
 
 #ifdef _DEBUG
@@ -524,6 +601,9 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
         
         return(hr);
     }
+
+   
+    DebugLogger_OnQueryInterfaceExitUnhandled(riid);
 
     return(E_NOINTERFACE);
 }
@@ -629,6 +709,7 @@ HRESULT PboFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIST 
 
 HRESULT PboFolder::CreateViewObject(HWND hwnd, const IID& riid, void** ppv)
 {
+    DebugLogger_OnQueryInterfaceEntry(riid);
     *ppv = nullptr;
 
 #ifdef _DEBUG
@@ -667,10 +748,23 @@ HRESULT PboFolder::CreateViewObject(HWND hwnd, const IID& riid, void** ppv)
 
         return(hr);
     }
+    else if (IsEqualIID(riid, IID_IDropTarget))
+    {
+        *ppv = (IDropTarget*)this;
+        AddRef();
+        return S_OK;
+    }
 
+    else RIID_TODO(IID_IExplorerCommandProvider);
+    else RIID_TODO(IID_ITransferDestination); // https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-itransferdestination
+    //#TODO we want the above ^, ITransferAdviseSink::ConfirmOverwrite, ITransferAdviseSink::UpdateProgress
+    // but we probably don't want to offer that here? We kinda only want to offer this if a drop action is running
+     else RIID_TODO(IID_ITransferSource); // #TODO
 
     //#TODO https://github.com/microsoft/Windows-classic-samples/blob/master/Samples/Win7Samples/winui/shell/shellextensibility/explorerdataprovider/ExplorerDataProvider.cpp#L606
 	
+
+    DebugLogger_OnQueryInterfaceExitUnhandled(riid);
 
     return(E_NOTIMPL);
 }
@@ -684,13 +778,53 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
     }
 
     const PboPidl* qp = (const PboPidl*)apidl[0];
-    //#TODO update types. Folder, File. Not Folder, Folder/File, File, I already commented it out, should be fine
+
+
+    static constexpr Util::FlagSeperator<SFGAOF,31> seperator({
+        { SFGAO_CANCOPY, "SFGAO_CANCOPY"sv },
+        { SFGAO_CANMOVE, "SFGAO_CANMOVE"sv },
+        { SFGAO_CANLINK, "SFGAO_CANLINK"sv },
+        { SFGAO_STORAGE, "SFGAO_STORAGE"sv },
+        { SFGAO_CANRENAME, "SFGAO_CANRENAME"sv },
+        { SFGAO_CANDELETE, "SFGAO_CANDELETE"sv },
+        { SFGAO_HASPROPSHEET, "SFGAO_HASPROPSHEET"sv },
+        { SFGAO_DROPTARGET, "SFGAO_DROPTARGET"sv },
+        { SFGAO_PLACEHOLDER, "SFGAO_PLACEHOLDER"sv },
+        { SFGAO_SYSTEM, "SFGAO_SYSTEM"sv },
+        { SFGAO_ENCRYPTED, "SFGAO_ENCRYPTED"sv },
+        { SFGAO_ISSLOW, "SFGAO_ISSLOW"sv },
+        { SFGAO_GHOSTED, "SFGAO_GHOSTED"sv },
+        { SFGAO_LINK, "SFGAO_LINK"sv },
+        { SFGAO_SHARE, "SFGAO_SHARE"sv },
+        { SFGAO_READONLY, "SFGAO_READONLY"sv },
+        { SFGAO_HIDDEN, "SFGAO_HIDDEN"sv },
+        { SFGAO_FILESYSANCESTOR, "SFGAO_FILESYSANCESTOR"sv },
+        { SFGAO_FOLDER, "SFGAO_FOLDER"sv },
+        { SFGAO_FILESYSTEM, "SFGAO_FILESYSTEM"sv },
+        { SFGAO_HASSUBFOLDER, "SFGAO_HASSUBFOLDER"sv },
+        { SFGAO_VALIDATE, "SFGAO_VALIDATE"sv },
+        { SFGAO_REMOVABLE, "SFGAO_REMOVABLE"sv },
+        { SFGAO_COMPRESSED, "SFGAO_COMPRESSED"sv },
+        { SFGAO_BROWSABLE, "SFGAO_BROWSABLE"sv },
+        { SFGAO_NONENUMERATED, "SFGAO_NONENUMERATED"sv },
+        { SFGAO_NEWCONTENT, "SFGAO_NEWCONTENT"sv },
+        { SFGAO_CANMONIKER, "SFGAO_CANMONIKER"sv },
+        { SFGAO_HASSTORAGE, "SFGAO_HASSTORAGE"sv },
+        { SFGAO_STREAM, "SFGAO_STREAM"sv },
+        { SFGAO_STORAGEANCESTOR, "SFGAO_STORAGEANCESTOR"sv }
+    });
+
+
+    DebugLogger::TraceLog(std::format("{}, wantedFlags {}", qp->filePath.string(), seperator.SeperateToString(*rgfInOut)), std::source_location::current(), __FUNCTION__);
+
+    //#TODO only return flags that were also requested initially. rgfInOut is pre-filled with the flags it wants to know about
 	switch (qp->type)
     {
     case PboPidlFileType::Folder:
         *rgfInOut =
             SFGAO_BROWSABLE | SFGAO_HASSUBFOLDER | SFGAO_CANCOPY |
-            SFGAO_FOLDER | SFGAO_FILESYSANCESTOR | SFGAO_STORAGEANCESTOR;
+            SFGAO_FOLDER | SFGAO_FILESYSANCESTOR | SFGAO_STORAGEANCESTOR 
+            | SFGAO_DROPTARGET; // https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ishellfolder-getattributesof
         break;
     
     //case 1:
@@ -700,7 +834,11 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
     //    break;
     //
     case PboPidlFileType::File:
-        *rgfInOut = SFGAO_CANCOPY | SFGAO_STREAM;
+        *rgfInOut = SFGAO_CANCOPY | SFGAO_STREAM | SFGAO_CANRENAME | SFGAO_CANDELETE;
+
+        if (qp->filePath.filename().string().starts_with("$DU"))
+            *rgfInOut |= SFGAO_GHOSTED | SFGAO_HIDDEN; // The specified items are shown as dimmed and unavailable to the user.
+
         break;
     }
 
@@ -710,7 +848,7 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
 HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl, const IID& riid, UINT* rgfReserved,
 	void** ppv)
 {
-
+    DebugLogger_OnQueryInterfaceEntry(riid);
     // https://github.com/microsoft/Windows-classic-samples/blob/master/Samples/Win7Samples/winui/shell/shellextensibility/explorerdataprovider/ExplorerDataProvider.cpp#L673
 
 	
@@ -975,6 +1113,19 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
         return(GetThumbnailHandler(apidl[0], nullptr, riid, ppv));
     }
 
+    else if (IsEqualIID(riid, IID_IQueryInfo))
+    {
+        //https://docs.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-iqueryinfo-getinfotip
+
+        return E_NOINTERFACE;
+    }
+
+   
+    RIID_TODO(IID_IDropTarget); //#TODO
+    RIID_TODO(IID_IItemNameLimits); //#TODO
+
+    DebugLogger_OnQueryInterfaceExitUnhandled(riid);
+
     return(E_NOINTERFACE);
 }
 
@@ -1014,7 +1165,69 @@ HRESULT PboFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, SHGDNF uFlags, STRRET* p
 
 HRESULT PboFolder::SetNameOf(HWND hwnd, LPCITEMIDLIST pidl, LPCOLESTR pszName, SHGDNF uFlags, LPITEMIDLIST* ppidlOut)
 {
-    return(E_NOTIMPL);
+    CHECK_INIT();
+
+    const PboPidl* qp = (const PboPidl*)pidl;
+
+    DebugLogger::TraceLog(std::format("{}, newName {}, flags {}", qp->filePath.string(), Util::utf8_encode(pszName), uFlags), std::source_location::current(), __FUNCTION__);
+
+    if (!qp->IsFile()) //#TODO, need to rename aaaaaall the files in that folder
+        return E_NOTIMPL;
+
+    // need to patch
+
+    PboPidl* newPidl = (PboPidl*)CoTaskMemAlloc(sizeof(PboPidl) + sizeof(USHORT));
+    memset(newPidl, 0, sizeof(PboPidl) + sizeof(USHORT));
+    newPidl->cb = (USHORT)sizeof(PboPidl);
+    newPidl->type = qp->type;
+    //qp->idx = idx;
+    std::wstring_view newName(pszName);
+    newPidl->filePath = qp->filePath.parent_path() / newName;
+
+    *ppidlOut = (LPITEMIDLIST)newPidl;
+
+
+    {
+        PboPatcher patcher;
+
+        {
+            std::ifstream inputFile(pboFile->diskPath, std::ifstream::in | std::ifstream::binary);
+
+            PboReader reader(inputFile);
+            reader.readHeaders();
+            patcher.ReadInputFile(&reader);
+
+            patcher.AddPatch<PatchRenameFile>(qp->filePath, newPidl->filePath);
+            patcher.ProcessPatches();
+        }
+
+        {
+            std::fstream outputStream(pboFile->diskPath, std::fstream::binary | std::fstream::in | std::fstream::out);
+            patcher.WriteOutputFile(outputStream);
+        }
+    }
+
+    //copy old pidl
+
+    LPITEMIDLIST pidlAbsOld = ILCombine(m_pidl, pidl);
+    LPITEMIDLIST pidlAbsNew = ILCombine(m_pidl, (LPCITEMIDLIST)newPidl);
+    if (qp->IsFile())
+        SHChangeNotify(SHCNE_RENAMEITEM, SHCNF_IDLIST, pidlAbsOld, pidlAbsNew);
+    else
+        SHChangeNotify(SHCNE_RENAMEFOLDER, SHCNF_IDLIST, pidlAbsOld, pidlAbsNew);
+
+
+    //#TODO?
+    /*
+    #define SHCNE_RENAMEITEM          0x00000001L
+    #define SHCNE_CREATE              0x00000002L
+    #define SHCNE_DELETE              0x00000004L
+    #define SHCNE_MKDIR               0x00000008L
+    #define SHCNE_RMDIR               0x00000010L
+    */
+
+
+    return S_OK;
 }
 
 HRESULT PboFolder::GetDefaultSearchGUID(GUID*)
@@ -1087,9 +1300,7 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
 	
     const PboPidl* qp = (const PboPidl*)pidl;
 
-    OutputDebugStringW(L"PboFolder::GetDetailsEx");
-    OutputDebugStringW(qp->filePath.c_str());
-    OutputDebugStringA("\n");
+    DebugLogger::TraceLog(std::format("file {}", qp->filePath.string()), std::source_location::current(), __FUNCTION__);
     
     if (pscid->fmtid == PKEY_ItemNameDisplay.fmtid &&
         pscid->pid == PKEY_ItemNameDisplay.pid)
@@ -1177,6 +1388,33 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
     //}
 
 	
+    // C9944A21-A406-48FE-8225-AEC7E24C211B
+    // contentviewmodeforbrowse
+
+    else if (pscid->fmtid == PKEY_PropList_ContentViewModeForBrowse.fmtid && pscid->pid == PKEY_PropList_ContentViewModeForBrowse.pid)
+        return(E_INVALIDARG);
+    else if (pscid->fmtid == PKEY_DescriptionID.fmtid)
+        return(E_INVALIDARG);
+    else if (pscid->fmtid == PKEY_FullText.fmtid)
+        return(E_INVALIDARG); 
+    else if (pscid->fmtid == PKEY_FileExtension.fmtid) {
+        // This is the file extension of the file based item, including the leading period. 
+        if (!qp->IsFile()) return(E_FAIL);
+
+        return stringToVariant(Util::utf8_decode(qp->filePath.extension().string()), pv);
+    }
+    else if (pscid->fmtid == PKEY_LayoutPattern_ContentViewModeForBrowse.fmtid)
+        return(E_INVALIDARG);   
+    else if (pscid->fmtid == PKEY_ApplicationName.fmtid)
+        return(E_INVALIDARG);  
+    else if (pscid->fmtid == PKEY_DateAccessed.fmtid)
+        return(E_INVALIDARG);
+    else if (pscid->fmtid == PKEY_ParsingBindContext.fmtid)
+        return(E_INVALIDARG); 
+    else if (pscid->fmtid == PKEY_StatusBarSelectedItemCount.fmtid) // need to respect pid if you wanna use this
+        return(E_INVALIDARG);
+    
+
     return(E_INVALIDARG);
 }
 
@@ -1439,6 +1677,68 @@ HRESULT PboFolder::GetThumbnailHandler(LPCITEMIDLIST pidlChild, IBindCtx* pbc, c
         
     return(hr);
 }
+
+
+HRESULT PboFolder::DragEnter(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
+{
+    if (!pdwEffect)
+        return E_INVALIDARG;
+
+    if (!(*pdwEffect & DROPEFFECT_COPY)) { // We need to copy files that are dragged in
+        *pdwEffect = 0;
+        return S_OK;
+    }
+
+    bool canDrop = false;
+       
+    IEnumFORMATETC* result = nullptr;
+    if (pDataObj->EnumFormatEtc(DATADIR_GET, &result) == S_OK) {
+
+        FORMATETC format{};
+
+        ULONG fetched = 0;
+        while (result->Next(1, &format, &fetched) == S_OK && fetched) {
+
+            // CF_HDROP 
+            // CFSTR_SHELLIDLIST
+            // CFSTR_FILEDESCRIPTORA
+            // CFSTR_FILECONTENTS
+            // CFSTR_FILENAMEA
+            // CFSTR_SHELLURL
+            // CFSTR_DRAGCONTEXT
+            if (format.cfFormat == CF_TEXT && format.tymed == TYMED_FILE) {
+
+            }
+        }
+
+        result->Release();
+    }
+
+
+    if (canDrop)
+        *pdwEffect = DROPEFFECT_COPY;
+
+
+    return E_NOTIMPL;
+}
+
+HRESULT PboFolder::DragOver(DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
+{
+    return E_NOTIMPL;
+}
+
+HRESULT PboFolder::DragLeave(void)
+{
+    return E_NOTIMPL;
+}
+
+HRESULT PboFolder::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
+{
+    return E_NOTIMPL;
+}
+
+
+
 
 bool PboFolder::checkInit()
 {
