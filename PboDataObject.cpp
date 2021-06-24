@@ -729,16 +729,19 @@ HRESULT PboDataObject::SetData(FORMATETC* tf , STGMEDIUM* med , BOOL b)
 
 
 
+class FormatEnumerator : GlobalRefCounted, public RefCountedCOM<FormatEnumerator, IEnumFORMATETC> {
 
-
-
-
-
-class QiewerEnumFormatetc : GlobalRefCounted, public RefCountedCOM<QiewerEnumFormatetc, IEnumFORMATETC>
-{
 public:
-    QiewerEnumFormatetc(void);
-    ~QiewerEnumFormatetc();
+    struct Format {
+        CLIPFORMAT cfFormat;
+        tagTYMED tymed;
+    };
+
+    std::vector<Format> formats;
+
+
+    int m_pos = 0;
+
 
     // IUnknown
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
@@ -750,23 +753,12 @@ public:
     HRESULT STDMETHODCALLTYPE Reset(void);
     HRESULT STDMETHODCALLTYPE Clone(IEnumFORMATETC** ppenum);
 
-private:
-
-    
-    int m_pos;
+    ~FormatEnumerator(){}
 };
-
-QiewerEnumFormatetc::QiewerEnumFormatetc(void)
-{
-    m_pos = 0;
-}
-QiewerEnumFormatetc::~QiewerEnumFormatetc()
-{
-}
 
 
 // IUnknown
-HRESULT QiewerEnumFormatetc::QueryInterface(REFIID riid, void** ppvObject)
+HRESULT FormatEnumerator::QueryInterface(REFIID riid, void** ppvObject)
 {
     DebugLogger_OnQueryInterfaceEntry(riid);
     if (COMJoiner::QueryInterfaceJoiner(riid, ppvObject)) {
@@ -780,66 +772,46 @@ HRESULT QiewerEnumFormatetc::QueryInterface(REFIID riid, void** ppvObject)
         return(E_NOINTERFACE);
     }
 
-    AddRef();
     return(S_OK);
 }
 
 
 // IEnumFORMATETC
-HRESULT QiewerEnumFormatetc::Next(
+HRESULT FormatEnumerator::Next(
     ULONG celt, FORMATETC* rgelt, ULONG* pceltFetched)
 {
     ULONG i = 0;
 
-    for (; m_pos < 4 && i < celt; m_pos++, i++)
+    auto toFetch = std::min((size_t)celt, formats.size() - m_pos);
+
+    for (size_t i = 0; i < toFetch; i++)
     {
-        CLIPFORMAT cf;
-        DWORD tymed;
+        auto& format = formats[i + m_pos];
+
         FORMATETC fe = { 0, nullptr,DVASPECT_CONTENT,-1,0 };
-        switch (m_pos)
-        {
-        default:
-            cf = PboDataObject::s_fileDescriptor;
-            tymed = TYMED_HGLOBAL;
-            break;
-
-        case 1:
-            cf = PboDataObject::s_fileContents;
-            tymed = TYMED_ISTREAM;
-            break;
-
-        case 2:
-            cf = PboDataObject::s_preferredDropEffect;
-            tymed = TYMED_HGLOBAL;
-            break;
-
-        case 3:
-            cf = PboDataObject::s_oleClipboardPersistOnFlush;
-            tymed = TYMED_HGLOBAL;
-            break;
-        }
-        fe.cfFormat = cf;
-        fe.tymed = tymed;
+        fe.cfFormat = format.cfFormat;
+        fe.tymed = format.tymed;
         rgelt[i] = fe;
     }
 
     if (pceltFetched)
-        *pceltFetched = i;
+        *pceltFetched = toFetch;
 
     return(celt == i ? S_OK : S_FALSE);
 }
-HRESULT QiewerEnumFormatetc::Skip(DWORD celt)
+HRESULT FormatEnumerator::Skip(DWORD celt)
 {
     m_pos += celt;
     return(S_OK);
 }
-HRESULT QiewerEnumFormatetc::Reset(void)
+HRESULT FormatEnumerator::Reset(void)
 {
     m_pos = 0;
     return(S_OK);
 }
-HRESULT QiewerEnumFormatetc::Clone(IEnumFORMATETC** ppenum)
+HRESULT FormatEnumerator::Clone(IEnumFORMATETC** ppenum)
 {
+    //#TODO we can do that
     *ppenum = nullptr;
     return(E_NOTIMPL);
 }
@@ -862,11 +834,20 @@ HRESULT PboDataObject::EnumFormatEtc(
 {
     if (dwDirection != DATADIR_GET) return(E_NOTIMPL);
 
-    *ppenumFormatEtc = new QiewerEnumFormatetc();
+    auto newEnumerator = new FormatEnumerator();
+    newEnumerator->AddRef();
+
+    newEnumerator->formats.emplace_back(FormatEnumerator::Format{ PboDataObject::s_fileDescriptor , TYMED_HGLOBAL });
+    newEnumerator->formats.emplace_back(FormatEnumerator::Format{ PboDataObject::s_fileContents , TYMED_ISTREAM });
+    newEnumerator->formats.emplace_back(FormatEnumerator::Format{ PboDataObject::s_preferredDropEffect , TYMED_HGLOBAL });
+    newEnumerator->formats.emplace_back(FormatEnumerator::Format{ PboDataObject::s_oleClipboardPersistOnFlush , TYMED_HGLOBAL });
+
+    *ppenumFormatEtc = newEnumerator;
+    
     return(S_OK);
 }
 HRESULT PboDataObject::DAdvise(
-    FORMATETC*, DWORD, IAdviseSink*, DWORD*)
+    FORMATETC* format, DWORD advf, IAdviseSink* pAdvSink, DWORD* pdwConnection)
 {
     return(E_NOTIMPL);
 }

@@ -909,7 +909,7 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
     });
 
 
-    DebugLogger::TraceLog(std::format(L"{}, wantedFlags {}", qp->filePath.wstring(), seperator.SeperateToString(*rgfInOut)), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format("{}, wantedFlags {}", Util::utf8_encode(qp->filePath.wstring()), seperator.SeperateToString(*rgfInOut)), std::source_location::current(), __FUNCTION__);
 
     //#TODO only return flags that were also requested initially. rgfInOut is pre-filled with the flags it wants to know about
 	switch (qp->type)
