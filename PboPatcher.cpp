@@ -256,7 +256,9 @@ bool PboPatcher::InsertFileIntoDummySpace(std::shared_ptr<PboFileToWrite> newFil
         filesToWrite.insert(freeSpace, ConvertNoTouchFile(newFile));
     } else {
         // fits exactly, we can just replace our dummy space
+        auto startOffset = (*freeSpace)->getEntryInformation().startOffset;
         *freeSpace = ConvertNoTouchFile(newFile);
+        (*freeSpace)->getEntryInformation().startOffset = startOffset;
     }
 
     return true;
@@ -295,6 +297,7 @@ void PatchAddFileFromDisk::Process(PboPatcher& patcher) {
     std::unique_lock ftwLock(patcher.ftwMutex);
 
     patcher.filesToWrite.emplace_back(newFile);
+    newFile->getEntryInformation().startOffset = patcher.endStartOffset;
     patcher.endStartOffset += newFile->getEntryInformation().data_size;
 }
 
