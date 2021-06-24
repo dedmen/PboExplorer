@@ -58,7 +58,7 @@ TempDiskFile::TempDiskFile(const PboFile& pboRef, std::filesystem::path subfile)
     //#TODO properly handle existing file, this is bad. We should never do that
     if (!std::filesystem::exists(filePath))
     {
-        std::ofstream outFile(filePath);
+        std::ofstream outFile(filePath, std::ios::out | std::ios::binary);
 
 
         std::ifstream pboInputStream(pboRef.diskPath, std::ios::in | std::ios::binary);
