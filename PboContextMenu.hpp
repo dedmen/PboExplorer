@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 #include <ShlObj.h>
 #include <vector>
 #include <Windows.h>

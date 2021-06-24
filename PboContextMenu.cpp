@@ -17,6 +17,7 @@
 #ifndef CMF_EXTENDEDVERBS
 #define CMF_EXTENDEDVERBS 0x00000100
 #endif
+#include "PboPatcher.hpp"
 #ifndef CMIC_MASK_SHIFT_DOWN
 #define CMIC_MASK_SHIFT_DOWN 0x10000000
 #endif
@@ -245,7 +246,7 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
     //#TODO Check the cbSize member of pici to determine which structure (CMINVOKECOMMANDINFO or CMINVOKECOMMANDINFOEX) was passed in. 
 
 
-    DebugLogger::TraceLog(std::format("verb {}, dir {}, parms {}", pici->lpVerb, pici->lpDirectory ? pici->lpDirectory : "", pici->lpParameters ? pici->lpParameters : ""), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format("verb {}, dir {}, parms {}", pici->lpVerb ? pici->lpVerb : "0", pici->lpDirectory ? pici->lpDirectory : "", pici->lpParameters ? pici->lpParameters : ""), std::source_location::current(), __FUNCTION__);
 
     int cmd = -1;
 
@@ -297,9 +298,38 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
 
     if (cmd == CONTEXT_DELETE)
     {
-        //#TODO deletion
 
-        return E_FAIL;
+
+        PboPatcher patcher;
+
+        {
+            std::ifstream inputFile(m_folder->pboFile->diskPath, std::ifstream::in | std::ifstream::binary);
+
+            PboReader reader(inputFile);
+            reader.readHeaders();
+            patcher.ReadInputFile(&reader);
+
+
+            PboPidl* qp = (PboPidl*)m_apidl[0].GetRef();
+            if (qp->IsFile())
+            {
+                patcher.AddPatch<PatchDeleteFile>(qp->filePath);
+            }
+            else
+            {
+                //#TODO folder deletion
+                Util::TryDebugBreak();
+            }
+
+            patcher.ProcessPatches();
+        }
+
+        {
+            std::fstream outputStream(m_folder->pboFile->diskPath, std::fstream::binary | std::fstream::in | std::fstream::out);
+            patcher.WriteOutputFile(outputStream);
+        }
+
+        return S_OK;
     }
 
 
