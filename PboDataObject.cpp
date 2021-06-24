@@ -718,6 +718,11 @@ HRESULT PboDataObject::GetCanonicalFormatEtc(FORMATETC*, FORMATETC*)
 }
 HRESULT PboDataObject::SetData(FORMATETC* tf , STGMEDIUM* med , BOOL b)
 {
+    // https://docs.microsoft.com/en-us/windows/win32/shell/clipboard#cfstr_preferreddropeffect
+    // Because the target is not obligated to honor the request, the target must call the source's IDataObject::SetData method with a CFSTR_PERFORMEDDROPEFFECT format to tell the data object which operation was actually performed.
+
+    // it will tell us here if a drag-out of a file is supposed to be a move, in which case we need to trigger a delete
+
     return(E_NOTIMPL);
 }
 

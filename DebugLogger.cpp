@@ -632,6 +632,14 @@ void DebugLogger::TraceLog(const std::string& message, const std::source_locatio
 	logFile.flush();
 }
 
+void DebugLogger::TraceLog(const std::wstring& message, const std::source_location location, const char* funcName)
+{
+	auto prnt = std::format("[{:%T}] T [{}] - {}\n", std::chrono::system_clock::now(), funcName, Util::utf8_encode(message));
+	OutputDebugStringA(prnt.c_str());
+	logFile.write(prnt.c_str(), prnt.length());
+	logFile.flush();
+}
+
 bool DebugLogger::IsIIDUninteresting(const GUID& riid)
 {
 	return GetGUIDName(riid).second == DebugInterestLevel::NotInterested;

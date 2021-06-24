@@ -21,6 +21,8 @@
 #include <ranges>
 #include <utility>
 #include "DebugLogger.hpp"
+#include "ClipboardFormatHandler.h"
+#include <unordered_set>
 
 
 
@@ -116,6 +118,98 @@ void PboFile::ReadFrom(std::filesystem::path inputPath)
         newFile.fullPath = filePath;
         curFolder->subfiles.emplace_back(std::move(newFile));	
     }
+}
+
+void PboFile::ReloadFrom(std::filesystem::path inputPath)
+{
+    if (inputPath != diskPath)
+        Util::TryDebugBreak();
+
+    std::ifstream readStream(inputPath, std::ios::in | std::ios::binary);
+
+    PboReader reader(readStream);
+    reader.readHeaders();
+
+
+    // add new files, update existing files
+    std::vector<std::filesystem::path> segments;
+
+    std::unordered_set<std::wstring> existingFiles;
+
+    for (auto& it : reader.getFiles())
+    {
+        existingFiles.emplace(Util::utf8_decode(it.name));
+
+        std::filesystem::path filePath(Util::utf8_decode(it.name));
+        segments.clear();
+
+        for (auto& it : filePath)
+        {
+            segments.emplace_back(it);
+        }
+
+        auto fileName = segments.back();
+        segments.pop_back();
+
+        std::shared_ptr<PboSubFolder> curFolder = rootFolder;
+        for (auto& it : segments)
+        {
+            auto subfolderFound = std::find_if(curFolder->subfolders.begin(), curFolder->subfolders.end(), [it](const std::shared_ptr<PboSubFolder>& subf)
+                {
+                    return subf->filename == it;
+                });
+
+            if (subfolderFound != curFolder->subfolders.end())
+            {
+                curFolder = *subfolderFound;
+                continue;
+            }
+            auto newSub = std::make_shared<PboSubFolder>();
+            newSub->filename = it;
+            newSub->fullPath = filePath.parent_path();
+            curFolder->subfolders.emplace_back(std::move(newSub));
+            curFolder = curFolder->subfolders.back();
+        }
+
+        auto subfileFound = std::find_if(curFolder->subfiles.begin(), curFolder->subfiles.end(), [&fileName](const PboSubFile& subf)
+            {
+                return subf.filename == fileName;
+        });
+
+        if (subfileFound == curFolder->subfiles.end()) {
+            // add new file
+            PboSubFile newFile; //#TODO constructor from entryInfo?
+            newFile.filename = fileName;
+            newFile.filesize = it.original_size;
+            newFile.dataSize = it.data_size;
+            newFile.startOffset = it.startOffset;
+            newFile.fullPath = filePath;
+            curFolder->subfiles.emplace_back(std::move(newFile));
+        }
+        else 
+        {
+            // update old file with new info
+            subfileFound->dataSize = it.data_size;
+            subfileFound->filesize = it.original_size;
+            subfileFound->startOffset = it.startOffset;
+        }       
+    }
+
+    // remove deleted files
+    std::function<void(std::shared_ptr<PboSubFolder>&)> cleanupFolder = [&](std::shared_ptr<PboSubFolder>& folder) {
+
+        for (auto& it : folder->subfolders)
+            cleanupFolder(it);
+
+        folder->subfiles.erase(
+            std::remove_if(folder->subfiles.begin(), folder->subfiles.end(), [&](const PboSubFile& file) {
+                //#TODO case insensitive
+                return existingFiles.find(file.fullPath.wstring()) == existingFiles.end();
+            }),
+            folder->subfiles.end()
+        );
+
+    };
 }
 
 
@@ -815,7 +909,7 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
     });
 
 
-    DebugLogger::TraceLog(std::format("{}, wantedFlags {}", qp->filePath.string(), seperator.SeperateToString(*rgfInOut)), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format(L"{}, wantedFlags {}", qp->filePath.wstring(), seperator.SeperateToString(*rgfInOut)), std::source_location::current(), __FUNCTION__);
 
     //#TODO only return flags that were also requested initially. rgfInOut is pre-filled with the flags it wants to know about
 	switch (qp->type)
@@ -1689,31 +1783,14 @@ HRESULT PboFolder::DragEnter(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt
         return S_OK;
     }
 
-    bool canDrop = false;
+   
        
-    IEnumFORMATETC* result = nullptr;
-    if (pDataObj->EnumFormatEtc(DATADIR_GET, &result) == S_OK) {
 
-        FORMATETC format{};
+    ClipboardFormatHandler handler;
+    handler.ReadFromFast(pDataObj);
 
-        ULONG fetched = 0;
-        while (result->Next(1, &format, &fetched) == S_OK && fetched) {
 
-            // CF_HDROP 
-            // CFSTR_SHELLIDLIST
-            // CFSTR_FILEDESCRIPTORA
-            // CFSTR_FILECONTENTS
-            // CFSTR_FILENAMEA
-            // CFSTR_SHELLURL
-            // CFSTR_DRAGCONTEXT
-            if (format.cfFormat == CF_TEXT && format.tymed == TYMED_FILE) {
-
-            }
-        }
-
-        result->Release();
-    }
-
+    bool canDrop = handler.CanReadAsFile();
 
     if (canDrop)
         *pdwEffect = DROPEFFECT_COPY;
@@ -1734,7 +1811,51 @@ HRESULT PboFolder::DragLeave(void)
 
 HRESULT PboFolder::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
 {
-    return E_NOTIMPL;
+
+    ClipboardFormatHandler handler;
+    handler.ReadFromFast(pDataObj);
+
+
+    auto filePaths = handler.GetFilePathsToRead(pDataObj);
+
+    PboPatcher patcher;
+
+    {
+        std::ifstream inputFile(pboFile->diskPath, std::ifstream::in | std::ifstream::binary);
+
+        PboReader reader(inputFile);
+        reader.readHeaders();
+        patcher.ReadInputFile(&reader);
+
+        //#TODO handle a folder being drag&dropped
+
+        for (auto& it : filePaths) {
+            auto pboTarget = pboFile->rootFolder->fullPath / it.path.filename();
+
+            // if file already exists, replace it.
+            auto& readerFiles = reader.getFiles();
+            auto found = std::find_if(readerFiles.begin(), readerFiles.end(), [&pboTarget](const PboEntry& entry) {
+                return entry.name == pboTarget; //#TODO case insensitive
+            });
+
+            if (found == readerFiles.end()) // new file
+                patcher.AddPatch<PatchAddFileFromDisk>(it.path, pboTarget);
+            else
+                patcher.AddPatch<PatchUpdateFileFromDisk>(it.path, pboTarget);
+        }
+            
+        patcher.ProcessPatches();
+    }
+
+    {
+        std::fstream outputStream(pboFile->diskPath, std::fstream::binary | std::fstream::in | std::fstream::out);
+        patcher.WriteOutputFile(outputStream);
+    }
+    //#TODO use signal/slot to trigger all root PboFolders to reload their pbo file info
+
+    *pdwEffect = DROPEFFECT_COPY;
+
+    return S_OK;
 }
 
 
@@ -1768,7 +1889,7 @@ bool PboFolder::checkInit()
     }
 
 
-	
+	//#TODO keep global directory of weak pointers to pbo files and share them
     pboFile = std::make_unique<PboFile>();
     pboFile->ReadFrom(path);
 

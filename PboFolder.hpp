@@ -43,6 +43,7 @@ public:
     std::filesystem::path selfRelPath;
 	
     void ReadFrom(std::filesystem::path inputPath);
+    void ReloadFrom(std::filesystem::path inputPath);
     std::optional<std::reference_wrapper<PboSubFile>> GetFileByPath(std::filesystem::path inputPath) const;
     std::shared_ptr<PboSubFolder> GetFolderByPath(std::filesystem::path inputPath) const;
     std::vector<PboPidl> GetPidlListFromPath(std::filesystem::path inputPath) const;
