@@ -47,7 +47,30 @@ public:
 	template<typename ...Args>
 	static ComRef Create(Args&& ... args)
 	{
-		return ComRef(new T(std::forward(args)...));
+		return ComRef(new T(std::forward<Args>(args)...));
+	}
+
+	template <typename RetType, typename ...Args>
+	static T* CreateForReturn(void** result, Args&& ... args) {
+		auto newObj = new T(std::forward<Args>(args)...);
+		newObj->AddRef();
+		*result = static_cast<RetType*>(newObj);
+		return newObj;
+	}
+
+	template <typename RetType, typename ...Args>
+	static T* CreateForReturn(RetType** result, Args&& ... args) {
+		auto newObj = new T(std::forward<Args>(args)...);
+		newObj->AddRef();
+		*result = static_cast<RetType*>(newObj);
+		return newObj;
+	}
+
+	template<typename ...Args>
+	static [[nodiscard]] T* CreateForReturn(Args&& ... args) {
+		auto newObj = new T(std::forward<Args>(args)...);
+		newObj->AddRef();
+		return newObj;
 	}
 	
 	T* operator*()

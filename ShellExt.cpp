@@ -44,12 +44,12 @@ STDMETHODIMP ShellExt::QueryInterface(REFIID riid, LPVOID* ppReturn)
 	
 
 
-	if (*ppReturn)
-	{
-		LPUNKNOWN pUnk = (LPUNKNOWN)(*ppReturn);
-		pUnk->AddRef();
-		return S_OK;
-	}
+	//if (*ppReturn)
+	//{
+	//	LPUNKNOWN pUnk = (LPUNKNOWN)(*ppReturn);
+	//	pUnk->AddRef();
+	//	return S_OK;
+	//}
 
 	DebugLogger_OnQueryInterfaceExitUnhandled(riid);
 	return E_NOINTERFACE;

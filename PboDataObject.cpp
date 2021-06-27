@@ -530,12 +530,10 @@ HRESULT PboDataObject::GetData(
         
         //if (!stream) return(E_FAIL);
 
-        IStream* qs = new PboFileStream(pboFolder->pboFile, file->filePath);
-        qs->AddRef();
         //free(fullName);
         pmedium->tymed = TYMED_ISTREAM;
         pmedium->pUnkForRelease = nullptr;
-        pmedium->pstm = qs;
+        pmedium->pstm = ComRef<PboFileStream>::CreateForReturn(pboFolder->pboFile, file->filePath);
 
         return(S_OK);
     }
@@ -834,15 +832,12 @@ HRESULT PboDataObject::EnumFormatEtc(
 {
     if (dwDirection != DATADIR_GET) return(E_NOTIMPL);
 
-    auto newEnumerator = new FormatEnumerator();
-    newEnumerator->AddRef();
+    auto newEnumerator = ComRef<FormatEnumerator>::CreateForReturn<IEnumFORMATETC>(ppenumFormatEtc);
 
     newEnumerator->formats.emplace_back(FormatEnumerator::Format{ PboDataObject::s_fileDescriptor , TYMED_HGLOBAL });
     newEnumerator->formats.emplace_back(FormatEnumerator::Format{ PboDataObject::s_fileContents , TYMED_ISTREAM });
     newEnumerator->formats.emplace_back(FormatEnumerator::Format{ PboDataObject::s_preferredDropEffect , TYMED_HGLOBAL });
     newEnumerator->formats.emplace_back(FormatEnumerator::Format{ PboDataObject::s_oleClipboardPersistOnFlush , TYMED_HGLOBAL });
-
-    *ppenumFormatEtc = newEnumerator;
     
     return(S_OK);
 }

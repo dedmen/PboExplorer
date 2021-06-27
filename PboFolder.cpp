@@ -671,9 +671,10 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
         
         qp = (const PboPidl*)ILFindLastID(pidl);
 
+        ComRef<PboFileStream>::CreateForReturn<IStream>(ppv, pboFile, qp->filePath);
+        return S_OK;
 
-        auto stream = new PboFileStream(pboFile, qp->filePath);
-    	
+
         //dirMutex.lock();
         //if (qp->type == 1)
         //    stream = dir->getArchiveStream(qp->idx);
@@ -681,19 +682,11 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
         //    stream = dir->getStream(qp->idx);
         //dirMutex.unlock();
         
-        HRESULT hr = E_FAIL;
-        if (stream)
-        {
-            stream->AddRef();
-            *ppv = static_cast<IStream*>(stream);
-            hr = S_OK;
-        }
-        
         //dirMutex.lock();
         //dir->countDown();
         //dirMutex.unlock();
         
-        return(hr);
+        
     }
 
    
@@ -950,13 +943,11 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
     {
 
 
-        auto dcm = new DEFCONTEXTMENU{ hwndOwner, nullptr, m_pidl, this, 1, apidl, nullptr,0 ,nullptr };
+        //auto dcm = new DEFCONTEXTMENU{ hwndOwner, nullptr, m_pidl, this, 1, apidl, nullptr,0 ,nullptr };
         //return SHCreateDefaultContextMenu(dcm, riid, ppv);
 
-        auto ret = new PboContextMenu(this, hwndOwner, m_pidl, cidl, apidl);
-        ret->AddRef();
-        *ppv = static_cast<IContextMenu*>(ret);
-        return(S_OK);
+        ComRef<PboContextMenu>::CreateForReturn<IContextMenu>(ppv, this, hwndOwner, m_pidl, cidl, apidl);
+        return S_OK;
     }
     //else if (IsEqualIID(riid, IID_IExtractIconW))
     //{
@@ -968,10 +959,8 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
     {
         CHECK_INIT();
 
-        auto ret = new PboDataObject(pboFile->rootFolder, this, m_pidl, cidl, apidl);
-        ret->AddRef();
-        *ppv = (IDataObject*)ret;
-        return(S_OK);
+        ComRef<PboDataObject>::CreateForReturn<IDataObject>(ppv, pboFile->rootFolder, this, m_pidl, cidl, apidl);
+        return S_OK;
     }
 
     else if (riid == IID_IExtractIconW)

@@ -172,7 +172,7 @@ public:
 						0,
 						REG_SZ,
 						(LPBYTE)fullData.c_str(),
-						fullData.length() * 2 + 2);
+						(DWORD)fullData.length() * 2 + 2);
 				}
 				else if constexpr (std::is_same_v<T, DWORD>) {
 					lResult = RegSetValueExW(hKey,
@@ -256,7 +256,7 @@ public:
 /*---------------------------------------------------------------*/
 STDAPI DllRegisterServer(VOID)
 {
-	Util::WaitForDebuggerPrompt();
+	//Util::WaitForDebuggerPrompt();
 
 	std::vector<RegistryEntry> registryEntries{
 		{HKEY_CLASSES_ROOT, L"CLSID\\{0}",																						false},
@@ -375,7 +375,7 @@ STDAPI DllRegisterServer(VOID)
 /*---------------------------------------------------------------*/
 STDAPI DllUnregisterServer(VOID)
 {
-	Util::WaitForDebuggerPrompt();
+	//Util::WaitForDebuggerPrompt();
 
 
 	std::vector<RegistryEntry> registryEntries{

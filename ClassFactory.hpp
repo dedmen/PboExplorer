@@ -62,10 +62,7 @@ public:
 
 		if (IsEqualIID(riid, CATID_BrowsableShellExt) || IsEqualIID(riid, IID_IShellFolder) || IsEqualIID(riid, IID_IShellFolder2))
 		{
-			auto newFolder = new PboFolder();
-			*ppvObject = (IShellFolder2*)newFolder;
-
-			newFolder->AddRef(); //#TODO CreateForReturn method somewhere that adds ref and assigns ppv
+			ComRef<PboFolder>::CreateForReturn<IShellFolder2>(ppvObject);
 			return S_OK;
 		}
 		
