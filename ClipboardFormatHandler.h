@@ -20,6 +20,7 @@ public:
 		FileContents,
 		HDROP,
 		FileGroupDescriptor,
+		N // always last
 	};
 
 	struct FilePathResult {

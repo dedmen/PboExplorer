@@ -246,7 +246,7 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
     //#TODO Check the cbSize member of pici to determine which structure (CMINVOKECOMMANDINFO or CMINVOKECOMMANDINFOEX) was passed in. 
 
 
-    DebugLogger::TraceLog(std::format("verb {}, dir {}, parms {}", pici->lpVerb ? pici->lpVerb : "0", pici->lpDirectory ? pici->lpDirectory : "", pici->lpParameters ? pici->lpParameters : ""), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format("verb {}, dir {}, parms {}", !IS_INTRESOURCE(pici->lpVerb) ? pici->lpVerb : "0", pici->lpDirectory ? pici->lpDirectory : "", pici->lpParameters ? pici->lpParameters : ""), std::source_location::current(), __FUNCTION__);
 
     int cmd = -1;
 

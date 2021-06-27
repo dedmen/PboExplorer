@@ -847,6 +847,7 @@ HRESULT PboFolder::CreateViewObject(HWND hwnd, const IID& riid, void** ppv)
     //#TODO we want the above ^, ITransferAdviseSink::ConfirmOverwrite, ITransferAdviseSink::UpdateProgress
     // but we probably don't want to offer that here? We kinda only want to offer this if a drop action is running
      else RIID_TODO(IID_ITransferSource); // #TODO
+     else RIID_TODO(IID_IContextMenu); // #TODO rightclick on empty space. This is needed for CTRL+V paste, we also want to implement the Refresh option properly https://github.com/cryptoAlgorithm/nt5src/blob/daad8a087a4e75422ec96b7911f1df4669989611/Source/XPSP1/NT/shell/shell32/defcm.cpp#L617
 
     //#TODO https://github.com/microsoft/Windows-classic-samples/blob/master/Samples/Win7Samples/winui/shell/shellextensibility/explorerdataprovider/ExplorerDataProvider.cpp#L606
 	
@@ -1767,6 +1768,7 @@ HRESULT PboFolder::DragEnter(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt
     if (!pdwEffect)
         return E_INVALIDARG;
 
+    //#TODO we can move or copy. Usually don't want to move tho
     if (!(*pdwEffect & DROPEFFECT_COPY)) { // We need to copy files that are dragged in
         *pdwEffect = 0;
         return S_OK;
@@ -1783,9 +1785,11 @@ HRESULT PboFolder::DragEnter(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt
 
     if (canDrop)
         *pdwEffect = DROPEFFECT_COPY;
+    else
+        return E_INVALIDARG;
 
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 HRESULT PboFolder::DragOver(DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)

@@ -4,6 +4,7 @@
 #include <format>
 #include "DebugLogger.hpp"
 #include "Util.hpp"
+#include "GlobalCache.hpp"
 
 static constexpr Util::FlagSeperator<tagTYMED, 7> TymedSeperator({
       { TYMED_HGLOBAL, "TYMED_HGLOBAL"sv },
@@ -18,9 +19,24 @@ static constexpr Util::FlagSeperator<tagTYMED, 7> TymedSeperator({
 
 void ClipboardFormatHandler::ReadFromFast(IDataObject* dataObject)
 {
+    supportedFormats.resize((int)ClipboardFormatType::N);
 
-    //#TODO get real max size
-    supportedFormats.resize((int)ClipboardFormatType::FileGroupDescriptor + 1);
+    const auto& clipboardTypes = GCache.GetFromCache("CFH_RegCFSTR"sv, []() {
+            std::vector<std::pair<CLIPFORMAT, ClipboardFormatType>> assocVec;
+
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_SHELLIDLIST), ClipboardFormatType::ShellIDList);
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILECONTENTS), ClipboardFormatType::FileContents);
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILEDESCRIPTORA), ClipboardFormatType::FileGroupDescriptor);
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILEDESCRIPTORW), ClipboardFormatType::FileGroupDescriptor);
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILENAMEA), ClipboardFormatType::FileName);
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILENAMEW), ClipboardFormatType::FileName);
+
+            std::ranges::sort(assocVec, {}, [](const auto& el) {return el.first; });
+
+            return assocVec;
+        }
+    );
+
 
     IEnumFORMATETC* result = nullptr;
     if (dataObject->EnumFormatEtc(DATADIR_GET, &result) == S_OK) {
@@ -41,15 +57,19 @@ void ClipboardFormatHandler::ReadFromFast(IDataObject* dataObject)
             ClipboardFormatType type;
 
             switch (format.cfFormat) {
-                case 49405: type = ClipboardFormatType::ShellIDList; break;
-                case 49158: type = ClipboardFormatType::FileName; break;
-                case 49329: type = ClipboardFormatType::FileContents; break;
-                case 49159: type = ClipboardFormatType::FileName; break; //FileNameW
-                case 49410: type = ClipboardFormatType::FileGroupDescriptor; break;
                 case CF_HDROP: type = ClipboardFormatType::HDROP; break;
                 default: {
-                    DebugLogger::TraceLog(std::format("Unkown format formatName {}, format {}, tymed {}", Util::utf8_encode(buffer), format.cfFormat, TymedSeperator.SeperateToString((tagTYMED)format.tymed)), std::source_location::current(), __FUNCTION__);
-                    continue; // unknown type we don't care about?
+                    auto found = std::ranges::lower_bound(clipboardTypes, format.cfFormat, {}, [](const auto& el) {return el.first; });
+
+                    if (found == clipboardTypes.end() || found->first != format.cfFormat) {
+                        DebugLogger::TraceLog(std::format("Unkown format formatName {}, format {}, tymed {}", Util::utf8_encode(buffer), format.cfFormat, TymedSeperator.SeperateToString((tagTYMED)format.tymed)), std::source_location::current(), __FUNCTION__);
+                        continue; // unknown type we don't care about?
+                    }
+                    else
+                        type = found->second;
+
+
+
                 }
             }
 

@@ -319,6 +319,7 @@
     <ClInclude Include="ComRef.hpp" />
     <ClInclude Include="DebugLogger.hpp" />
     <ClInclude Include="FileWatcher.hpp" />
+    <ClInclude Include="GlobalCache.hpp" />
     <ClInclude Include="guid.hpp" />
     <ClInclude Include="ClassFactory.hpp" />
     <ClInclude Include="PboContextMenu.hpp" />
@@ -338,6 +339,7 @@
     <ClCompile Include="DebugLogger.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="FileWatcher.cpp" />
+    <ClCompile Include="GlobalCache.cpp" />
     <ClCompile Include="lib\ArmaPboLib\lib\sha1.c" />
     <ClCompile Include="lib\ArmaPboLib\src\pbo.cpp" />
     <ClCompile Include="PboContextMenu.cpp" />

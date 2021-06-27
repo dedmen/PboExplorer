@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <unordered_map>
 
 #include "ClassFactory.hpp"
 
@@ -17,11 +18,11 @@ constexpr CharSeq<Cs...> operator"" _cs() {
     return {};
 }
 
-class Util
+namespace Util
 {
-public:
+
     // Convert a wide Unicode string to an UTF8 string
-    static std::string utf8_encode(const std::wstring& wstr)
+    inline std::string utf8_encode(const std::wstring& wstr)
     {
         if (wstr.empty()) return std::string();
         int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), nullptr, 0, nullptr, nullptr);
@@ -31,7 +32,7 @@ public:
     }
 
     // Convert an UTF8 string to a wide Unicode String
-    static std::wstring utf8_decode(const std::string& str)
+    inline std::wstring utf8_decode(const std::string& str)
     {
         if (str.empty()) return std::wstring();
         int size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), nullptr, 0);
@@ -40,7 +41,7 @@ public:
         return wstrTo;
     }
 
-    static std::string random_string(size_t length)
+    inline std::string random_string(size_t length)
     {
         auto randchar = []() -> char
         {
@@ -56,16 +57,16 @@ public:
         return str;
     }
 
-    static void TryDebugBreak() {
+    inline void TryDebugBreak() {
         if (IsDebuggerPresent())
             __debugbreak();
     }
 
-    static void WaitForDebuggerSilent();
-    static void WaitForDebuggerPrompt();
+    extern void WaitForDebuggerSilent();
+    extern void WaitForDebuggerPrompt();
 
 
-    static auto splitArgs (std::wstring_view cmdLine) {
+    inline auto splitArgs (std::wstring_view cmdLine) {
         std::vector<std::wstring_view> ret;
 
         auto subRange = cmdLine;
@@ -111,6 +112,9 @@ public:
     public:
         consteval FlagSeperator(std::initializer_list<std::pair<T, std::string_view>> data) noexcept {
 
+            if (data.size() != N)
+                throw std::logic_error("Array size doesn't match provided arguments");
+
             int idx = 0;
             for (auto& it : data) {
                 dataHolder[idx].first = it.first;
@@ -123,9 +127,6 @@ public:
 
                 ++idx;
             }
-        
-            if (idx != N)
-                throw std::logic_error("Array size doesn't match provided arguments");
         }
 
         std::string SeperateToString(T flags) const {
@@ -148,7 +149,24 @@ public:
 
     };
 
+    namespace {
+        struct MyEqual : public std::equal_to<>
+        {
+            using is_transparent = void;
+        };
 
+        struct string_hash {
+            using is_transparent = void;
+            using key_equal = std::equal_to<>;  // Pred to use
+            using hash_type = std::hash<std::string_view>;  // just a helper local type
+            size_t operator()(std::string_view txt) const { return hash_type{}(txt); }
+            size_t operator()(const std::string& txt) const { return hash_type{}(txt); }
+            size_t operator()(const char* txt) const { return hash_type{}(txt); }
+        };
+    };
 
+    template<typename T>
+    using unordered_map_stringkey = std::unordered_map<std::string, T, string_hash, MyEqual >;
 };
+
 
