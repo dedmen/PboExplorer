@@ -8,6 +8,7 @@ class PboDataObject :
 	public RefCountedCOM<PboDataObject,
 			      IDataObject
 	>
+    //#TODO IPersist, IPersistStream is needed for proper clipboard
     //,public IPersistStream
     //,public IAsyncOperation
 {

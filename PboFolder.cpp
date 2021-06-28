@@ -9,21 +9,23 @@
 #include "ClassFactory.hpp"
 #include <functional>
 #include <mutex>
+#include <ranges>
+#include <utility>
+#include <unordered_set>
+
+#include <string_view>
 
 #include "PboContextMenu.hpp"
 #include "PboDataObject.hpp"
 #include "PboFileStream.hpp"
 #include "PboPidl.hpp"
-#include <string_view>
 
 #include "Util.hpp"
 
-#include <ranges>
-#include <utility>
 #include "DebugLogger.hpp"
 #include "ClipboardFormatHandler.h"
-#include <unordered_set>
 
+#include "ProgressDialogOperation.hpp"
 
 
 std::optional<std::reference_wrapper<const PboSubFile>> PboSubFolder::GetFileByPath(std::filesystem::path inputPath) const
@@ -326,6 +328,9 @@ PboFolder::~PboFolder()
 
 HRESULT PboFolder::QueryInterface(const IID& riid, void** ppvObject)
 {
+
+    //#TODO https://docs.microsoft.com/en-us/windows/win32/api/shlwapi/nf-shlwapi-qisearch
+
     DebugLogger_OnQueryInterfaceEntry(riid);
     *ppvObject = nullptr;
 
@@ -837,6 +842,7 @@ HRESULT PboFolder::CreateViewObject(HWND hwnd, const IID& riid, void** ppv)
     }
     else if (IsEqualIID(riid, IID_IDropTarget))
     {
+        lastHwnd = hwnd; // #TODO make IDropTarget a seperate class, and pass hwnd to it, we need to keep it. Can just have it ref This PboFolder as parent
         *ppv = (IDropTarget*)this;
         AddRef();
         return S_OK;
@@ -847,7 +853,10 @@ HRESULT PboFolder::CreateViewObject(HWND hwnd, const IID& riid, void** ppv)
     //#TODO we want the above ^, ITransferAdviseSink::ConfirmOverwrite, ITransferAdviseSink::UpdateProgress
     // but we probably don't want to offer that here? We kinda only want to offer this if a drop action is running
      else RIID_TODO(IID_ITransferSource); // #TODO
-     else RIID_TODO(IID_IContextMenu); // #TODO rightclick on empty space. This is needed for CTRL+V paste, we also want to implement the Refresh option properly https://github.com/cryptoAlgorithm/nt5src/blob/daad8a087a4e75422ec96b7911f1df4669989611/Source/XPSP1/NT/shell/shell32/defcm.cpp#L617
+     else RIID_TODO(IID_IContextMenu); 
+     // #TODO rightclick on empty space. This is needed for CTRL+V paste, we also want to implement the Refresh option properly 
+     // https://github.com/cryptoAlgorithm/nt5src/blob/daad8a087a4e75422ec96b7911f1df4669989611/Source/XPSP1/NT/shell/shell32/defcm.cpp#L617
+     // defview.cpp L 5424, it creates context menu, and then executes verb "paste". There are also the other verbs we might need to implement. Delete,Cut,Copy,Properties!!!
 
     //#TODO https://github.com/microsoft/Windows-classic-samples/blob/master/Samples/Win7Samples/winui/shell/shellextensibility/explorerdataprovider/ExplorerDataProvider.cpp#L606
 	
@@ -1802,6 +1811,139 @@ HRESULT PboFolder::DragLeave(void)
     return E_NOTIMPL;
 }
 
+
+
+/*
+&COperationStatusService::`vftable'{for `DirectUI::NativeHWNDHost'};
+&COperationStatusService::`vftable'{for `IOperationStatusService'};
+&COperationStatusService::`vftable'{for `IUpdateProgress'};
+&COperationStatusService::`vftable'{for `IClassFactory'};
+&COperationStatusService::`vftable'{for `IOleWindow'};
+&COperationStatusService::`vftable'{for `DirectUI::IElementListener'};
+&COperationStatusService::`vftable'{for `CThreadRefTaker'};
+&COperationStatusService::`vftable'{for `CTileNotificationsBase'};
+&COperationStatusService::`vftable'{for `CopyTileAnimationUtils::CAnimationCoordinator'};
+*/
+
+
+struct DECLSPEC_NOVTABLE //MIDL_INTERFACE("cd90b4de-869a-43c2-83f9-5505a11cd0d7")
+IUpdateProgress : public IUnknown
+{
+public:
+    virtual HRESULT STDMETHODCALLTYPE UpdateProgress() = 0;
+}; 
+
+
+
+struct DECLSPEC_NOVTABLE //MIDL_INTERFACE("cd90b4de-869a-43c2-83f9-5505a11cd0d7")
+    IOperationStatusService : public IUnknown
+{
+public:
+    virtual HRESULT STDMETHODCALLTYPE RegisterOperationTile() = 0;
+    /*
+    __int64 a1, // This -48 == CoperationStatusService*, so really this is just a this*
+    __int64 a2,
+    int a3,
+    int a4,
+    __int64 a5, passed to SetThreadDpiAwarenessContext
+    __int64 a6,
+    __int64 a7,
+    _QWORD *a8
+    
+    
+    COperationStatusTile::s_CreateInstance(
+                v17,
+                v23, // a2
+                v14,
+                v13,
+                v22, // a3
+                v21, // a4
+                a6, IOperationStatusTilePriv* ?
+                (v8 + 56) & -(__int64)(v8 != 48), // titletext
+                (v8 + 64) & -(__int64)(v8 != 48),
+                v12 //HWNDR
+                );
+
+  v10 = a1 + 56;
+  *(_QWORD *)a1 = &COperationStatusTile::`vftable'{for `CObjectWithSite'};
+  *(_QWORD *)(a1 + 16) = &COperationStatusTile::`vftable'{for `CopyTileAnimationUtils::CTileAnimationEventsListener'};
+  *(_QWORD *)(a1 + 24) = &COperationStatusTile::`vftable'{for `IOperationStatusTilePriv'};
+  *(_QWORD *)(a1 + 32) = &COperationStatusTile::`vftable'{for `IServiceProvider'};
+  *(_QWORD *)(a1 + 40) = &COperationStatusTile::`vftable'{for `IUpFrontConfirmation'};
+  *(_QWORD *)(a1 + 48) = &COperationStatusTile::`vftable'{for `DirectUI::IElementListener'};
+  *(_QWORD *)(a1 + 56) = &COperationStatusTile::`vftable'{for `IUICallbacks'};
+
+
+
+  SHELL32_CreateDefaultOperationDataProvider
+
+
+    */
+
+
+
+};
+
+
+
+
+
+
+MIDL_INTERFACE("cd90b4de-869a-43c2-83f9-5505a11cd0d7")
+COperationStatusService : public IUnknown
+{
+public:
+    virtual HRESULT STDMETHODCALLTYPE BindToHandler(
+        /* [unique][in] */ __RPC__in_opt IBindCtx * pbc,
+        /* [in] */ __RPC__in REFGUID bhid,
+        /* [in] */ __RPC__in REFIID riid,
+        /* [iid_is][out] */ __RPC__deref_out_opt void** ppv) = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE GetParent(
+        /* [out] */ __RPC__deref_out_opt IShellItem** ppsi) = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE GetDisplayName(
+        /* [in] */ SIGDN sigdnName,
+        /* [annotation][string][out] */
+        _Outptr_result_nullonfailure_  LPWSTR* ppszName) = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE GetAttributes(
+        /* [in] */ SFGAOF sfgaoMask,
+        /* [out] */ __RPC__out SFGAOF* psfgaoAttribs) = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE Compare(
+        /* [in] */ __RPC__in_opt IShellItem* psi,
+        /* [in] */ SICHINTF hint,
+        /* [out] */ __RPC__out int* piOrder) = 0;
+
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 HRESULT PboFolder::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
 {
 
@@ -1811,39 +1953,251 @@ HRESULT PboFolder::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWO
 
     auto filePaths = handler.GetFilePathsToRead(pDataObj);
 
-    PboPatcher patcher;
+    //#TODO do this for all patchers? 
+    // https://docs.microsoft.com/en-us/windows/win32/api/shlobj_core/nn-shlobj_core-iprogressdialog 
+    // _ppd->SetAnimation(GetModuleHandle(TEXT("SHELL32")), 165);
+    // Ref ftpdrop.cpp L926
+    // see https://docs.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shfileoperationa code?
 
+
+    //auto operation = new ProgressDialogOperation(L"test1", L"test2", lastHwnd);
+
+    //operation->DoOperation([](const ProgressDialogOperation& op) {
+    //
+    //    op.SetProgress(0, 1024);
+    //    op.SetTitle(L"TitleTest");
+    //    op.ResetTimer();
+    //
+    //    for (size_t i = 0; i < 1024; i++)
+    //    {
+    //        op.SetProgress(i, 1024);
+    //        Sleep(50);
+    //    }
+    //
+    //});
+
+
+    //#TODO use https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ifileoperation-performoperations
+    // we just need to use ShellItem interface. Problem is that PboFolder doesn't yet implement ShellItem.. Via that it will probably create new files and write them and such
+    // its also a huge effort though, we probably need to do file operations temporarily in memory, and then at the end do a Flush. And probably need to implement IStorage
+
+    if (false)
     {
-        std::ifstream inputFile(pboFile->diskPath, std::ifstream::in | std::ifstream::binary);
 
-        PboReader reader(inputFile);
-        reader.readHeaders();
-        patcher.ReadInputFile(&reader);
+    auto pidls = handler.GetPidlsToRead(pDataObj);
 
-        //#TODO handle a folder being drag&dropped
 
-        for (auto& it : filePaths) {
-            auto pboTarget = pboFile->rootFolder->fullPath / it.path.filename();
+    this->AddRef();
+    std::thread([this, pidls = std::move(pidls)]() {
 
-            // if file already exists, replace it.
-            auto& readerFiles = reader.getFiles();
-            auto found = std::find_if(readerFiles.begin(), readerFiles.end(), [&pboTarget](const PboEntry& entry) {
-                return entry.name == pboTarget; //#TODO case insensitive
-            });
 
-            if (found == readerFiles.end()) // new file
-                patcher.AddPatch<PatchAddFileFromDisk>(it.path, pboTarget);
-            else
-                patcher.AddPatch<PatchUpdateFileFromDisk>(it.path, pboTarget);
+        /*
+
+        The GUID for the IOperationStatusService key is different in the different builds (1703 and 1709) -
+
+    {61A969EF-64EA-4C48-BBF5-EEDE3B32BF86} - 1709
+    {0C3C904A-AD89-4851-9C3D-210C080CEE18} - 1703
+
+
+
+
+
+
+
+
+
+    ____
+    {cd90b4de-869a-43c2-83f9-5505a11cd0d7} - My current windows
+
+
+
+      *(_QWORD *)v1 = &COperationStatusService::`vftable'{for `DirectUI::NativeHWNDHost'};
+  *((_QWORD *)v1 + 6) = &COperationStatusService::`vftable'{for `IOperationStatusService'};
+  *((_QWORD *)v1 + 7) = &COperationStatusService::`vftable'{for `IUpdateProgress'};
+  *((_QWORD *)v1 + 8) = &COperationStatusService::`vftable'{for `IClassFactory'};
+  *((_QWORD *)v1 + 9) = &COperationStatusService::`vftable'{for `IOleWindow'};
+  *((_QWORD *)v1 + 10) = &COperationStatusService::`vftable'{for `DirectUI::IElementListener'};
+  *((_QWORD *)v1 + 11) = &COperationStatusService::`vftable'{for `CThreadRefTaker'};
+  *((_QWORD *)v1 + 13) = &COperationStatusService::`vftable'{for `CTileNotificationsBase'};
+  *((_QWORD *)v1 + 14) = &COperationStatusService::`vftable'{for `CopyTileAnimationUtils::CAnimationCoordinator'};
+
+
+
+
+
+        */
+
+        GUID CLSID_OperationStatusService{ 0x515980C3 , 0x57FE , 0x4C1E , 0x0A5, 0x61, 0x73, 0x0D, 0x0D2, 0x56, 0x0AB, 0x98 };
+
+        //#TODO this is the preferred way, but it requires PboFolder to implement IShellItem and all that comes with it.
+/*
+        IShellItem* pish;
+        SHCreateItemFromIDList(m_pidl, IID_IShellItem, (void**)&pish);
+
+
+        IShellItem* PSHCopySource;
+        SHCreateItemFromIDList(pidls.front(), IID_IShellItem, (void**)&PSHCopySource);
+
+
+
+
+
+        IFileOperation* pfo;
+        auto hr = CoCreateInstance(CLSID_FileOperation,
+            NULL,
+            CLSCTX_ALL,
+            IID_PPV_ARGS(&pfo));
+        if (SUCCEEDED(hr))
+        {
+            //
+            // Set the operation flags. Turn off all UI from being shown to the
+            // user during the operation. This includes error, confirmation,
+            // and progress dialogs.
+            //
+            hr = pfo->SetOperationFlags(FOF_NO_UI);
+            if (SUCCEEDED(hr))
+            {
+
+                if (SUCCEEDED(hr))
+                {
+
+                    if (SUCCEEDED(hr))
+                    {
+                        hr = pfo->CopyItem(PSHCopySource, this, L"testFile", NULL);
+                    }
+                }
+
+                if (SUCCEEDED(hr))
+                {
+                    //
+                    // Perform the operation to copy the file.
+                    //
+                    hr = pfo->PerformOperations();
+                }
+            }
+
+            //
+            // Release the IFileOperation interface.
+            //
+            pfo->Release();
         }
-            
-        patcher.ProcessPatches();
-    }
 
-    {
-        std::fstream outputStream(pboFile->diskPath, std::fstream::binary | std::fstream::in | std::fstream::out);
-        patcher.WriteOutputFile(outputStream);
+        */
+
+
+
+
+
+
+
+
+
+        /*
+
+
+        if (S_OK == SHCreateItemFromIDList(m_pidl, IID_IShellItem, (void**)&pish)) {
+
+            IProgressDialog* ppd = nullptr;
+            if (SUCCEEDED(CoCreateInstance(CLSID_ProgressDialog, NULL, CLSCTX_INPROC_SERVER, IID_IProgressDialog, (void**)&ppd)))
+            {
+                IOperationsProgressDialog* x2;
+                ppd->QueryInterface(&x2);
+
+
+
+                x2->SetOperation(SPACTION_UPLOADING);
+
+
+
+
+
+                ppd->SetTitle(L"TitleTest");
+                x2->SetMode(PDM_RUN);
+                x2->StartProgressDialog(lastHwnd, PROGDLG_MODAL | PROGDLG_AUTOTIME | OPPROGDLG_ENABLEPAUSE);
+                x2->SetMode(PDM_RUN);
+
+                x2->UpdateLocations(PSHCopySource, pish, PSHCopySource);
+
+                //x2->SetMode(PDM_PREFLIGHT);
+                //Sleep(2000);
+
+
+
+                for (size_t i = 0; i < 1024; i++)
+                {
+                    x2->UpdateProgress(i * 1024 * 1024, 1024 * 1024 * 1024, i * 1024 * 1024, 1024 * 1024 * 1024, 1, 1);
+                    Sleep(50);
+                }
+
+
+                x2->StopProgressDialog();
+                x2->Release();
+            }
+
+        }
+
+        */
+        this->Release();
     }
+    ).detach();
+
+
+    return E_NOTIMPL;
+
+
+}
+
+
+    auto operation = new ProgressDialogOperation(L"test1", L"test2", lastHwnd);
+    this->AddRef();
+    operation->DoOperation([=](const ProgressDialogOperation& op) {
+
+        op.SetProgress(0, 1024);
+        op.SetTitle(L"TitleTest");
+        op.ResetTimer();
+
+
+        PboPatcher patcher;
+
+        {
+            std::ifstream inputFile(pboFile->diskPath, std::ifstream::in | std::ifstream::binary);
+
+            PboReader reader(inputFile);
+            reader.readHeaders();
+            patcher.ReadInputFile(&reader);
+
+            //#TODO handle a folder being drag&dropped
+
+            for (auto& it : filePaths) {
+                auto pboTarget = pboFile->rootFolder->fullPath / it.path.filename();
+
+                // if file already exists, replace it.
+                auto& readerFiles = reader.getFiles();
+                auto found = std::find_if(readerFiles.begin(), readerFiles.end(), [&pboTarget](const PboEntry& entry) {
+                    return entry.name == pboTarget; //#TODO case insensitive
+                    });
+
+                if (found == readerFiles.end()) // new file
+                    patcher.AddPatch<PatchAddFileFromDisk>(it.path, pboTarget);
+                else
+                    patcher.AddPatch<PatchUpdateFileFromDisk>(it.path, pboTarget);
+            }
+
+            patcher.ProcessPatches();
+        }
+
+        op.SetProgress(512, 1024);
+
+        //#TODO patcher get bytes to write to target file (only write? or all including notouch?, probably write)
+        //#TODO patcher add progresstracker PboFileToWrite::SetProgressTracker(IPboWriteTracker), tracker gets current file being written (Tracker.StartFile(entryInfo)) and DataWritten(size_t) per file chunk
+
+        {
+            std::fstream outputStream(pboFile->diskPath, std::fstream::binary | std::fstream::in | std::fstream::out);
+            patcher.WriteOutputFile(outputStream);
+        }
+        this->Release();
+    });
+
     //#TODO use signal/slot to trigger all root PboFolders to reload their pbo file info
 
     *pdwEffect = DROPEFFECT_COPY;
@@ -1852,6 +2206,68 @@ HRESULT PboFolder::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWO
 }
 
 
+
+
+HRESULT __stdcall PboFolder::BindToHandler(IBindCtx* pbc, REFGUID bhid, REFIID riid, void** ppv)
+{
+    BHID_SFObject;
+    BHID_SFUIObject;
+    BHID_SFViewObject;
+    BHID_Storage;
+    BHID_Stream;
+    BHID_LinkTargetItem;
+    BHID_StorageEnum;
+    BHID_Transfer; //#TODO https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-itransferdestination
+    BHID_PropertyStore;
+    BHID_ThumbnailHandler;
+    BHID_EnumItems;
+    BHID_DataObject;
+    BHID_AssociationArray;
+    BHID_Filter;
+    BHID_EnumAssocHandlers;
+    BHID_RandomAccessStream;
+    BHID_FilePlaceholder;
+
+    //#TODO https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-iidentityname
+
+    return QueryInterface(riid, ppv);
+
+    return E_NOTIMPL;
+}
+
+HRESULT __stdcall PboFolder::GetParent(IShellItem** ppsi)
+{
+
+   
+    CoTaskMemRefS respidl = ILClone(m_pidl);
+    ILRemoveLastID(respidl);
+
+    IShellItem* pish;
+    auto res = SHCreateItemFromIDList(respidl, IID_IShellItem, (void**)ppsi);
+
+    return res;
+}
+
+HRESULT __stdcall PboFolder::GetDisplayName(SIGDN sigdnName, LPWSTR* ppszName)
+{
+    return E_NOTIMPL;
+}
+
+HRESULT __stdcall PboFolder::GetAttributes(SFGAOF sfgaoMask, SFGAOF* psfgaoAttribs)
+{
+    //#TODO don't bruteforce this like that?
+    *psfgaoAttribs =
+        SFGAO_BROWSABLE | SFGAO_HASSUBFOLDER | SFGAO_CANCOPY |
+        SFGAO_FOLDER | SFGAO_FILESYSANCESTOR | SFGAO_STORAGEANCESTOR
+        | SFGAO_DROPTARGET; // https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ishellfolder-getattributesof
+
+    return S_OK;
+}
+
+HRESULT __stdcall PboFolder::Compare(IShellItem* psi, SICHINTF hint, int* piOrder)
+{
+    return E_NOTIMPL;
+}
 
 
 bool PboFolder::checkInit()

@@ -63,6 +63,7 @@ class PboFolder:
 	                     IShellFolderViewCB,
 	                     IThumbnailHandlerFactory,
                          IDropTarget
+                         //,IShellItem //#TODO finish this? Maybe?
 	>
 {
     bool checkInit(void);
@@ -71,7 +72,7 @@ class PboFolder:
 
     std::filesystem::path m_tempDir;
     IShellBrowser* m_shellBrowser;
-
+    HWND lastHwnd;
 public:
 
     std::shared_ptr<PboFile> pboFile;
@@ -149,6 +150,32 @@ public:
     HRESULT STDMETHODCALLTYPE DragOver(DWORD grfKeyState, POINTL pt, DWORD* pdwEffect) override;
     HRESULT STDMETHODCALLTYPE DragLeave(void) override;
     HRESULT STDMETHODCALLTYPE Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect) override;
+
+
+    // IShellItem
+    virtual HRESULT STDMETHODCALLTYPE BindToHandler(
+        /* [unique][in] */ __RPC__in_opt IBindCtx* pbc,
+        /* [in] */ __RPC__in REFGUID bhid,
+        /* [in] */ __RPC__in REFIID riid,
+        /* [iid_is][out] */ __RPC__deref_out_opt void** ppv);
+
+    virtual HRESULT STDMETHODCALLTYPE GetParent(
+        /* [out] */ __RPC__deref_out_opt IShellItem** ppsi);
+
+    virtual HRESULT STDMETHODCALLTYPE GetDisplayName(
+        /* [in] */ SIGDN sigdnName,
+        /* [annotation][string][out] */
+        _Outptr_result_nullonfailure_  LPWSTR* ppszName);
+
+    virtual HRESULT STDMETHODCALLTYPE GetAttributes(
+        /* [in] */ SFGAOF sfgaoMask,
+        /* [out] */ __RPC__out SFGAOF* psfgaoAttribs);
+
+    virtual HRESULT STDMETHODCALLTYPE Compare(
+        /* [in] */ __RPC__in_opt IShellItem* psi,
+        /* [in] */ SICHINTF hint,
+        /* [out] */ __RPC__out int* piOrder);
+
 
 
     std::filesystem::path GetTempDir();

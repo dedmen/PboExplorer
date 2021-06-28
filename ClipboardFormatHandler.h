@@ -6,6 +6,9 @@
 #include <any>
 #include <filesystem>
 
+#include <shtypes.h>
+#include "ComRef.hpp"
+
 
 struct IDataObject;
 
@@ -47,6 +50,7 @@ public:
 
 	// Retrieves disk paths to all files in clipboard, such that they can be read/copied from disk
 	std::vector<FilePathResult> GetFilePathsToRead(IDataObject* dataObject) const;
+	std::vector<CoTaskMemRefS<ITEMIDLIST>> GetPidlsToRead(IDataObject* dataObject) const;
 
 private:
 

@@ -178,3 +178,90 @@ std::vector<ClipboardFormatHandler::FilePathResult> ClipboardFormatHandler::GetF
 
     return result;
 }
+
+std::vector<CoTaskMemRefS<ITEMIDLIST>> ClipboardFormatHandler::GetPidlsToRead(IDataObject* dataObject) const
+{
+    std::vector<CoTaskMemRefS<ITEMIDLIST>> result;
+
+    
+
+
+    if (!supportedFormats[(int)ClipboardFormatType::ShellIDList]) return result;
+        
+        
+
+
+    const auto& clipboardTypes = GCache.GetFromCache("CFH_RegCFSTR"sv, []() {
+        std::vector<std::pair<CLIPFORMAT, ClipboardFormatType>> assocVec;
+
+        assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_SHELLIDLIST), ClipboardFormatType::ShellIDList);
+        assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILECONTENTS), ClipboardFormatType::FileContents);
+        assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILEDESCRIPTORA), ClipboardFormatType::FileGroupDescriptor);
+        assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILEDESCRIPTORW), ClipboardFormatType::FileGroupDescriptor);
+        assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILENAMEA), ClipboardFormatType::FileName);
+        assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILENAMEW), ClipboardFormatType::FileName);
+
+        std::ranges::sort(assocVec, {}, [](const auto& el) {return el.first; });
+
+        return assocVec;
+        }
+    );
+
+    CLIPFORMAT ShellIDListFormat = 0;
+
+    auto found = std::ranges::find(clipboardTypes, ClipboardFormatType::ShellIDList, [](const auto& el) {return el.second; });
+
+    if (found == clipboardTypes.end() || found->second != ClipboardFormatType::ShellIDList) {
+        Util::TryDebugBreak();
+        return result;
+    }
+    else
+        ShellIDListFormat = found->first;
+
+
+    FORMATETC format{};
+    bool formatFound = false;
+    //#TODO use comptr
+    {
+        IEnumFORMATETC* result = nullptr;
+        if (dataObject->EnumFormatEtc(DATADIR_GET, &result) == S_OK) {
+            ULONG fetched = 0;
+            while (result->Next(1, &format, &fetched) == S_OK && fetched) {
+                if (format.cfFormat == ShellIDListFormat) {
+                    formatFound = true;
+                    break;
+                }
+            }
+            result->Release();
+        }
+    }
+
+    if (!formatFound) {
+        Util::TryDebugBreak();
+        return result;
+    }
+
+    STGMEDIUM medium;
+    if (dataObject->GetData(&format, &medium) != S_OK) {
+        Util::TryDebugBreak();
+        return result;
+    }
+
+    auto pdw = (CIDA*)GlobalLock(medium.hGlobal);
+
+    // first element is parent folder of our actual element
+
+    for (size_t i = 1; i < pdw->cidl+1; i++)
+    {
+        BYTE* p = (BYTE*)pdw + pdw->aoffset[i];
+
+        result.emplace_back(ILClone((LPCITEMIDLIST)p));
+    }
+
+
+    GlobalUnlock(medium.hGlobal);
+    GlobalFree(medium.hGlobal);
+    
+
+    return result;
+}

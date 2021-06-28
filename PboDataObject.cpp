@@ -903,6 +903,9 @@ HRESULT PboDataObject::GetClassID(CLSID* pClassID)
 //
 //    return(m_dir ? S_OK : E_FAIL);
 //}
+// 
+// shell/ext/cabview/dataobj.cpp L550 basically just serialize to binary. We can use the pidlroot should be fine, version number is probably good idea? 
+// 
 //HRESULT PboDataObject::Save(IStream* pStm, BOOL)
 //{
 //    HRESULT hr;

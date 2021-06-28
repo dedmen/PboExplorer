@@ -72,6 +72,9 @@
     <ClInclude Include="GlobalCache.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ProgressDialogOperation.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -119,7 +122,7 @@
     <ClCompile Include="ClipboardFormatHandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GlobalCache.cpp">
+    <ClCompile Include="ProgressDialogOperation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

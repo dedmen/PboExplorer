@@ -306,7 +306,6 @@ STDAPI DllRegisterServer(VOID)
 	//	);
 	//}
 
-
 	RegistryEntry::RegistryContext regContext;
 
 	{

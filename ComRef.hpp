@@ -209,6 +209,10 @@ public:
 		return _ref;
 	}
 
+	operator const T* () const {
+		return _ref;
+	}
+
 
 	T** operator&() {
 		return &_ref;
@@ -217,6 +221,11 @@ public:
 	T* GetRef() {
 		return _ref;
 	}
+
+	const T* GetRef() const {
+		return _ref;
+	}
+
 	
 
 	CoTaskMemRefS& operator=(const CoTaskMemRefS& ref) = delete;
@@ -303,6 +312,28 @@ public:
 	}
 };
 
+template<class Base>
+class RefCounted {
+	std::atomic_uint32_t refCount;
+public:
+
+	virtual ~RefCounted() = default;
+
+	uint32_t AddRef()
+	{
+		return ++refCount;
+	}
+	uint32_t Release()
+	{
+		if (--refCount == 0)
+		{
+			delete static_cast<Base*>(this);
+			return 0;
+		}
+
+		return refCount;
+	}
+};
 
 
 inline std::atomic_uint32_t g_DllRefCount;

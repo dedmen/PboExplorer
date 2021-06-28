@@ -329,6 +329,7 @@
     <ClInclude Include="PboPatcher.hpp" />
     <ClInclude Include="PboPidl.hpp" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="ProgressDialogOperation.hpp" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="ShellExt.hpp" />
     <ClInclude Include="TempDiskFile.hpp" />
@@ -339,7 +340,6 @@
     <ClCompile Include="DebugLogger.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="FileWatcher.cpp" />
-    <ClCompile Include="GlobalCache.cpp" />
     <ClCompile Include="lib\ArmaPboLib\lib\sha1.c" />
     <ClCompile Include="lib\ArmaPboLib\src\pbo.cpp" />
     <ClCompile Include="PboContextMenu.cpp" />
@@ -347,6 +347,7 @@
     <ClCompile Include="PboFileStream.cpp" />
     <ClCompile Include="PboFolder.cpp" />
     <ClCompile Include="PboPatcher.cpp" />
+    <ClCompile Include="ProgressDialogOperation.cpp" />
     <ClCompile Include="ShellExt.cpp" />
     <ClCompile Include="TempDiskFile.cpp" />
     <ClCompile Include="TestExe.cpp" />
