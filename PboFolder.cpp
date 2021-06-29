@@ -435,32 +435,30 @@ HRESULT PboFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIST 
 {
     CHECK_INIT();
 
-
-	
-    LPITEMIDLIST pidl1d = ILClone(pidl1);
-    //ILRemoveLastID(pidl1d);
-    const PboPidl* qp1 = (const PboPidl*)pidl1d;
-    //Dir* dir1 = childDir(m_dir, qp1);
-    CoTaskMemFree(pidl1d);
-    //if (!dir1)
-    //    return(MAKE_HRESULT(0, 0, 0));
-    //
-    LPITEMIDLIST pidl2d = ILClone(pidl2);
-    ILRemoveLastID(pidl2d);
-    const PboPidl* qp2 = (const PboPidl*)pidl2d;
-    //Dir* dir2 = childDir(m_dir, qp2);
-    CoTaskMemFree(pidl2d);
-    //if (!dir2)
-    //{
-    //    dirMutex.lock();
-    //    dir1->countDown();
-    //    dirMutex.unlock();
-    //    return(MAKE_HRESULT(0, 0, 0));
-    //}
+    //LPITEMIDLIST pidl1d = ILClone(pidl1);
+    ////ILRemoveLastID(pidl1d);
+    //const PboPidl* qp1 = (const PboPidl*)pidl1d;
+    ////Dir* dir1 = childDir(m_dir, qp1);
+    //CoTaskMemFree(pidl1d);
+    ////if (!dir1)
+    ////    return(MAKE_HRESULT(0, 0, 0));
+    ////
+    //LPITEMIDLIST pidl2d = ILClone(pidl2);
+    //ILRemoveLastID(pidl2d);
+    //const PboPidl* qp2 = (const PboPidl*)pidl2d;
+    ////Dir* dir2 = childDir(m_dir, qp2);
+    //CoTaskMemFree(pidl2d);
+    ////if (!dir2)
+    ////{
+    ////    dirMutex.lock();
+    ////    dir1->countDown();
+    ////    dirMutex.unlock();
+    ////    return(MAKE_HRESULT(0, 0, 0));
+    ////}
     
-    qp1 = (const PboPidl*)ILFindLastID(pidl1);
-    qp2 = (const PboPidl*)ILFindLastID(pidl2);
-    
+    auto qp1 = (const PboPidl*)ILFindLastID(pidl1);
+    auto qp2 = (const PboPidl*)ILFindLastID(pidl2);
+    //#TODO validate that both are PboPidls
     short res;
     //int type1 = qp1->type;
     //int idx1 = qp1->idx;
@@ -470,51 +468,42 @@ HRESULT PboFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIST 
 
     res = -1;
 	
-    //switch (lParam & 0xff)
-    //{
-    //default:
-    //{
-    //    if (type1 != type2)
-    //    {
-    //        res = type1 < type2 ? -1 : 1;
-    //        break;
-    //    }
-    //
-    //    if (dir1 == dir2)
-    //    {
-    //        res = idx1 < idx2 ? -1 : (idx1 > idx2 ? 1 : 0);
-    //        break;
-    //    }
-    //
-    //    const wchar_t* name1 = type1 == 1 ? dir1->getArchiveName(idx1) :
-    //        (type1 == 2 ? dir1->getStreamName(idx1) : dir1->getDirName(idx1));
-    //    const wchar_t* name2 = type2 == 1 ? dir2->getArchiveName(idx2) :
-    //        (type2 == 2 ? dir2->getStreamName(idx2) : dir2->getDirName(idx2));
-    //    res = (short)LARRA_NAME_SORT(name1, name2);
-    //
-    //    if (!res)
-    //        res = (short)LARRA_NAME_SORT(dir1->getName(), dir2->getName());
-    //}
-    //break;
-    //case 1:
-    //{
-    //    qsize size1 = type1 == 1 ? dir1->getArchiveSize(idx1) :
-    //        (type1 == 2 ? dir1->getStreamSize(idx1) : -1);
-    //    qsize size2 = type2 == 1 ? dir2->getArchiveSize(idx2) :
-    //        (type2 == 2 ? dir2->getStreamSize(idx2) : -1);
-    //    res = size1 < size2 ? -1 : (size1 > size2 ? 1 : 0);
-    //}
-    //break;
-    //case 2:
-    //{
-    //    int64_t date1 = type1 == 1 ? dir1->getArchiveDate(idx1) :
-    //        (type1 == 2 ? dir1->getStreamDate(idx1) : dir1->getDirDate(idx1));
-    //    int64_t date2 = type2 == 1 ? dir2->getArchiveDate(idx2) :
-    //        (type2 == 2 ? dir2->getStreamDate(idx2) : dir2->getDirDate(idx2));
-    //    res = date1 < date2 ? -1 : (date1 > date2 ? 1 : 0);
-    //}
-    //break;
-    //}
+    switch (lParam & 0xff)
+    {
+    default: // name
+    case 0:
+    {
+        if (qp1->type != qp2->type)
+        {
+            res = qp1->type < qp2->type ? -1 : 1;
+            break;
+        }
+ 
+    
+        res = qp1->GetFilePath().filename() < qp2->GetFilePath().filename() ? -1 : 1;
+        break;
+    }
+    break;
+    case 1: // size
+    {
+        uint64_t size1 = 0, size2 = 0;
+
+        {
+            auto file = pboFile->GetFileByPath(qp1->GetFilePath());
+            if (file)
+                size1 = file->get().dataSize;
+        }
+        
+        {
+            auto file = pboFile->GetFileByPath(qp2->GetFilePath());
+            if (file)
+                size2 = file->get().dataSize;
+        }
+
+        res = size1 < size2 ? -1 : (size1 > size2 ? 1 : 0);
+    }
+    break;
+    }
     
     //dirMutex.lock();
     //dir1->countDown();
