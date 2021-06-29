@@ -43,7 +43,7 @@ public:
 
     virtual std::optional<std::reference_wrapper<const PboSubFile>> GetFileByPath(std::filesystem::path inputPath) const = 0;
     virtual std::shared_ptr<PboSubFolder> GetFolderByPath(std::filesystem::path inputPath) const = 0;
-    virtual std::vector<PboPidl> GetPidlListFromPath(std::filesystem::path inputPath) const = 0;
+    virtual std::unique_ptr<PboPidl> GetPidlListFromPath(std::filesystem::path inputPath) const = 0;
 };
 
 
@@ -68,7 +68,7 @@ public:
     virtual std::shared_ptr<PboFile> GetRootFile() const override;
     std::optional<std::reference_wrapper<const PboSubFile>> GetFileByPath(std::filesystem::path inputPath) const override;
     std::shared_ptr<PboSubFolder> GetFolderByPath(std::filesystem::path inputPath) const override;
-    std::vector<PboPidl> GetPidlListFromPath(std::filesystem::path inputPath) const override;
+    std::unique_ptr<PboPidl> GetPidlListFromPath(std::filesystem::path inputPath) const override;
 };
 
 class PboFile final : public IPboFolder, public std::enable_shared_from_this<PboFile>
@@ -89,7 +89,7 @@ public:
     virtual std::shared_ptr<PboFile> GetRootFile() const override;
     std::optional<std::reference_wrapper<const PboSubFile>> GetFileByPath(std::filesystem::path inputPath) const override;
     std::shared_ptr<PboSubFolder> GetFolderByPath(std::filesystem::path inputPath) const override;
-    std::vector<PboPidl> GetPidlListFromPath(std::filesystem::path inputPath) const override;
+    std::unique_ptr<PboPidl> GetPidlListFromPath(std::filesystem::path inputPath) const override;
 };
 
 
@@ -114,7 +114,7 @@ public:
     std::shared_ptr<PboFile> GetRootFile() const override { return rootFile; };
     std::optional<std::reference_wrapper<const PboSubFile>> GetFileByPath(std::filesystem::path inputPath) const override { return folder->GetFileByPath(inputPath); };
     std::shared_ptr<PboSubFolder> GetFolderByPath(std::filesystem::path inputPath) const override { return folder->GetFolderByPath(inputPath); };
-    std::vector<PboPidl> GetPidlListFromPath(std::filesystem::path inputPath) const override { return folder->GetPidlListFromPath(inputPath); };
+    std::unique_ptr<PboPidl> GetPidlListFromPath(std::filesystem::path inputPath) const override { return folder->GetPidlListFromPath(inputPath); };
 };
 
 

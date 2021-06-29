@@ -12,7 +12,7 @@
 #include <ranges>
 #include <utility>
 #include <unordered_set>
-
+#include <numeric>
 #include <string_view>
 
 #include "PboContextMenu.hpp"
@@ -118,25 +118,40 @@ HRESULT PboFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayName
     auto pidlList = pboFile->GetPidlListFromPath(subPath.lexically_normal());
 
 
-    if (pidlList.empty())
+    if (!pidlList)
         return(E_FAIL); // doesn't exist
 
 
     //#TODO if we didn't find the final file (might be a file inside a zip file INSIDE a pbo that we don't have access to) we need to set pchEaten to the end of the path we were able to resolve...
     // just get relative path between last pidlList entry and pszDisplayName, then scan from end? problem is stuff like /../ which can be anywhere in path
 
+   
+    //auto totalSize = std::accumulate(pidlList.begin(), pidlList.end(), 0ul, [](uint32_t inp, const PboPidl& pidl) { return inp + pidl.cb; });
+    auto totalSize = pidlList->cb;
 
 
-    auto resPidl = (LPITEMIDLIST)CoTaskMemAlloc(pidlList.size() * sizeof(PboPidl) + sizeof(PboPidl::cb));
-    std::memset(resPidl, 0, pidlList.size() * sizeof(PboPidl) + sizeof(PboPidl::cb));
-    *ppidl = resPidl;
+    auto resPidl = (LPITEMIDLIST)CoTaskMemAlloc(totalSize + sizeof(PboPidl::cb));
+
+    // last cbSize is 0
+    uint16_t* afterCB = (uint16_t*)(((uintptr_t)resPidl) + totalSize);
+    *afterCB = 0x13; // test
+
 
     char* outputBuf = (char*)resPidl;
-    for (auto& it : pidlList) {
-        *((PboPidl*)outputBuf) = it; //#TODO convert pidl to store filepath as dynamic length string, we cannot store std::filesystem::path pointer to disk
-        outputBuf += sizeof(it);
+    for (auto& it : { *pidlList }) {
+        std::memcpy(outputBuf, &it, it.cb);
+        outputBuf += it.cb;
     }
+
+    if (((PboPidl*)outputBuf)->cb != 0x13) {
+        Util::TryDebugBreak();
+    }
+
     ((PboPidl*)outputBuf)->cb = 0;
+
+
+    *ppidl = resPidl;
+
 
 
     PboPidl* qp = (PboPidl*)ILFindLastID(*ppidl);
@@ -237,19 +252,15 @@ HRESULT QiewerEnumIDList::Next(
 
         for (; i < celt && m_idxPos < qty; m_idxPos++)
         {
-            auto structSize = sizeof(PboPidl) + sizeof(USHORT);
-            PboPidl* qp = (PboPidl*)CoTaskMemAlloc(structSize);
-            memset(qp, 0, structSize);
-            qp->cb = (USHORT)sizeof(PboPidl);
-            qp->type = m_typePos ? PboPidlFileType::File : PboPidlFileType::Folder;
-            //qp->idx = m_idxPos;
-            if (m_typePos)
-                qp->filePath = subFolder->subfiles[m_idxPos].fullPath.wstring(); // I don't know why plain copy assign doesn't work. This is needed or the qp->filePath is corrupt
-            else
-                qp->filePath = subFolder->subfolders[m_idxPos]->fullPath.wstring();
-            qp->dbgIdx = m_idxPos;
-        	
-            //qp->filePath = !m_typePos ? subFolder->subfolders[m_idxPos]->fullPath : subFolder->subfiles[m_idxPos].fullPath;
+            const auto& filePath = (m_typePos) ? subFolder->subfiles[m_idxPos].fullPath : subFolder->subfolders[m_idxPos]->fullPath;
+
+            auto pidlSize = PboPidl::GetPidlSizeForPath(filePath);
+            PboPidl* qp = (PboPidl*)CoTaskMemAlloc(pidlSize + sizeof(USHORT));
+            PboPidl::CreatePidlAt(qp, filePath, m_typePos ? PboPidlFileType::File : PboPidlFileType::Folder);
+            // last cbSize is 0
+            uint16_t* afterCB = (uint16_t*)(((uintptr_t)qp) + pidlSize);
+            *afterCB = 0;
+
             rgelt[i] = (LPITEMIDLIST)qp;
             i++;
         }
@@ -357,7 +368,7 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
         //if (!dir) return(E_FAIL);
         
         auto qf = new PboFolder();
-        qf->pboFile = std::make_shared<PboSubFolderActiveRef>(pboFile->GetFolderByPath(subPidl->filePath));
+        qf->pboFile = std::make_shared<PboSubFolderActiveRef>(pboFile->GetFolderByPath(subPidl->GetFilePath()));
 
         if (!qf)
         {
@@ -391,7 +402,7 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
         
         qp = (const PboPidl*)ILFindLastID(pidl);
 
-        ComRef<PboFileStream>::CreateForReturn<IStream>(ppv, pboFile->GetRootFile(), qp->filePath);
+        ComRef<PboFileStream>::CreateForReturn<IStream>(ppv, pboFile->GetRootFile(), qp->GetFilePath());
         return S_OK;
 
 
@@ -627,7 +638,7 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
     });
 
 
-    DebugLogger::TraceLog(std::format("{}, wantedFlags {}", Util::utf8_encode(qp->filePath.wstring()), seperator.SeperateToString(*rgfInOut)), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format("{}, wantedFlags {}", Util::utf8_encode(qp->GetFilePath().wstring()), seperator.SeperateToString(*rgfInOut)), std::source_location::current(), __FUNCTION__);
 
     //#TODO only return flags that were also requested initially. rgfInOut is pre-filled with the flags it wants to know about
 	switch (qp->type)
@@ -648,7 +659,7 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
     case PboPidlFileType::File:
         *rgfInOut = SFGAO_CANCOPY | SFGAO_STREAM | SFGAO_CANRENAME | SFGAO_CANDELETE;
 
-        if (qp->filePath.filename().string().starts_with("$DU"))
+        if (qp->GetFilePath().filename().wstring().starts_with(L"$DU"))
             *rgfInOut |= SFGAO_GHOSTED | SFGAO_HIDDEN; // The specified items are shown as dimmed and unavailable to the user.
 
         break;
@@ -711,7 +722,7 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
             }
             else
             {
-                auto dest = qp->filePath.filename();
+                auto dest = qp->GetFilePath().filename();
 
                 const wchar_t* name = dest.c_str();
                 if (!name) return(E_FAIL);
@@ -797,7 +808,7 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
         }
         else
         {
-                auto dest = qp->filePath.filename();
+                auto dest = qp->GetFilePath().filename();
             
                 const wchar_t* name = dest.c_str();
                 if (!name) return(E_FAIL);
@@ -956,7 +967,7 @@ HRESULT PboFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, SHGDNF uFlags, STRRET* p
     
     const PboPidl* qp = (const PboPidl*)pidl;
 
-    auto dest = qp->filePath.filename();
+    auto dest = qp->GetFilePath().filename();
 	
     const wchar_t* name = dest.c_str();
     if (!name) return(E_FAIL);
@@ -964,7 +975,7 @@ HRESULT PboFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, SHGDNF uFlags, STRRET* p
     if ((uFlags & (SHGDN_FORPARSING | SHGDN_INFOLDER)) != SHGDN_FORPARSING)
         return(stringToStrRet(name, pName));
 
-    auto fullPath = pboFile->GetPboDiskPath() / qp->filePath.filename();
+    auto fullPath = pboFile->GetPboDiskPath() / qp->GetFilePath().filename();
 
     HRESULT hr = stringToStrRet(fullPath.wstring(), pName);
 
@@ -977,20 +988,22 @@ HRESULT PboFolder::SetNameOf(HWND hwnd, LPCITEMIDLIST pidl, LPCOLESTR pszName, S
 
     const PboPidl* qp = (const PboPidl*)pidl;
 
-    DebugLogger::TraceLog(std::format("{}, newName {}, flags {}", qp->filePath.string(), Util::utf8_encode(pszName), uFlags), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format("{}, newName {}, flags {}", qp->GetFilePath().string(), Util::utf8_encode(pszName), uFlags), std::source_location::current(), __FUNCTION__);
 
     if (!qp->IsFile()) //#TODO, need to rename aaaaaall the files in that folder
         return E_NOTIMPL;
 
     // need to patch
-
-    PboPidl* newPidl = (PboPidl*)CoTaskMemAlloc(sizeof(PboPidl) + sizeof(USHORT));
-    memset(newPidl, 0, sizeof(PboPidl) + sizeof(USHORT));
-    newPidl->cb = (USHORT)sizeof(PboPidl);
-    newPidl->type = qp->type;
-    //qp->idx = idx;
     std::wstring_view newName(pszName);
-    newPidl->filePath = qp->filePath.parent_path() / newName;
+    auto newFilePath = qp->GetFilePath().parent_path() / newName;
+
+
+    auto pidlSize = PboPidl::GetPidlSizeForPath(newFilePath);
+    PboPidl* newPidl = (PboPidl*)CoTaskMemAlloc(pidlSize + sizeof(USHORT));
+    PboPidl::CreatePidlAt(newPidl, newFilePath, qp->type);
+    // last cbSize is 0
+    uint16_t* afterCB = (uint16_t*)(((uintptr_t)qp) + pidlSize);
+    *afterCB = 0;
 
     *ppidlOut = (LPITEMIDLIST)newPidl;
 
@@ -1005,7 +1018,7 @@ HRESULT PboFolder::SetNameOf(HWND hwnd, LPCITEMIDLIST pidl, LPCOLESTR pszName, S
             reader.readHeaders();
             patcher.ReadInputFile(&reader);
 
-            patcher.AddPatch<PatchRenameFile>(qp->filePath, newPidl->filePath);
+            patcher.AddPatch<PatchRenameFile>(qp->GetFilePath(), newPidl->GetFilePath());
             patcher.ProcessPatches();
         }
 
@@ -1102,24 +1115,24 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
     wchar_t path[MAX_PATH];
     SHGetPathFromIDList(pidl, path);
 
-    if (pidl->mkid.cb != sizeof(PboPidl))
+    if (!PboPidl::IsValidPidl(&pidl->mkid))
         pidl = ILNext(pidl);
 
 	
     const PboPidl* qp = (const PboPidl*)pidl;
 
-    DebugLogger::TraceLog(std::format("file {}", qp->filePath.string()), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format("file {}", qp->GetFilePath().string()), std::source_location::current(), __FUNCTION__);
     
     if (pscid->fmtid == PKEY_ItemNameDisplay.fmtid &&
         pscid->pid == PKEY_ItemNameDisplay.pid)
     {
-        return(stringToVariant(qp->filePath.filename().wstring(), pv));
+        return(stringToVariant(qp->GetFilePath().filename().wstring(), pv));
     }
     else if (pscid->fmtid == PKEY_Size.fmtid && pscid->pid == PKEY_Size.pid)
     {
         if (!qp->IsFile()) return(E_FAIL);
 
-        auto file = pboFile->GetFileByPath(qp->filePath);
+        auto file = pboFile->GetFileByPath(qp->GetFilePath());
         if (!file)
             return E_FAIL;
 
@@ -1209,7 +1222,7 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
         // This is the file extension of the file based item, including the leading period. 
         if (!qp->IsFile()) return(E_FAIL);
 
-        return stringToVariant(Util::utf8_decode(qp->filePath.extension().string()), pv);
+        return stringToVariant(Util::utf8_decode(qp->GetFilePath().extension().string()), pv);
     }
     else if (pscid->fmtid == PKEY_LayoutPattern_ContentViewModeForBrowse.fmtid)
         return(E_INVALIDARG);   
@@ -1305,7 +1318,7 @@ HRESULT PboFolder::GetDetailsOf(LPCITEMIDLIST pidl, UINT iColumn, SHELLDETAILS* 
     {
         if (!qp->IsFile()) return(E_FAIL);
 
-        auto file = pboFile->GetFileByPath(qp->filePath);
+        auto file = pboFile->GetFileByPath(qp->GetFilePath());
         if (!file)
             return E_FAIL;
         auto size = file->get().filesize;
@@ -1382,7 +1395,7 @@ HRESULT PboFolder::InitializeEx(IBindCtx* pbc, LPCITEMIDLIST pidlRoot, const PER
         while (subPidl = ILGetNext(subPidl)) {
             //subPidl = (LPITEMIDLIST)((uintptr_t)subPidl + subPidl->mkid.cb);
             auto test = (PboPidl*)subPidl;
-            if (subPidl->mkid.cb == sizeof(PboPidl))
+            if (PboPidl::IsValidPidl(&subPidl->mkid.cb))
                 __debugbreak();
             count++;
 
@@ -2008,7 +2021,7 @@ bool PboFolder::checkInit()
     while (subPidl = ILGetNext(subPidl)) {
         //subPidl = (LPITEMIDLIST)((uintptr_t)subPidl + subPidl->mkid.cb);
         auto test = (PboPidl*)subPidl;
-        if (subPidl->mkid.cb == sizeof(PboPidl))
+        if (PboPidl::IsValidPidl(&subPidl->mkid))
             __debugbreak();
         count++;
 

@@ -88,7 +88,7 @@ std::shared_ptr<PboSubFolder> PboSubFolder::GetFolderByPath(std::filesystem::pat
     return curFolder;
 }
 
-std::vector<PboPidl> PboSubFolder::GetPidlListFromPath(std::filesystem::path inputPath) const
+std::unique_ptr<PboPidl> PboSubFolder::GetPidlListFromPath(std::filesystem::path inputPath) const
 {
     std::vector<PboPidl> resultPidl;
 
@@ -120,15 +120,25 @@ std::vector<PboPidl> PboSubFolder::GetPidlListFromPath(std::filesystem::path inp
 
         if (subfileFound != curFolder->subfiles.end()) {
 
-            resultPidl.emplace_back(PboPidl{ sizeof(PboPidl), PboPidlFileType::File, (*subfileFound).fullPath, -1 });
-            return resultPidl;
+            const auto& path = (*subfileFound).fullPath;
+
+            auto data = new PboPidl[(PboPidl::GetPidlSizeForPath(path) / sizeof(PboPidl)) + 1];
+            PboPidl::CreatePidlAt(data, path, PboPidlFileType::File);
+
+            return std::unique_ptr<PboPidl>(data);
         }
     }
 
 
+    if (curFolder->filename == relPath.filename()) {
+        Util::TryDebugBreak();
+        // return this folder as pidl, instead of returning a file pidl
+
+    }
+
     Util::TryDebugBreak();
     // not found, pidl is still valid, just not for full path
-    return resultPidl;
+    return nullptr;
 }
 
 PboFile::PboFile()
@@ -333,7 +343,7 @@ std::shared_ptr<PboSubFolder> PboFile::GetFolderByPath(std::filesystem::path inp
     return rootFolder->GetFolderByPath(inputPath);
 }
 
-std::vector<PboPidl> PboFile::GetPidlListFromPath(std::filesystem::path inputPath) const {
+std::unique_ptr<PboPidl> PboFile::GetPidlListFromPath(std::filesystem::path inputPath) const {
     return rootFolder->GetPidlListFromPath(inputPath);
 }
 

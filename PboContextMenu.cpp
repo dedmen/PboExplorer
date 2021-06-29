@@ -196,7 +196,7 @@ HRESULT PboContextMenu::QueryContextMenu(
 
     if (m_apidl.size() == 1)
     {
-        DebugLogger::TraceLog(std::format("file {}", ((PboPidl*)m_apidl[0].GetRef())->filePath.string()), std::source_location::current(), __FUNCTION__);
+        DebugLogger::TraceLog(std::format("file {}", ((PboPidl*)m_apidl[0].GetRef())->GetFilePath().string()), std::source_location::current(), __FUNCTION__);
 
         InsertMenu(hmenu, indexMenu++, MF_STRING | MF_BYPOSITION,
             idCmdFirst + CONTEXT_OPEN, getContextText(CONTEXT_OPEN));
@@ -319,7 +319,7 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
             PboPidl* qp = (PboPidl*)m_apidl[0].GetRef();
             if (qp->IsFile())
             {
-                patcher.AddPatch<PatchDeleteFile>(qp->filePath);
+                patcher.AddPatch<PatchDeleteFile>(qp->GetFilePath());
             }
             else
             {
@@ -401,7 +401,7 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
         else
         {
             
-            auto tempFile = TempDiskFile::GetFile(*m_folder->pboFile->GetRootFile(), qp->filePath);       
+            auto tempFile = TempDiskFile::GetFile(*m_folder->pboFile->GetRootFile(), qp->GetFilePath());
             fileTarget = tempFile->GetPath();
             GFileWatcher.WatchFile(tempFile);
 

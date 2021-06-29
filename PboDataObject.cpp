@@ -135,25 +135,24 @@ PboDataObject::PboDataObject(std::shared_ptr<PboSubFolder> rootfolder, PboFolder
 
     for (auto& it : rootFolder->subfolders)
     {
-        PboPidl* qp = (PboPidl*)CoTaskMemAlloc(sizeof(PboPidl) + sizeof(USHORT));
-        memset(qp, 0, sizeof(PboPidl) + sizeof(USHORT));
-        qp->cb = (USHORT)sizeof(PboPidl);
-        qp->type = PboPidlFileType::Folder;
-        //qp->idx = idx;
-        qp->filePath = it->fullPath;
-
+        auto pidlSize = PboPidl::GetPidlSizeForPath(it->fullPath);
+        PboPidl* qp = (PboPidl*)CoTaskMemAlloc(pidlSize + sizeof(USHORT));
+        PboPidl::CreatePidlAt(qp, it->fullPath, PboPidlFileType::Folder);
+        // last cbSize is 0
+        uint16_t* afterCB = (uint16_t*)(((uintptr_t)qp) + pidlSize);
+        *afterCB = 0;
     	
         m_apidl.emplace_back((LPITEMIDLIST)qp);
     }
 
     for (auto& it : rootFolder->subfiles)
     {
-        PboPidl* qp = (PboPidl*)CoTaskMemAlloc(sizeof(PboPidl) + sizeof(USHORT));
-        memset(qp, 0, sizeof(PboPidl) + sizeof(USHORT));
-        qp->cb = (USHORT)sizeof(PboPidl);
-        qp->type = PboPidlFileType::File;
-        //qp->idx = idx;
-        qp->filePath = it.fullPath;
+        auto pidlSize = PboPidl::GetPidlSizeForPath(it.fullPath);
+        PboPidl* qp = (PboPidl*)CoTaskMemAlloc(pidlSize + sizeof(USHORT));
+        PboPidl::CreatePidlAt(qp, it.fullPath, PboPidlFileType::File);
+        // last cbSize is 0
+        uint16_t* afterCB = (uint16_t*)(((uintptr_t)qp) + pidlSize);
+        *afterCB = 0;
 
         m_apidl.emplace_back((LPITEMIDLIST)qp);
     }
@@ -463,7 +462,7 @@ HRESULT PboDataObject::GetData(
 
             if (m_offset)
                 wcscpy(fd->cFileName, m_offset);
-            wcsncpy(fd->cFileName + offsetLen, file->filePath.filename().c_str(), MAX_PATH - offsetLen);
+            wcsncpy(fd->cFileName + offsetLen, file->GetFilePath().filename().c_str(), MAX_PATH - offsetLen);
             fd->cFileName[MAX_PATH - 1] = 0;
 
             //#TODO add subitems inside the folder then?
@@ -476,7 +475,7 @@ HRESULT PboDataObject::GetData(
                 fd->dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
 
 
-                auto subFile = rootFolder->GetFileByPath(file->filePath);
+                auto subFile = rootFolder->GetFileByPath(file->GetFilePath());
 
                 if (subFile) {
                     fd->dwFlags |= FD_FILESIZE;
@@ -533,7 +532,7 @@ HRESULT PboDataObject::GetData(
         //free(fullName);
         pmedium->tymed = TYMED_ISTREAM;
         pmedium->pUnkForRelease = nullptr;
-        pmedium->pstm = ComRef<PboFileStream>::CreateForReturn(pboFolder->pboFile->GetRootFile(), file->filePath);
+        pmedium->pstm = ComRef<PboFileStream>::CreateForReturn(pboFolder->pboFile->GetRootFile(), file->GetFilePath());
 
         return(S_OK);
     }
