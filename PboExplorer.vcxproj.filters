@@ -75,6 +75,12 @@
     <ClInclude Include="ProgressDialogOperation.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PboFileDirectory.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="PboPatcherLocked.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -123,6 +129,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ProgressDialogOperation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PboFileDirectory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

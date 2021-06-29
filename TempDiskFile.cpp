@@ -3,7 +3,7 @@
 #include <mutex>
 #include <unordered_map>
 #include <fstream>
-#include "PboPatcher.hpp"
+#include "PboPatcherLocked.hpp"
 
 #include "Util.hpp"
 
@@ -134,23 +134,16 @@ void TempDiskFile::PatchToOrigin() {
     std::unique_lock lock(DiskWriterLock);
     if (!WasModified())
         return;
-    PboPatcher patcher;
 
     {
-        std::ifstream inputFile(pboPath, std::ifstream::in | std::ifstream::binary);
-
-        PboReader reader(inputFile);
-        reader.readHeaders();
-        patcher.ReadInputFile(&reader);
-
+        PboPatcherLocked patcher(GPboFileDirectory.GetPboFile(pboPath));
         patcher.AddPatch<PatchUpdateFileFromDisk>(filePath, pboSubPath);
-        patcher.ProcessPatches();
     }
 
-    {
-        std::fstream outputStream(pboPath, std::fstream::binary | std::fstream::in | std::fstream::out);
-        patcher.WriteOutputFile(outputStream);
-    }
+
+    auto absolutePath = pboPath / pboSubPath;
+    //#TODO this crashes, because the Pidl's store filepath as std::filesystem::path, which we can't do (they need to be strings fully contained inside the pidl) we first need to refactor pidl before we can do this
+    //SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATH, absolutePath.wstring().c_str(), 0);
 
     creationFileSize = GetCurrentSize();
     creationHash = GetCurrentHash();

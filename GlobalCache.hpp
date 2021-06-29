@@ -33,7 +33,7 @@ public:
 
 };
 
-static inline GlobalCache GCache;
+inline GlobalCache GCache;
 
 
 

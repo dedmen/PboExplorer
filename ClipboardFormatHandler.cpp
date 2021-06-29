@@ -51,9 +51,6 @@ void ClipboardFormatHandler::ReadFromFast(IDataObject* dataObject)
 
             DebugLogger::TraceLog(std::format("formatName {}, format {}, tymed {}", Util::utf8_encode(buffer), format.cfFormat, TymedSeperator.SeperateToString((tagTYMED)format.tymed)), std::source_location::current(), __FUNCTION__);
 
-
-            //#TODO make lookup table from CFSTR_SHELLIDLIST, we need to call RegisterClipboardFormat to get the correct ID's, do that once at dll load and cache it
-
             ClipboardFormatType type;
 
             switch (format.cfFormat) {
@@ -67,9 +64,6 @@ void ClipboardFormatHandler::ReadFromFast(IDataObject* dataObject)
                     }
                     else
                         type = found->second;
-
-
-
                 }
             }
 

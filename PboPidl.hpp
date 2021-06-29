@@ -8,7 +8,7 @@ enum class PboPidlFileType
 //#TODO total size needs to be 4B aligned
 struct PboPidl
 {
-    USHORT cb;
+    uint16_t cb;
     PboPidlFileType type;
     //int idx;
     std::filesystem::path filePath; //#TODO convert pidl to store filepath as dynamic length string, we cannot store std::filesystem::path pointer to disk

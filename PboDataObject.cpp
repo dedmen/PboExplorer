@@ -533,7 +533,7 @@ HRESULT PboDataObject::GetData(
         //free(fullName);
         pmedium->tymed = TYMED_ISTREAM;
         pmedium->pUnkForRelease = nullptr;
-        pmedium->pstm = ComRef<PboFileStream>::CreateForReturn(pboFolder->pboFile, file->filePath);
+        pmedium->pstm = ComRef<PboFileStream>::CreateForReturn(pboFolder->pboFile->GetRootFile(), file->filePath);
 
         return(S_OK);
     }

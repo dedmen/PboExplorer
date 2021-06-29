@@ -37,4 +37,5 @@ private:
     HWND m_hwnd;
     CoTaskMemRefS<ITEMIDLIST> m_pidlRoot;
     std::vector<CoTaskMemRefS<ITEMIDLIST>> m_apidl;
+    ComRef<IContextMenu> m_DefCtxMenu;
 };

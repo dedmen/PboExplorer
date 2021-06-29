@@ -324,9 +324,11 @@
     <ClInclude Include="ClassFactory.hpp" />
     <ClInclude Include="PboContextMenu.hpp" />
     <ClInclude Include="PboDataObject.hpp" />
+    <ClInclude Include="PboFileDirectory.hpp" />
     <ClInclude Include="PboFileStream.hpp" />
     <ClInclude Include="PboFolder.hpp" />
     <ClInclude Include="PboPatcher.hpp" />
+    <ClInclude Include="PboPatcherLocked.hpp" />
     <ClInclude Include="PboPidl.hpp" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="ProgressDialogOperation.hpp" />
@@ -344,6 +346,7 @@
     <ClCompile Include="lib\ArmaPboLib\src\pbo.cpp" />
     <ClCompile Include="PboContextMenu.cpp" />
     <ClCompile Include="PboDataObject.cpp" />
+    <ClCompile Include="PboFileDirectory.cpp" />
     <ClCompile Include="PboFileStream.cpp" />
     <ClCompile Include="PboFolder.cpp" />
     <ClCompile Include="PboPatcher.cpp" />

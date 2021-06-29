@@ -8,50 +8,7 @@
 #include "PboPidl.hpp"
 #include "TempDiskFile.hpp"
 
-
-class IPboSub
-{
-public:
-    std::wstring filename;
-    std::filesystem::path fullPath;
-};
-
-class PboSubFile : public IPboSub
-{
-public:
-    uint32_t filesize;
-    uint32_t dataSize;
-    uint32_t startOffset;
-};
-
-class PboSubFolder : public IPboSub
-{
-public:
-    std::vector<PboSubFile> subfiles;
-    std::vector<std::shared_ptr<PboSubFolder>> subfolders;
-
-    std::optional<std::reference_wrapper<const PboSubFile>> GetFileByPath(std::filesystem::path inputPath) const;
-};
-
-
-class PboFile
-{
-public:
-    PboFile();
-    std::filesystem::path diskPath;
-    std::shared_ptr<PboSubFolder> rootFolder;
-    std::filesystem::path selfRelPath;
-	
-    void ReadFrom(std::filesystem::path inputPath);
-    void ReloadFrom(std::filesystem::path inputPath);
-    std::optional<std::reference_wrapper<PboSubFile>> GetFileByPath(std::filesystem::path inputPath) const;
-    std::shared_ptr<PboSubFolder> GetFolderByPath(std::filesystem::path inputPath) const;
-    std::vector<PboPidl> GetPidlListFromPath(std::filesystem::path inputPath) const;
-};
-
-
-
-
+#include "PboFileDirectory.hpp"
 
 //todo IDropTarget
 //https ://docs.microsoft.com/en-us/windows/win32/api/oleidl/nn-oleidl-idroptarget
@@ -75,7 +32,7 @@ class PboFolder:
     HWND lastHwnd;
 public:
 
-    std::shared_ptr<PboFile> pboFile;
+    std::shared_ptr<IPboFolder> pboFile;
 	PboFolder();
     ~PboFolder();
 

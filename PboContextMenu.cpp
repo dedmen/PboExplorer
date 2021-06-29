@@ -115,7 +115,11 @@ PboContextMenu::PboContextMenu(PboFolder* folder, HWND hwnd, LPCITEMIDLIST pidlR
     m_apidl.reserve(cidl);
     for (UINT i = 0; i < cidl; i++)
         m_apidl.emplace_back(ILClone(apidl[i]));
+
+    auto dcm = new DEFCONTEXTMENU{ hwnd, nullptr, pidlRoot, folder, cidl, apidl, nullptr,0 ,nullptr };
+    SHCreateDefaultContextMenu(dcm, IID_IContextMenu, m_DefCtxMenu.AsQueryInterfaceTarget());
 }
+
 PboContextMenu::~PboContextMenu()
 {
 }
@@ -184,6 +188,8 @@ static const wchar_t* getContextText(int idx)
 HRESULT PboContextMenu::QueryContextMenu(
     HMENU hmenu, UINT indexMenu, UINT idCmdFirst, UINT idCmdLast, UINT uFlags)
 {
+    //return m_DefCtxMenu->QueryContextMenu(hmenu, indexMenu, idCmdFirst, idCmdLast, uFlags);
+
 
     //#TODO query filetype contextmenu and use them?
     // add notepad++ manually?
@@ -249,7 +255,7 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
     DebugLogger::TraceLog(std::format("verb {}, dir {}, parms {}", !IS_INTRESOURCE(pici->lpVerb) ? pici->lpVerb : "0", pici->lpDirectory ? pici->lpDirectory : "", pici->lpParameters ? pici->lpParameters : ""), std::source_location::current(), __FUNCTION__);
 
     int cmd = -1;
-
+    //return m_DefCtxMenu->InvokeCommand(pici);
     
 
     if (HIWORD(pici->lpVerb)) //IS_INTRESOURCE()
@@ -303,7 +309,7 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
         PboPatcher patcher;
 
         {
-            std::ifstream inputFile(m_folder->pboFile->diskPath, std::ifstream::in | std::ifstream::binary);
+            std::ifstream inputFile(m_folder->pboFile->GetPboDiskPath(), std::ifstream::in | std::ifstream::binary);
 
             PboReader reader(inputFile);
             reader.readHeaders();
@@ -325,7 +331,7 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
         }
 
         {
-            std::fstream outputStream(m_folder->pboFile->diskPath, std::fstream::binary | std::fstream::in | std::fstream::out);
+            std::fstream outputStream(m_folder->pboFile->GetPboDiskPath(), std::fstream::binary | std::fstream::in | std::fstream::out);
             patcher.WriteOutputFile(outputStream);
         }
 
@@ -395,7 +401,7 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
         else
         {
             
-            auto tempFile = TempDiskFile::GetFile(*m_folder->pboFile, qp->filePath);       
+            auto tempFile = TempDiskFile::GetFile(*m_folder->pboFile->GetRootFile(), qp->filePath);       
             fileTarget = tempFile->GetPath();
             GFileWatcher.WatchFile(tempFile);
 
@@ -557,6 +563,8 @@ HRESULT PboContextMenu::GetCommandString(
         wcsncpy_s((LPWSTR)pszName, cchMax, L"copy", cchMax);
         return(S_OK);
     }
+
+    //return m_DefCtxMenu->GetCommandString(idCmd, uFlags, nullptr, pszName, cchMax);
 
     return(E_INVALIDARG);
 }
