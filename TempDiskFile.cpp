@@ -142,8 +142,7 @@ void TempDiskFile::PatchToOrigin() {
 
 
     auto absolutePath = pboPath / pboSubPath;
-    //#TODO this crashes, because the Pidl's store filepath as std::filesystem::path, which we can't do (they need to be strings fully contained inside the pidl) we first need to refactor pidl before we can do this
-    //SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATH, absolutePath.wstring().c_str(), 0);
+    SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATH, absolutePath.wstring().c_str(), 0);
 
     creationFileSize = GetCurrentSize();
     creationHash = GetCurrentHash();
