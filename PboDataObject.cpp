@@ -275,8 +275,12 @@ HRESULT PboDataObject::QueryInterface(REFIID riid, void** ppvObject)
         return S_OK;
     }
 
-    //if (IsEqualIID(riid, IID_IPersistStream))
-    //    *ppvObject = static_cast<IPersistStream*>(this);
+    if (IsEqualIID(riid, IID_IPersist)) {
+        *ppvObject = static_cast<IPersistStream*>(this);
+        AddRef();
+        return S_OK;
+    }
+        
     //else if (IsEqualIID(riid, IID_IAsyncOperation))
     //    *ppvObject = (IAsyncOperation*)this;
 
@@ -321,7 +325,7 @@ HRESULT PboDataObject::QueryInterface(REFIID riid, void** ppvObject)
         return(E_NOINTERFACE);
     }
 
-
+    __debugbreak(); // should never get here
     AddRef();
     return(S_OK);
 }

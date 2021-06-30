@@ -12,7 +12,6 @@ class PboDataObject :
 	GlobalRefCounted,
 	public RefCountedCOM<PboDataObject,
 			      IDataObject,
-                  IPersist,
                   IPersistStream
 	>
     //,public IAsyncOperation
