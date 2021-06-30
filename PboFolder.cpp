@@ -195,7 +195,7 @@ private:
 
     DWORD flags;
     std::shared_ptr<PboSubFolder> subFolder;
-    PboFolder* owner;
+    ComRef<PboFolder> owner;
     int m_typePos;
     int m_idxPos;
 };
@@ -204,12 +204,9 @@ private:
 QiewerEnumIDList::QiewerEnumIDList(PboFolder& owner, std::shared_ptr<PboSubFolder> count1, DWORD flags) : flags(flags), subFolder(std::move(count1)), owner(&owner)
 {
     m_typePos = m_idxPos = 0;
-
-    owner.AddRef();
 }
 QiewerEnumIDList::~QiewerEnumIDList()
 {
-    owner->Release();
 }
 
 
@@ -337,7 +334,7 @@ HRESULT PboFolder::EnumObjects(HWND hwnd, DWORD grfFlags, IEnumIDList** ppenumID
     //    if (!(grfFlags & SHCONTF_FOLDERS)) dirQty = 0;
     //    if (!(grfFlags & SHCONTF_NONFOLDERS)) streamQty = 0;
     //}
-    * ppenumIDList = new QiewerEnumIDList(*this, pboFile->GetFolder(), grfFlags);
+    ComRef<QiewerEnumIDList>::CreateForReturn<IEnumIDList>(ppenumIDList, *this, pboFile->GetFolder(), grfFlags);
 
     return(S_OK);
 }
