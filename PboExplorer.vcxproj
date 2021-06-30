@@ -315,7 +315,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="ClipboardFormatHandler.h" />
+    <ClInclude Include="ClipboardFormatHandler.hpp" />
     <ClInclude Include="ComRef.hpp" />
     <ClInclude Include="DebugLogger.hpp" />
     <ClInclude Include="FileWatcher.hpp" />

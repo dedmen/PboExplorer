@@ -1,4 +1,4 @@
-#include "ClipboardFormatHandler.h"
+#include "ClipboardFormatHandler.hpp"
 
 #include <Shlwapi.h>
 #include <format>
@@ -19,24 +19,7 @@ static constexpr Util::FlagSeperator<tagTYMED, 7> TymedSeperator({
 
 void ClipboardFormatHandler::ReadFromFast(IDataObject* dataObject)
 {
-    supportedFormats.resize((int)ClipboardFormatType::N);
-
-    const auto& clipboardTypes = GCache.GetFromCache("CFH_RegCFSTR"sv, []() {
-            std::vector<std::pair<CLIPFORMAT, ClipboardFormatType>> assocVec;
-
-            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_SHELLIDLIST), ClipboardFormatType::ShellIDList);
-            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILECONTENTS), ClipboardFormatType::FileContents);
-            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILEDESCRIPTORA), ClipboardFormatType::FileGroupDescriptor);
-            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILEDESCRIPTORW), ClipboardFormatType::FileGroupDescriptor);
-            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILENAMEA), ClipboardFormatType::FileName);
-            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILENAMEW), ClipboardFormatType::FileName);
-
-            std::ranges::sort(assocVec, {}, [](const auto& el) {return el.first; });
-
-            return assocVec;
-        }
-    );
-
+    supportedFormats.resize((int)ClipboardFormatType::_LastSupportedItem+1);
 
     IEnumFORMATETC* result = nullptr;
     if (dataObject->EnumFormatEtc(DATADIR_GET, &result) == S_OK) {
@@ -56,14 +39,13 @@ void ClipboardFormatHandler::ReadFromFast(IDataObject* dataObject)
             switch (format.cfFormat) {
                 case CF_HDROP: type = ClipboardFormatType::HDROP; break;
                 default: {
-                    auto found = std::ranges::lower_bound(clipboardTypes, format.cfFormat, {}, [](const auto& el) {return el.first; });
-
-                    if (found == clipboardTypes.end() || found->first != format.cfFormat) {
+                    auto type = GetTypeFromCF(format.cfFormat);
+                    if (!type) {
                         DebugLogger::TraceLog(std::format("Unkown format formatName {}, format {}, tymed {}", Util::utf8_encode(buffer), format.cfFormat, TymedSeperator.SeperateToString((tagTYMED)format.tymed)), std::source_location::current(), __FUNCTION__);
                         continue; // unknown type we don't care about?
                     }
                     else
-                        type = found->second;
+                        type = *type;
                 }
             }
 
@@ -108,10 +90,10 @@ std::vector<ClipboardFormatHandler::FilePathResult> ClipboardFormatHandler::GetF
 
         FORMATETC format{};
         bool formatFound = false;
-        //#TODO use comptr
+
         {
-            IEnumFORMATETC* result = nullptr;
-            if (dataObject->EnumFormatEtc(DATADIR_GET, &result) == S_OK) {
+            ComRef<IEnumFORMATETC> result;
+            if (dataObject->EnumFormatEtc(DATADIR_GET, result.AsQueryInterfaceTarget<IEnumFORMATETC>()) == S_OK) {
                 ULONG fetched = 0;
                 while (result->Next(1, &format, &fetched) == S_OK && fetched) {
                     if (format.cfFormat == CF_HDROP) {
@@ -177,48 +159,16 @@ std::vector<CoTaskMemRefS<ITEMIDLIST>> ClipboardFormatHandler::GetPidlsToRead(ID
 {
     std::vector<CoTaskMemRefS<ITEMIDLIST>> result;
 
-    
-
-
     if (!supportedFormats[(int)ClipboardFormatType::ShellIDList]) return result;
         
-        
-
-
-    const auto& clipboardTypes = GCache.GetFromCache("CFH_RegCFSTR"sv, []() {
-        std::vector<std::pair<CLIPFORMAT, ClipboardFormatType>> assocVec;
-
-        assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_SHELLIDLIST), ClipboardFormatType::ShellIDList);
-        assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILECONTENTS), ClipboardFormatType::FileContents);
-        assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILEDESCRIPTORA), ClipboardFormatType::FileGroupDescriptor);
-        assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILEDESCRIPTORW), ClipboardFormatType::FileGroupDescriptor);
-        assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILENAMEA), ClipboardFormatType::FileName);
-        assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILENAMEW), ClipboardFormatType::FileName);
-
-        std::ranges::sort(assocVec, {}, [](const auto& el) {return el.first; });
-
-        return assocVec;
-        }
-    );
-
-    CLIPFORMAT ShellIDListFormat = 0;
-
-    auto found = std::ranges::find(clipboardTypes, ClipboardFormatType::ShellIDList, [](const auto& el) {return el.second; });
-
-    if (found == clipboardTypes.end() || found->second != ClipboardFormatType::ShellIDList) {
-        Util::TryDebugBreak();
-        return result;
-    }
-    else
-        ShellIDListFormat = found->first;
-
-
+ 
+    CLIPFORMAT ShellIDListFormat = GetCFFromType(ClipboardFormatType::ShellIDList);
     FORMATETC format{};
     bool formatFound = false;
-    //#TODO use comptr
+
     {
-        IEnumFORMATETC* result = nullptr;
-        if (dataObject->EnumFormatEtc(DATADIR_GET, &result) == S_OK) {
+        ComRef<IEnumFORMATETC> result;
+        if (dataObject->EnumFormatEtc(DATADIR_GET, result.AsQueryInterfaceTarget<IEnumFORMATETC>()) == S_OK) {
             ULONG fetched = 0;
             while (result->Next(1, &format, &fetched) == S_OK && fetched) {
                 if (format.cfFormat == ShellIDListFormat) {
@@ -258,4 +208,69 @@ std::vector<CoTaskMemRefS<ITEMIDLIST>> ClipboardFormatHandler::GetPidlsToRead(ID
     
 
     return result;
+}
+
+
+#ifndef CFSTR_OLECLIPBOARDPERSISTONFLUSH
+#define CFSTR_OLECLIPBOARDPERSISTONFLUSH TEXT("OleClipboardPersistOnFlush")
+#endif
+
+CLIPFORMAT ClipboardFormatHandler::GetCFFromType(ClipboardFormatType type)
+{
+    const auto& clipboardTypes = GCache.GetFromCache("CFH_RegCFSTRM"sv, []() {
+            std::unordered_map<ClipboardFormatType, CLIPFORMAT> assocMap{
+                {ClipboardFormatType::ShellIDList, (CLIPFORMAT)RegisterClipboardFormat(CFSTR_SHELLIDLIST)},
+                {ClipboardFormatType::FileContents, (CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILECONTENTS)},
+                {ClipboardFormatType::FileGroupDescriptor, (CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILEDESCRIPTORW)},
+                {ClipboardFormatType::FileName, (CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILENAMEW)},
+                {ClipboardFormatType::PreferredDropEffect, (CLIPFORMAT)RegisterClipboardFormat(CFSTR_PREFERREDDROPEFFECT)},
+                {ClipboardFormatType::OleClipboardPersistOnFlush, (CLIPFORMAT)RegisterClipboardFormat(CFSTR_OLECLIPBOARDPERSISTONFLUSH)},
+                {ClipboardFormatType::IsShowingText, (CLIPFORMAT)RegisterClipboardFormat(L"IsShowingText")},
+                {ClipboardFormatType::DropDescription, (CLIPFORMAT)RegisterClipboardFormat(L"DropDescription")},
+            };
+            return assocMap;
+        }
+    );
+
+    auto found = clipboardTypes.find(type);
+
+    if (found == clipboardTypes.end()) {
+        Util::TryDebugBreak();
+        return CLIPFORMAT();
+    }
+    else
+        return found->second;
+}
+
+std::optional<ClipboardFormatHandler::ClipboardFormatType> ClipboardFormatHandler::GetTypeFromCF(CLIPFORMAT cf)
+{
+    const auto& clipboardTypes = GCache.GetFromCache("CFH_RegCFSTR"sv, []() {
+            std::vector<std::pair<CLIPFORMAT, ClipboardFormatType>> assocVec;
+
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_SHELLIDLIST), ClipboardFormatType::ShellIDList);
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILECONTENTS), ClipboardFormatType::FileContents);
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILEDESCRIPTORA), ClipboardFormatType::FileGroupDescriptor);
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILEDESCRIPTORW), ClipboardFormatType::FileGroupDescriptor);
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILENAMEA), ClipboardFormatType::FileName);
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_FILENAMEW), ClipboardFormatType::FileName);
+
+            // not used by ClipboardFormatHandler itself, but by other components
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_PREFERREDDROPEFFECT), ClipboardFormatType::PreferredDropEffect);
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_OLECLIPBOARDPERSISTONFLUSH), ClipboardFormatType::OleClipboardPersistOnFlush);
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(L"IsShowingText"), ClipboardFormatType::IsShowingText);
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(L"DropDescription"), ClipboardFormatType::DropDescription);
+
+            std::ranges::sort(assocVec, {}, [](const auto& el) {return el.first; });
+
+            return assocVec;
+        }
+    );
+
+
+    auto found = std::ranges::lower_bound(clipboardTypes, cf, {}, [](const auto& el) {return el.first; });
+
+    if (found == clipboardTypes.end() || found->first != cf)
+        return {};
+    else
+        return found->second;
 }

@@ -108,7 +108,7 @@ static std::unordered_map<GUID, LookupInfoT> guidLookupTable{
 	LookupFromType<IActivationFilter>(DebugInterestLevel::NotInterested),
 	LookupFromType<IMalloc>(DebugInterestLevel::NotInterested),
 	LookupFromType<IStdMarshalInfo>(DebugInterestLevel::NotInterested),
-	LookupFromType<IExternalConnection>(),
+	LookupFromType<IExternalConnection>(DebugInterestLevel::NotInterested),
 	LookupFromType<IMultiQI>(),
 	LookupFromType<AsyncIMultiQI>(),
 	LookupFromType<IInternalUnknown>(),
@@ -136,7 +136,7 @@ static std::unordered_map<GUID, LookupInfoT> guidLookupTable{
 	LookupFromType<ISynchronizeMutex>(),
 	LookupFromType<ICancelMethodCalls>(),
 	LookupFromType<IAsyncManager>(),
-	LookupFromType<ICallFactory>(),
+	LookupFromType<ICallFactory>(DebugInterestLevel::NotInterested),
 	LookupFromType<IRpcHelper>(),
 	LookupFromType<IReleaseMarshalBuffers>(),
 	LookupFromType<IWaitMultiple>(),
@@ -488,7 +488,7 @@ static std::unordered_map<GUID, LookupInfoT> guidLookupTable{
 	LookupFromType<IConnectionPoint>(),
 	LookupFromType<IEnumConnectionPoints>(),
 	LookupFromType<IConnectionPointContainer>(),
-	LookupFromType<IProvideClassInfo>(),
+	LookupFromType<IProvideClassInfo>(DebugInterestLevel::NotInterested),
 	LookupFromType<IOleControl>(),
 	LookupFromType<IOleControlSite>(),
 	LookupFromType<IPropertyPage>(),
@@ -582,7 +582,7 @@ static std::unordered_map<GUID, LookupInfoT> guidLookupTable{
 	LookupFromText("IID_IPropertyStoreFactory", L"{BC110B6D-57E8-4148-A9C6-91015AB2F3A5}"),
 	LookupFromText("IID_IPropertyStore", L"{886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99}"), // https://www.pinvoke.net/default.aspx/Interfaces/IPropertyStore.html
 
-	LookupFromType<IInspectable>(),
+	LookupFromType<IInspectable>(DebugInterestLevel::NotInterested),
 	LookupFromType<IQueryAssociations>(),
 
 #pragma pop_macro("DEFINE_GUID")

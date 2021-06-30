@@ -57,12 +57,6 @@ public:
     HRESULT STDMETHODCALLTYPE EndOperation(
         HRESULT hResult, IBindCtx* pbcReserved, DWORD dwEffects);
 
-    static CLIPFORMAT s_preferredDropEffect;
-    static CLIPFORMAT s_fileDescriptor;
-    static CLIPFORMAT s_fileContents;
-    static CLIPFORMAT s_shellIdList;
-    static CLIPFORMAT s_oleClipboardPersistOnFlush;
-
 private:
  
     //void initLists(void);

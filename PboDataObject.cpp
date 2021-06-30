@@ -11,16 +11,13 @@
 #define FD_PROGRESSUI 0x00004000
 #endif
 #include "DebugLogger.hpp"
-
-#ifndef CFSTR_OLECLIPBOARDPERSISTONFLUSH
-#define CFSTR_OLECLIPBOARDPERSISTONFLUSH TEXT("OleClipboardPersistOnFlush")
-#endif
 #include "Util.hpp"
 
 #ifndef __MINGW64_VERSION_MAJOR
 const GUID IID_IAsyncOperation =
 { 0x3D8B0590,0xF691,0x11D2,{0x8E,0xA9,0x00,0x60,0x97,0xDF,0x5B,0xD4} };
 #endif
+#include "ClipboardFormatHandler.cpp"
 
 
 HRESULT QLoadFromStream(IStream* pStm, LPITEMIDLIST* pidl)
@@ -369,7 +366,6 @@ HRESULT PboDataObject::QueryInterface(REFIID riid, void** ppvObject)
     //else if (IsEqualIID(riid, (GUID{ 0x4C1E39E1, 0xE3E3, 0x4296, 0xAA, 0x86, 0xEC, 0x93, 0x8D, 0x89, 0x6E, 0x92 }))) { DebugLogger_OnQueryInterfaceExitUnhandled(riid); *ppvObject = nullptr; return(E_NOINTERFACE); }
     //else if (IsEqualIID(riid, (GUID{ 0x1C733A30, 0x2A1C, 0x11CE, 0xAD, 0xE5, 0x00, 0xAA, 0x00, 0x44, 0x77, 0x3D }))) { DebugLogger_OnQueryInterfaceExitUnhandled(riid); *ppvObject = nullptr; return(E_NOINTERFACE); }
 
-
     else if (DebugLogger::IsIIDUninteresting(riid)) {
         *ppvObject = nullptr;
         return(E_NOINTERFACE);
@@ -403,7 +399,9 @@ HRESULT PboDataObject::GetData(
     DebugLogger::TraceLog(std::format("formatName {}, format {}", Util::utf8_encode(buffer), pformatetc->cfFormat), std::source_location::current(), __FUNCTION__);
 
 
-    if (pformatetc->cfFormat == s_preferredDropEffect)
+    auto type = ClipboardFormatHandler::GetTypeFromCF(pformatetc->cfFormat);
+
+    if (type == ClipboardFormatHandler::ClipboardFormatType::PreferredDropEffect)
     {
         HGLOBAL hMem = GlobalAlloc(
             GMEM_MOVEABLE | GMEM_SHARE | GMEM_DISCARDABLE, sizeof(DWORD));
@@ -420,7 +418,7 @@ HRESULT PboDataObject::GetData(
         return(S_OK);
     }
 
-    if (pformatetc->cfFormat == s_fileDescriptor)
+    if (type == ClipboardFormatHandler::ClipboardFormatType::FileGroupDescriptor)
     {
         if (!(pformatetc->tymed & TYMED_HGLOBAL)) return(DV_E_TYMED);
 
@@ -500,7 +498,7 @@ HRESULT PboDataObject::GetData(
         return(S_OK);
     }
 
-    if (pformatetc->cfFormat == s_fileContents)
+    if (type == ClipboardFormatHandler::ClipboardFormatType::FileContents)
     {
         if (!(pformatetc->tymed & TYMED_ISTREAM)) return(DV_E_TYMED);
 
@@ -537,7 +535,7 @@ HRESULT PboDataObject::GetData(
         return(S_OK);
     }
 
-    if (pformatetc->cfFormat == s_shellIdList)
+    if (type == ClipboardFormatHandler::ClipboardFormatType::ShellIDList)
     {
         if (!(pformatetc->tymed & TYMED_HGLOBAL)) return(DV_E_TYMED);
 
@@ -580,7 +578,7 @@ HRESULT PboDataObject::GetData(
         return(S_OK);
     }
 
-    if (pformatetc->cfFormat == s_oleClipboardPersistOnFlush)
+    if (type == ClipboardFormatHandler::ClipboardFormatType::OleClipboardPersistOnFlush)
     {
         if (!(pformatetc->tymed & TYMED_HGLOBAL)) return(DV_E_TYMED);
 
@@ -600,7 +598,7 @@ HRESULT PboDataObject::GetData(
         return(S_OK);
     }
 
-    if (pformatetc->cfFormat == 0xc2b4 && pformatetc->tymed & TYMED_HGLOBAL) { // L"IsShowingText"
+    if (type == ClipboardFormatHandler::ClipboardFormatType::IsShowingText && pformatetc->tymed & TYMED_HGLOBAL) {
 
         pmedium->tymed = TYMED_HGLOBAL;
         pmedium->hGlobal = GlobalAlloc(GMEM_MOVEABLE | GMEM_SHARE | GMEM_DISCARDABLE | GMEM_ZEROINIT, sizeof(DWORD));
@@ -612,7 +610,7 @@ HRESULT PboDataObject::GetData(
         return S_OK;
     }
 
-    if (pformatetc->cfFormat == 0xc116 && pformatetc->tymed & TYMED_HGLOBAL) { //  L"DropDescription"
+    if (type == ClipboardFormatHandler::ClipboardFormatType::DropDescription && pformatetc->tymed & TYMED_HGLOBAL) {
 
         pmedium->tymed = TYMED_HGLOBAL;
         pmedium->hGlobal = GlobalAlloc(GMEM_MOVEABLE | GMEM_SHARE | GMEM_DISCARDABLE | GMEM_ZEROINIT, sizeof(DROPDESCRIPTION));
@@ -646,6 +644,8 @@ HRESULT PboDataObject::GetData(
         return S_OK;
     }
 
+
+    //#TODO we want to support HDROP, but add it as last in PboDataObject::EnumFormatEtc
     //if (pformatetc->cfFormat == CF_HDROP ) { // && pformatetc->tymed & TYMED_HGLOBAL
     //
     //    pmedium->tymed = TYMED_HGLOBAL;
@@ -668,27 +668,19 @@ HRESULT PboDataObject::GetData(
     //    return S_OK;
     //}
 
-    
-    /*
-    
-    GetData 0x000000000bcabad0 L"AsyncFlag"
-unknown 0x000000000bcabad0 L"AsyncFlag" 0xc118
-GetData 0x000000000bcabad0 L"FileGroupDescriptorW"
-GetData 0x000000000bcabbe0 L"Shell Object Offsets"
-unknown 0x000000000bcabbe0 L"Shell Object Offsets" 0xc0ff
-
-    */
-
+ 
     //#TODO not a trace, this is a warn
     DebugLogger::TraceLog(std::format("formatName {}, format {}, UNHANDLED", Util::utf8_encode(buffer), pformatetc->cfFormat), std::source_location::current(), __FUNCTION__);
 
 
     return(DV_E_FORMATETC);
 }
+
 HRESULT PboDataObject::GetDataHere(FORMATETC*, STGMEDIUM*)
 {
     return(E_NOTIMPL);
 }
+
 HRESULT PboDataObject::QueryGetData(FORMATETC* pformatetc)
 {
     if (pformatetc->cfFormat == s_preferredDropEffect
@@ -709,10 +701,12 @@ HRESULT PboDataObject::QueryGetData(FORMATETC* pformatetc)
 
     return DV_E_FORMATETC;
 }
+
 HRESULT PboDataObject::GetCanonicalFormatEtc(FORMATETC*, FORMATETC*)
 {
     return(E_NOTIMPL);
 }
+
 HRESULT PboDataObject::SetData(FORMATETC* tf , STGMEDIUM* med , BOOL b)
 {
     // https://docs.microsoft.com/en-us/windows/win32/shell/clipboard#cfstr_preferreddropeffect
@@ -762,6 +756,10 @@ HRESULT FormatEnumerator::QueryInterface(REFIID riid, void** ppvObject)
         AddRef();
         return S_OK;
     }
+    else RIID_IGNORED(IID_IExternalConnection);
+    else RIID_IGNORED(IID_IProvideClassInfo);
+    //else RIID_IGNORED(IID_IInspectable);
+    else RIID_IGNORED(IID_ICallFactory);
     else
     {
         DebugLogger_OnQueryInterfaceExitUnhandled(riid);
@@ -833,10 +831,10 @@ HRESULT PboDataObject::EnumFormatEtc(
 
     auto newEnumerator = ComRef<FormatEnumerator>::CreateForReturn<IEnumFORMATETC>(ppenumFormatEtc);
 
-    newEnumerator->formats.emplace_back(FormatEnumerator::Format{ PboDataObject::s_fileDescriptor , TYMED_HGLOBAL });
-    newEnumerator->formats.emplace_back(FormatEnumerator::Format{ PboDataObject::s_fileContents , TYMED_ISTREAM });
-    newEnumerator->formats.emplace_back(FormatEnumerator::Format{ PboDataObject::s_preferredDropEffect , TYMED_HGLOBAL });
-    newEnumerator->formats.emplace_back(FormatEnumerator::Format{ PboDataObject::s_oleClipboardPersistOnFlush , TYMED_HGLOBAL });
+    newEnumerator->formats.emplace_back(FormatEnumerator::Format{ ClipboardFormatHandler::GetCFFromType(ClipboardFormatHandler::ClipboardFormatType::FileGroupDescriptor) , TYMED_HGLOBAL });
+    newEnumerator->formats.emplace_back(FormatEnumerator::Format{ ClipboardFormatHandler::GetCFFromType(ClipboardFormatHandler::ClipboardFormatType::FileContents) , TYMED_ISTREAM });
+    newEnumerator->formats.emplace_back(FormatEnumerator::Format{ ClipboardFormatHandler::GetCFFromType(ClipboardFormatHandler::ClipboardFormatType::PreferredDropEffect) , TYMED_HGLOBAL });
+    newEnumerator->formats.emplace_back(FormatEnumerator::Format{ ClipboardFormatHandler::GetCFFromType(ClipboardFormatHandler::ClipboardFormatType::OleClipboardPersistOnFlush), TYMED_HGLOBAL });
     
     return(S_OK);
 }
@@ -969,15 +967,3 @@ HRESULT PboDataObject::EndOperation(HRESULT, IBindCtx*, DWORD)
 
     return(S_OK);
 }
-
-
-CLIPFORMAT PboDataObject::s_preferredDropEffect = (CLIPFORMAT)
-RegisterClipboardFormat(CFSTR_PREFERREDDROPEFFECT);
-CLIPFORMAT PboDataObject::s_fileDescriptor = (CLIPFORMAT)
-RegisterClipboardFormat(CFSTR_FILEDESCRIPTOR);
-CLIPFORMAT PboDataObject::s_fileContents = (CLIPFORMAT)
-RegisterClipboardFormat(CFSTR_FILECONTENTS);
-CLIPFORMAT PboDataObject::s_shellIdList = (CLIPFORMAT)
-RegisterClipboardFormat(CFSTR_SHELLIDLIST);
-CLIPFORMAT PboDataObject::s_oleClipboardPersistOnFlush = (CLIPFORMAT)
-RegisterClipboardFormat(CFSTR_OLECLIPBOARDPERSISTONFLUSH);

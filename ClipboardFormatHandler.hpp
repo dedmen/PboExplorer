@@ -23,7 +23,11 @@ public:
 		FileContents,
 		HDROP,
 		FileGroupDescriptor,
-		N // always last
+		_LastSupportedItem = FileGroupDescriptor, // always last supported type in ClipboardFormatHandler
+		PreferredDropEffect,
+		OleClipboardPersistOnFlush,
+		IsShowingText,
+		DropDescription
 	};
 
 	struct FilePathResult {
@@ -51,6 +55,11 @@ public:
 	// Retrieves disk paths to all files in clipboard, such that they can be read/copied from disk
 	std::vector<FilePathResult> GetFilePathsToRead(IDataObject* dataObject) const;
 	std::vector<CoTaskMemRefS<ITEMIDLIST>> GetPidlsToRead(IDataObject* dataObject) const;
+
+	static CLIPFORMAT GetCFFromType(ClipboardFormatType type);
+	static std::optional<ClipboardFormatType> GetTypeFromCF(CLIPFORMAT cf);
+
+
 
 private:
 

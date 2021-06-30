@@ -23,7 +23,7 @@
 #include "Util.hpp"
 
 #include "DebugLogger.hpp"
-#include "ClipboardFormatHandler.h"
+#include "ClipboardFormatHandler.hpp"
 
 #include "ProgressDialogOperation.hpp"
 
@@ -435,38 +435,13 @@ HRESULT PboFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIST 
 {
     CHECK_INIT();
 
-    //LPITEMIDLIST pidl1d = ILClone(pidl1);
-    ////ILRemoveLastID(pidl1d);
-    //const PboPidl* qp1 = (const PboPidl*)pidl1d;
-    ////Dir* dir1 = childDir(m_dir, qp1);
-    //CoTaskMemFree(pidl1d);
-    ////if (!dir1)
-    ////    return(MAKE_HRESULT(0, 0, 0));
-    ////
-    //LPITEMIDLIST pidl2d = ILClone(pidl2);
-    //ILRemoveLastID(pidl2d);
-    //const PboPidl* qp2 = (const PboPidl*)pidl2d;
-    ////Dir* dir2 = childDir(m_dir, qp2);
-    //CoTaskMemFree(pidl2d);
-    ////if (!dir2)
-    ////{
-    ////    dirMutex.lock();
-    ////    dir1->countDown();
-    ////    dirMutex.unlock();
-    ////    return(MAKE_HRESULT(0, 0, 0));
-    ////}
-    
     auto qp1 = (const PboPidl*)ILFindLastID(pidl1);
     auto qp2 = (const PboPidl*)ILFindLastID(pidl2);
-    //#TODO validate that both are PboPidls
-    short res;
-    //int type1 = qp1->type;
-    //int idx1 = qp1->idx;
-    //int type2 = qp2->type;
-    //int idx2 = qp2->idx;
-    //#TODO sorted by column! Name, Size, Date
 
-    res = -1;
+    if (!qp1->IsValidPidl() || !qp2->IsValidPidl())
+        return MAKE_HRESULT(0, 0, (unsigned short)-1);
+
+    short res = -1;
 	
     switch (lParam & 0xff)
     {
@@ -479,7 +454,6 @@ HRESULT PboFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIST 
             break;
         }
  
-    
         res = qp1->GetFilePath().filename() < qp2->GetFilePath().filename() ? -1 : 1;
         break;
     }
@@ -1525,7 +1499,7 @@ HRESULT PboFolder::DragOver(DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
 
 HRESULT PboFolder::DragLeave(void)
 {
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 
