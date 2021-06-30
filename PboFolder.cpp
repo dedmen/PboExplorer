@@ -6,7 +6,6 @@
 
 #include <propkey.h>
 
-#include "ClassFactory.hpp"
 #include <functional>
 #include <mutex>
 #include <ranges>
@@ -26,6 +25,7 @@
 #include "ClipboardFormatHandler.hpp"
 
 #include "ProgressDialogOperation.hpp"
+#include "guid.hpp"
 
 
 
@@ -367,7 +367,7 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
         //Dir* dir = childDir(m_dir, (const PboPidl*)pidl);
         //if (!dir) return(E_FAIL);
         
-        auto qf = new PboFolder();
+        auto qf = ComRef<PboFolder>::Create();
         qf->pboFile = std::make_shared<PboSubFolderActiveRef>(pboFile->GetFolderByPath(subPidl->GetFilePath()));
 
         if (!qf)
@@ -898,7 +898,7 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
     else if (IsEqualIID(riid, IID_IQueryInfo))
     {
         //https://docs.microsoft.com/en-us/windows/win32/api/shlobj_core/nf-shlobj_core-iqueryinfo-getinfotip
-
+        //#TODO
         return E_NOINTERFACE;
     }
 
@@ -1084,7 +1084,7 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
 	
     const PboPidl* qp = (const PboPidl*)pidl;
 
-    DebugLogger::TraceLog(std::format("file {}", qp->GetFilePath().string()), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format(L"file {}", qp->GetFilePath().wstring()), std::source_location::current(), __FUNCTION__);
     
     if (pscid->fmtid == PKEY_ItemNameDisplay.fmtid &&
         pscid->pid == PKEY_ItemNameDisplay.pid)
@@ -1352,7 +1352,7 @@ HRESULT PboFolder::InitializeEx(IBindCtx* pbc, LPCITEMIDLIST pidlRoot, const PER
     if (ppfti)
     {
         auto subPidl = ppfti->pidlTargetFolder;
-
+    
         auto qp = (const PboPidl*)ILFindLastID(m_pidl);
         int count = 0;
         while (subPidl = ILGetNext(subPidl)) {
@@ -1361,7 +1361,7 @@ HRESULT PboFolder::InitializeEx(IBindCtx* pbc, LPCITEMIDLIST pidlRoot, const PER
             if (PboPidl::IsValidPidl(&subPidl->mkid.cb))
                 __debugbreak();
             count++;
-
+    
         }
     }
 	
@@ -1987,7 +1987,7 @@ bool PboFolder::checkInit()
         if (PboPidl::IsValidPidl(&subPidl->mkid))
             __debugbreak();
         count++;
-
+    
     }
 
 

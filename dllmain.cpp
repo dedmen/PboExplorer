@@ -61,10 +61,7 @@ STDAPI DllCanUnloadNow(VOID)
 /*---------------------------------------------------------------*/
 STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppReturn)
 {
-	//while (!IsDebuggerPresent())
-	//	Sleep(10);
-
-	//__debugbreak();
+	//Util::WaitForDebuggerPrompt();
 
 	*ppReturn = nullptr;
 
@@ -75,7 +72,8 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppReturn)
 
 	if (IsEqualIID(riid, IID_IShellFolder2) || IsEqualIID(riid, IID_IShellFolder))
 	{
-		*ppReturn = static_cast<IShellFolder2*>(new PboFolder());
+		Util::TryDebugBreak(); // should be done via ClassFactory
+		//*ppReturn = static_cast<IShellFolder2*>(new PboFolder());
 	}
 		
 
