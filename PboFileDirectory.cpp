@@ -156,6 +156,8 @@ void PboFile::ReadFrom(std::filesystem::path inputPath)
     std::vector<std::filesystem::path> segments;
     for (auto& it : reader.getFiles())
     {
+        if (it.name.starts_with("$DU")) // ignore dummy spacer files
+            continue;
         std::filesystem::path filePath(Util::utf8_decode(it.name));
         segments.clear();
 
@@ -215,6 +217,8 @@ void PboFile::ReloadFrom(std::filesystem::path inputPath)
 
     for (auto& it : reader.getFiles())
     {
+        if (it.name.starts_with("$DU")) // ignore dummy spacer files
+            continue;
         existingFiles.emplace(Util::utf8_decode(it.name));
 
         std::filesystem::path filePath(Util::utf8_decode(it.name));
