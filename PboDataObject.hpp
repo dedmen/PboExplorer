@@ -1,21 +1,25 @@
 #pragma once
 #define NOMINMAX
-#include "ClassFactory.hpp"
+#include <shlobj.h>
 #include "ComRef.hpp"
+#include <memory>
+#include "PboFileDirectory.hpp"
+
+class PboFolder;
+class TempDiskFile;
 
 class PboDataObject :
 	GlobalRefCounted,
 	public RefCountedCOM<PboDataObject,
-			      IDataObject
+			      IDataObject,
+                  IPersist,
+                  IPersistStream
 	>
-    //#TODO IPersist, IPersistStream is needed for proper clipboard
-    //,public IPersistStream
     //,public IAsyncOperation
 {
 public:
     PboDataObject(void);
     PboDataObject(std::shared_ptr<PboSubFolder> rootfolder, PboFolder* mainFolder, LPCITEMIDLIST pidl, UINT cidl, LPCITEMIDLIST* apidl);
-    PboDataObject(std::shared_ptr<PboSubFolder> rootfolder, PboFolder* mainFolder, LPCITEMIDLIST pidl, const wchar_t* offset);
     ~PboDataObject() override;
 
 
@@ -44,10 +48,10 @@ public:
     HRESULT STDMETHODCALLTYPE GetClassID(CLSID* pClassID);
 
     // IPersistStream
-    //HRESULT STDMETHODCALLTYPE IsDirty(void);
-    //HRESULT STDMETHODCALLTYPE Load(IStream* pStm);
-    //HRESULT STDMETHODCALLTYPE Save(IStream* pStm, BOOL fClearDirty);
-    //HRESULT STDMETHODCALLTYPE GetSizeMax(ULARGE_INTEGER* pcbSize);
+    HRESULT STDMETHODCALLTYPE IsDirty(void);
+    HRESULT STDMETHODCALLTYPE Load(IStream* pStm);
+    HRESULT STDMETHODCALLTYPE Save(IStream* pStm, BOOL fClearDirty);
+    HRESULT STDMETHODCALLTYPE GetSizeMax(ULARGE_INTEGER* pcbSize);
 
     // IAsyncOperation
     HRESULT STDMETHODCALLTYPE SetAsyncMode(BOOL fDoOpAsync);
@@ -64,14 +68,17 @@ private:
 
 
     std::shared_ptr<PboSubFolder> rootFolder;
-    ComRef<PboFolder> pboFolder;
+    std::shared_ptr<IPboFolder> pboFile;
 
     BOOL m_asyncMode;
     BOOL m_inAsyncOperation;
     CoTaskMemRefS<ITEMIDLIST> m_pidlRoot;
-    UINT m_cidl;
     std::vector<CoTaskMemRefS<ITEMIDLIST>> m_apidl;
     bool m_listsInit;
     bool m_postQuit;
-    wchar_t* m_offset;
+
+    uint8_t currentDropMode = 0; // DROPEFFECT_NONE
+
+    // in case someone specifically requests hdrop
+    std::shared_ptr<TempDiskFile> hdrop_tempfile;
 };

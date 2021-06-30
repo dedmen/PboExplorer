@@ -25,9 +25,11 @@ public:
 		FileGroupDescriptor,
 		_LastSupportedItem = FileGroupDescriptor, // always last supported type in ClipboardFormatHandler
 		PreferredDropEffect,
+		PerformedDropEffect,
 		OleClipboardPersistOnFlush,
 		IsShowingText,
-		DropDescription
+		DropDescription,
+		PasteSucceeded
 	};
 
 	struct FilePathResult {
@@ -39,6 +41,7 @@ public:
 
 
 	void ReadFromFast(IDataObject* dataObject);
+	void LogFormats(IDataObject* dataObject);
 
 
 	bool CanReadAsFile() const {

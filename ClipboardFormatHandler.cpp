@@ -1,6 +1,7 @@
 #include "ClipboardFormatHandler.hpp"
 
 #include <Shlwapi.h>
+#include <shlobj.h>
 #include <format>
 #include "DebugLogger.hpp"
 #include "Util.hpp"
@@ -21,6 +22,7 @@ void ClipboardFormatHandler::ReadFromFast(IDataObject* dataObject)
 {
     supportedFormats.resize((int)ClipboardFormatType::_LastSupportedItem+1);
 
+    //#TODO use ComRef
     IEnumFORMATETC* result = nullptr;
     if (dataObject->EnumFormatEtc(DATADIR_GET, &result) == S_OK) {
 
@@ -80,6 +82,28 @@ void ClipboardFormatHandler::ReadFromFast(IDataObject* dataObject)
     }
 
 }
+
+void ClipboardFormatHandler::LogFormats(IDataObject* dataObject)
+{
+    //#TODO use ComRef
+    IEnumFORMATETC* result = nullptr;
+    if (dataObject->EnumFormatEtc(DATADIR_GET, &result) == S_OK) {
+
+        FORMATETC format{};
+
+        ULONG fetched = 0;
+        while (result->Next(1, &format, &fetched) == S_OK && fetched) {
+            wchar_t buffer[128];
+            GetClipboardFormatNameW(format.cfFormat, buffer, 127);
+
+            DebugLogger::TraceLog(std::format("formatName {}, format {}, tymed {}", Util::utf8_encode(buffer), format.cfFormat, TymedSeperator.SeperateToString((tagTYMED)format.tymed)), std::source_location::current(), __FUNCTION__);
+        }
+
+        result->Release();
+    }
+
+}
+
 
 std::vector<ClipboardFormatHandler::FilePathResult> ClipboardFormatHandler::GetFilePathsToRead(IDataObject* dataObject) const
 {
@@ -227,6 +251,8 @@ CLIPFORMAT ClipboardFormatHandler::GetCFFromType(ClipboardFormatType type)
                 {ClipboardFormatType::OleClipboardPersistOnFlush, (CLIPFORMAT)RegisterClipboardFormat(CFSTR_OLECLIPBOARDPERSISTONFLUSH)},
                 {ClipboardFormatType::IsShowingText, (CLIPFORMAT)RegisterClipboardFormat(L"IsShowingText")},
                 {ClipboardFormatType::DropDescription, (CLIPFORMAT)RegisterClipboardFormat(L"DropDescription")},
+                {ClipboardFormatType::PasteSucceeded, (CLIPFORMAT)RegisterClipboardFormat(CFSTR_PASTESUCCEEDED)},
+                {ClipboardFormatType::PerformedDropEffect, (CLIPFORMAT)RegisterClipboardFormat(CFSTR_PERFORMEDDROPEFFECT)},
             };
             return assocMap;
         }
@@ -259,6 +285,8 @@ std::optional<ClipboardFormatHandler::ClipboardFormatType> ClipboardFormatHandle
             assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_OLECLIPBOARDPERSISTONFLUSH), ClipboardFormatType::OleClipboardPersistOnFlush);
             assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(L"IsShowingText"), ClipboardFormatType::IsShowingText);
             assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(L"DropDescription"), ClipboardFormatType::DropDescription);
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_PASTESUCCEEDED), ClipboardFormatType::PasteSucceeded);
+            assocVec.emplace_back((CLIPFORMAT)RegisterClipboardFormat(CFSTR_PERFORMEDDROPEFFECT), ClipboardFormatType::PerformedDropEffect);
 
             std::ranges::sort(assocVec, {}, [](const auto& el) {return el.first; });
 

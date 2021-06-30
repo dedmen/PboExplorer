@@ -5,6 +5,7 @@
 
 #include "ComRef.hpp"
 #include "PboFolder.hpp"
+#include "PboDataObject.hpp"
 #include "ShellExt.hpp"
 
 #include "DebugLogger.hpp"
@@ -66,17 +67,23 @@ public:
 			return S_OK;
 		}
 		
-		
+		// DataObject loaded from IPersistStream
+		if (IsEqualIID(riid, IID_IDataObject))
+		{
+			ComRef<PboDataObject>::CreateForReturn<IDataObject>(ppvObject);
+			return S_OK;
+		}
 
 		if (!IsEqualIID(riid, IID_IUnknown) && !IsEqualIID(riid, IID_IContextMenu) && !IsEqualIID(riid, IID_IShellPropSheetExt))
 			__debugbreak();
 
+		
 
 
 
 		
 		// creates the namespace's main class
-		ComRef<ShellExt> pShellExt = new ShellExt();
+		auto pShellExt = ComRef<ShellExt>::Create();
 		if (!pShellExt)
 			return E_OUTOFMEMORY;
 

@@ -3,7 +3,6 @@
 
 #include <shlwapi.h>
 
-#include "ClassFactory.hpp"
 #include "FileWatcher.hpp"
 #include "PboFolder.hpp"
 #include "PboPidl.hpp"
@@ -272,6 +271,10 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
             Util::TryDebugBreak(); // rename, refresh, paste, explore, find? properties.
         //#TODO "delete"
 
+        // paste ftpcm.cpp _InvokePaste
+
+
+
     }
     else cmd = LOWORD(pici->lpVerb);
 
@@ -294,11 +297,21 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
             IID_IDataObject, nullptr, dataObject.AsQueryInterfaceTarget<>());
         if (FAILED(hr)) return(hr);
 
+        //SHShellFolderView_Message(hwnd, SFVM_SETPOINTS, (LPARAM)(dataObject));
         hr = OleSetClipboard(dataObject);
-        if (SUCCEEDED(hr))
-            hr = OleFlushClipboard();
+        //SHShellFolderView_Message(hwnd, SFVM_SETCLIPBOARD, (LPARAM)(DWORD)(-3));
 
-        return(hr);
+
+        //IDataObject* x;
+        //OleGetClipboard(&x);
+
+        //if (SUCCEEDED(hr))
+        //    hr = OleFlushClipboard();
+
+
+
+
+        return hr;
     }
 
 
