@@ -5,6 +5,7 @@
 #include <functional>
 #include <unordered_set>
 
+#include <windows.h>
 
 const std::filesystem::path& PboSubFolder::GetPboDiskPath() const
 {

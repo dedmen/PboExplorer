@@ -2,7 +2,6 @@
 
 #include <Shlwapi.h>
 
-#include "ClassFactory.hpp"
 #include "PboPatcher.hpp"
 #include "Util.hpp"
 #include "lib/ArmaPboLib/src/pbo.hpp"
@@ -85,12 +84,12 @@ HRESULT PboFileStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
         //dirMutex.unlock();
     }
 
-    if (!didRead && !m_pos) return(E_FAIL);
+    if (!didRead && !m_pos) return E_FAIL;
 
     m_pos += didRead;
     *pcbRead = didRead;
 
-    return(cb == didRead ? S_OK : S_FALSE);
+    return cb == didRead ? S_OK : S_FALSE;
 }
 
 //#TODO const void*
@@ -113,7 +112,8 @@ HRESULT PboFileStream::Write(void const* pv, ULONG cb, ULONG* pcbWritten)
     if (!didWrite && !m_pos) return(E_FAIL);
 
     m_pos += didWrite;
-    *pcbWritten = didWrite;
+    if (pcbWritten)
+        *pcbWritten = didWrite;
 
     return(cb == didWrite ? S_OK : S_FALSE);
 }
@@ -140,17 +140,38 @@ HRESULT PboFileStream::Seek(
 }
 HRESULT PboFileStream::SetSize(ULARGE_INTEGER newSize)
 {
-   
-
-
-
-
     return(E_NOTIMPL);
 }
-HRESULT PboFileStream::CopyTo(IStream*, ULARGE_INTEGER, ULARGE_INTEGER*, ULARGE_INTEGER*)
+
+HRESULT PboFileStream::CopyTo(IStream* dstStream, ULARGE_INTEGER bytesToCopy, ULARGE_INTEGER* nBytesRead, ULARGE_INTEGER* nBytesWritten)
 {
-    return(E_NOTIMPL);
+
+    size_t sizeLeft = bytesToCopy.QuadPart;
+
+    std::array<char, 4096> buf;
+    HRESULT res;
+    ULONG bytesRead;
+    ULONG bytesWritten;
+    do {
+        if (FAILED(res = Read(buf.data(), std::min(buf.size(), sizeLeft), &bytesRead)))
+            return res;
+        if (nBytesRead)
+            nBytesRead->QuadPart += bytesRead;
+
+        //if (std::min(buf.size(), sizeLeft) != bytesRead)
+        //    __debugbreak();
+
+        if (FAILED(res = dstStream->Write(buf.data(), bytesRead, &bytesWritten)))
+            return res;
+        if (nBytesWritten)
+            nBytesWritten->QuadPart += bytesWritten;
+
+        sizeLeft -= bytesRead;
+    } while (bytesRead > 0 && sizeLeft > 0);
+
+    return S_OK;
 }
+
 HRESULT PboFileStream::Commit(DWORD)
 {
     //https://docs.microsoft.com/en-us/windows/win32/api/wtypes/ne-wtypes-stgc

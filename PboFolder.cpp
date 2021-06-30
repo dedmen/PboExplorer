@@ -75,7 +75,7 @@ HRESULT PboFolder::QueryInterface(const IID& riid, void** ppvObject)
 
     else RIID_TODO(IID_IObjectWithFolderEnumMode);
     else RIID_TODO(IID_IExplorerPaneVisibility);
-    else RIID_TODO(IID_IFolderView);
+  else RIID_TODO(IID_IFolderView);
     else RIID_TODO(IID_IPersistIDList);
     else RIID_TODO(IID_IShellIcon); //#TODO performance improvement https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-ishellicon see remarks last line
     else RIID_TODO(IID_IShellIconOverlay); // not sure if I want this? Don't actually think so
@@ -99,9 +99,9 @@ HRESULT PboFolder::QueryInterface(const IID& riid, void** ppvObject)
 
     else
     {
-        DebugLogger_OnQueryInterfaceExitUnhandled(riid);
-        *ppvObject = nullptr;
-        return(E_NOINTERFACE);
+    DebugLogger_OnQueryInterfaceExitUnhandled(riid);
+    *ppvObject = nullptr;
+    return(E_NOINTERFACE);
     }
 
     AddRef();
@@ -109,7 +109,7 @@ HRESULT PboFolder::QueryInterface(const IID& riid, void** ppvObject)
 }
 
 HRESULT PboFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayName, ULONG* pchEaten, LPITEMIDLIST* ppidl,
-	ULONG* pdwAttributes)
+    ULONG* pdwAttributes)
 {
     CHECK_INIT();
 
@@ -125,7 +125,7 @@ HRESULT PboFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayName
     //#TODO if we didn't find the final file (might be a file inside a zip file INSIDE a pbo that we don't have access to) we need to set pchEaten to the end of the path we were able to resolve...
     // just get relative path between last pidlList entry and pszDisplayName, then scan from end? problem is stuff like /../ which can be anywhere in path
 
-   
+
     //auto totalSize = std::accumulate(pidlList.begin(), pidlList.end(), 0ul, [](uint32_t inp, const PboPidl& pidl) { return inp + pidl.cb; });
     auto totalSize = pidlList->cb;
 
@@ -160,10 +160,10 @@ HRESULT PboFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayName
     {
         if (pdwAttributes)
             GetAttributesOf(1, (LPCITEMIDLIST*)&qp, pdwAttributes);
-    
+
         eaten = (ULONG)wcslen(pszDisplayName); // #TODO do this properly
     }
-    
+
     if (pchEaten) *pchEaten = eaten;
     return(S_OK);
 }
@@ -175,7 +175,7 @@ HRESULT PboFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayName
 
 class QiewerEnumIDList :
     GlobalRefCounted,
-	public RefCountedCOM<QiewerEnumIDList, IEnumIDList>
+    public RefCountedCOM<QiewerEnumIDList, IEnumIDList>
 {
 public:
     QiewerEnumIDList(PboFolder& owner, std::shared_ptr<PboSubFolder>, DWORD flags);
@@ -201,10 +201,10 @@ private:
 };
 
 
-QiewerEnumIDList::QiewerEnumIDList(PboFolder& owner, std::shared_ptr<PboSubFolder> count1, DWORD flags): flags(flags), subFolder(std::move(count1)), owner(&owner)
+QiewerEnumIDList::QiewerEnumIDList(PboFolder& owner, std::shared_ptr<PboSubFolder> count1, DWORD flags) : flags(flags), subFolder(std::move(count1)), owner(&owner)
 {
     m_typePos = m_idxPos = 0;
-    
+
     owner.AddRef();
 }
 QiewerEnumIDList::~QiewerEnumIDList()
@@ -325,9 +325,9 @@ HRESULT PboFolder::EnumObjects(HWND hwnd, DWORD grfFlags, IEnumIDList** ppenumID
 {
     CHECK_INIT();
 
-	// we want to split folder and non-folder here
-    
-    
+    // we want to split folder and non-folder here
+
+
     //#TODO forward flags
     //int dirQty = pboFile->rootFolder
     ////int streamDirQty = m_dir->getArchiveQty();
@@ -337,8 +337,8 @@ HRESULT PboFolder::EnumObjects(HWND hwnd, DWORD grfFlags, IEnumIDList** ppenumID
     //    if (!(grfFlags & SHCONTF_FOLDERS)) dirQty = 0;
     //    if (!(grfFlags & SHCONTF_NONFOLDERS)) streamQty = 0;
     //}
-    *ppenumIDList = new QiewerEnumIDList(*this, pboFile->GetFolder(), grfFlags);
-    
+    * ppenumIDList = new QiewerEnumIDList(*this, pboFile->GetFolder(), grfFlags);
+
     return(S_OK);
 }
 
@@ -355,18 +355,18 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
         )
         return(E_NOINTERFACE);
 #endif
-	
+
     if (IsEqualIID(riid, IID_IShellFolder) ||
         IsEqualIID(riid, IID_IShellFolder2))
     {
         auto subPidl = (const PboPidl*)pidl;
 
-    	if (subPidl->IsFile()) // cannot enter file as if its a folder
+        if (subPidl->IsFile()) // cannot enter file as if its a folder
             return(E_FAIL);
-    	
+
         //Dir* dir = childDir(m_dir, (const PboPidl*)pidl);
         //if (!dir) return(E_FAIL);
-        
+
         auto qf = ComRef<PboFolder>::Create();
         qf->pboFile = std::make_shared<PboSubFolderActiveRef>(pboFile->GetFolderByPath(subPidl->GetFilePath()));
 
@@ -374,22 +374,22 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
         {
             return(E_OUTOFMEMORY);
         }
-        
+
         LPITEMIDLIST pidlAbs = ILCombine(m_pidl, pidl);
         qf->m_pidl = pidlAbs;
 
-    	
+
         auto hr = qf->QueryInterface(riid, ppv);
-        
+
         //qf->Release();
-        
+
         return(hr);
     }
     else if (IsEqualIID(riid, IID_IStream))
     {
 
         Util::WaitForDebuggerPrompt();
-        
+
         CoTaskMemRefS<ITEMIDLIST> pidld = ILClone(pidl);
         ILRemoveLastID(pidld);
         const PboPidl* qp = (const PboPidl*)pidld.GetRef();
@@ -397,9 +397,9 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
        // CoTaskMemFree(pidld);
         //if (!dir)
         //    return(E_FAIL);
-        
+
         //Stream* stream = NULL;
-        
+
         qp = (const PboPidl*)ILFindLastID(pidl);
 
         ComRef<PboFileStream>::CreateForReturn<IStream>(ppv, pboFile->GetRootFile(), qp->GetFilePath());
@@ -412,15 +412,15 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
         //else if (qp->type == 2)
         //    stream = dir->getStream(qp->idx);
         //dirMutex.unlock();
-        
+
         //dirMutex.lock();
         //dir->countDown();
         //dirMutex.unlock();
-        
-        
+
+
     }
     //#TODO ITransferMediumItem 
-   
+
     DebugLogger_OnQueryInterfaceExitUnhandled(riid);
 
     return(E_NOINTERFACE);
@@ -442,7 +442,7 @@ HRESULT PboFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIST 
         return MAKE_HRESULT(0, 0, (unsigned short)-1);
 
     short res = -1;
-	
+
     switch (lParam & 0xff)
     {
     default: // name
@@ -453,7 +453,7 @@ HRESULT PboFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIST 
             res = qp1->type < qp2->type ? -1 : 1;
             break;
         }
- 
+
         res = qp1->GetFilePath().filename() < qp2->GetFilePath().filename() ? -1 : 1;
         break;
     }
@@ -467,7 +467,7 @@ HRESULT PboFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIST 
             if (file)
                 size1 = file->get().dataSize;
         }
-        
+
         {
             auto file = pboFile->GetFileByPath(qp2->GetFilePath());
             if (file)
@@ -478,12 +478,12 @@ HRESULT PboFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIST 
     }
     break;
     }
-    
+
     //dirMutex.lock();
     //dir1->countDown();
     //dir2->countDown();
     //dirMutex.unlock();
-    
+
     return(MAKE_HRESULT(0, 0, (unsigned short)res));
     //return(E_NOTIMPL);
 }
@@ -538,17 +538,17 @@ HRESULT PboFolder::CreateViewObject(HWND hwnd, const IID& riid, void** ppv)
     }
 
     else RIID_TODO(IID_IExplorerCommandProvider);
-    else RIID_TODO(IID_ITransferDestination); // https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-itransferdestination
-    //#TODO we want the above ^, ITransferAdviseSink::ConfirmOverwrite, ITransferAdviseSink::UpdateProgress
-    // but we probably don't want to offer that here? We kinda only want to offer this if a drop action is running
+  else RIID_TODO(IID_ITransferDestination); // https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-itransferdestination
+  //#TODO we want the above ^, ITransferAdviseSink::ConfirmOverwrite, ITransferAdviseSink::UpdateProgress
+  // but we probably don't want to offer that here? We kinda only want to offer this if a drop action is running
      else RIID_TODO(IID_ITransferSource); // #TODO
-     else RIID_TODO(IID_IContextMenu); 
+     else RIID_TODO(IID_IContextMenu);
      // #TODO rightclick on empty space. This is needed for CTRL+V paste, we also want to implement the Refresh option properly 
      // https://github.com/cryptoAlgorithm/nt5src/blob/daad8a087a4e75422ec96b7911f1df4669989611/Source/XPSP1/NT/shell/shell32/defcm.cpp#L617
      // defview.cpp L 5424, it creates context menu, and then executes verb "paste". There are also the other verbs we might need to implement. Delete,Cut,Copy,Properties!!!
 
     //#TODO https://github.com/microsoft/Windows-classic-samples/blob/master/Samples/Win7Samples/winui/shell/shellextensibility/explorerdataprovider/ExplorerDataProvider.cpp#L606
-	
+
 
     DebugLogger_OnQueryInterfaceExitUnhandled(riid);
 
@@ -566,7 +566,7 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
     const PboPidl* qp = (const PboPidl*)apidl[0];
 
 
-    static constexpr Util::FlagSeperator<SFGAOF,31> seperator({
+    static constexpr Util::FlagSeperator<SFGAOF, 31> seperator({
         { SFGAO_CANCOPY, "SFGAO_CANCOPY"sv },
         { SFGAO_CANMOVE, "SFGAO_CANMOVE"sv },
         { SFGAO_CANLINK, "SFGAO_CANLINK"sv },
@@ -598,27 +598,27 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
         { SFGAO_HASSTORAGE, "SFGAO_HASSTORAGE"sv },
         { SFGAO_STREAM, "SFGAO_STREAM"sv },
         { SFGAO_STORAGEANCESTOR, "SFGAO_STORAGEANCESTOR"sv }
-    });
+        });
 
 
     DebugLogger::TraceLog(std::format("{}, wantedFlags {}", Util::utf8_encode(qp->GetFilePath().wstring()), seperator.SeperateToString(*rgfInOut)), std::source_location::current(), __FUNCTION__);
 
     //#TODO only return flags that were also requested initially. rgfInOut is pre-filled with the flags it wants to know about
-	switch (qp->type)
+    switch (qp->type)
     {
     case PboPidlFileType::Folder:
         *rgfInOut =
             SFGAO_BROWSABLE | SFGAO_HASSUBFOLDER | SFGAO_CANCOPY |
-            SFGAO_FOLDER | SFGAO_FILESYSANCESTOR | SFGAO_STORAGEANCESTOR 
+            SFGAO_FOLDER | SFGAO_FILESYSANCESTOR | SFGAO_STORAGEANCESTOR
             | SFGAO_DROPTARGET; // https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ishellfolder-getattributesof
         break;
-    
-    //case 1:
-    //    *rgfInOut &=
-    //        SFGAO_BROWSABLE | SFGAO_HASSUBFOLDER | SFGAO_CANCOPY |
-    //        SFGAO_FOLDER | SFGAO_FILESYSANCESTOR | SFGAO_STREAM;
-    //    break;
-    //
+
+        //case 1:
+        //    *rgfInOut &=
+        //        SFGAO_BROWSABLE | SFGAO_HASSUBFOLDER | SFGAO_CANCOPY |
+        //        SFGAO_FOLDER | SFGAO_FILESYSANCESTOR | SFGAO_STREAM;
+        //    break;
+        //
     case PboPidlFileType::File:
         *rgfInOut = SFGAO_CANCOPY | SFGAO_STREAM | SFGAO_CANRENAME | SFGAO_CANDELETE;
 
@@ -632,12 +632,12 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
 }
 
 HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl, const IID& riid, UINT* rgfReserved,
-	void** ppv)
+    void** ppv)
 {
     DebugLogger_OnQueryInterfaceEntry(riid);
     // https://github.com/microsoft/Windows-classic-samples/blob/master/Samples/Win7Samples/winui/shell/shellextensibility/explorerdataprovider/ExplorerDataProvider.cpp#L673
 
-	
+
     if (IsEqualIID(riid, IID_IContextMenu))
     {
 
@@ -666,7 +666,7 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
     {
         ComRef<IDefaultExtractIconInit> pdxi;
         auto hr = SHCreateDefaultExtractIcon(IID_PPV_ARGS(&pdxi));
-        
+
         if (SUCCEEDED(hr))
         {
             const PboPidl* qp = (const PboPidl*)apidl[0];
@@ -690,7 +690,7 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
                 const wchar_t* name = dest.c_str();
                 if (!name) return(E_FAIL);
 
-                const wchar_t*  point = wcsrchr(name, '.');
+                const wchar_t* point = wcsrchr(name, '.');
 
 
                 ASSOCIATIONELEMENT const rgAssocItem[] =
@@ -712,7 +712,7 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
 
             if (!SUCCEEDED(hr))
                 return hr;
-        	
+
             std::wstring_view iconPath(buffer);
 
             auto iconIDIndex = iconPath.find_last_of(',');
@@ -721,17 +721,17 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
 
             if (iconIDIndex != std::string::npos)
             {
-                auto substring = iconPath.substr(iconIDIndex+1);
+                auto substring = iconPath.substr(iconIDIndex + 1);
                 iconIndex = std::stoi(std::wstring(substring));
                 iconPath = iconPath.substr(0, iconIDIndex);
             }
 
             std::wstring iconPS(iconPath);
-     
+
             hr = pdxi->SetNormalIcon(iconPS.c_str(), iconIndex);
             hr = pdxi->SetDefaultIcon(iconPS.c_str(), iconIndex);
             hr = pdxi->SetOpenIcon(iconPS.c_str(), iconIndex);
-            
+
             if (SUCCEEDED(hr))
             {
                 hr = pdxi->QueryInterface(riid, ppv);
@@ -739,18 +739,18 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
         }
         return hr;
     }
-	
+
     else if (IsEqualIID(riid, IID_IQueryAssociations))
     {
-    // ??????!
-    // We can use SHAssocEnumHandlers interface to get the file association with specific file extension, ex .png
+        // ??????!
+        // We can use SHAssocEnumHandlers interface to get the file association with specific file extension, ex .png
 
-    //Then use IAssocHandlerand can retrieves the full pathand file name of the executable file associated with the file type(.png).ex: ['Paint':'C:\\Windows\\system32\\mspaint.exe', ...]
+        //Then use IAssocHandlerand can retrieves the full pathand file name of the executable file associated with the file type(.png).ex: ['Paint':'C:\\Windows\\system32\\mspaint.exe', ...]
 
 
 
         if (cidl != 1) return(E_INVALIDARG);
-    
+
         CHECK_INIT();
         IQueryAssociations* qa;
         const PboPidl* qp = (const PboPidl*)apidl[0];
@@ -771,14 +771,14 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
         }
         else
         {
-                auto dest = qp->GetFilePath().filename();
-            
-                const wchar_t* name = dest.c_str();
-                if (!name) return(E_FAIL);
-            
-                point = wcsrchr(name, '.');
+            auto dest = qp->GetFilePath().filename();
 
-        	
+            const wchar_t* name = dest.c_str();
+            if (!name) return(E_FAIL);
+
+            point = wcsrchr(name, '.');
+
+
             ASSOCIATIONELEMENT const rgAssocItem[] =
             {
                 { ASSOCCLASS_PROGID_STR, nullptr, point},
@@ -786,7 +786,7 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
                 { ASSOCCLASS_SYSTEM_STR, nullptr, point},
 
 
-            	// ASSOCCLASS_SYSTEM_STR The pszClass member names a key found as HKEY_CLASSES_ROOT\SystemFileAssociations\pszClass.
+                // ASSOCCLASS_SYSTEM_STR The pszClass member names a key found as HKEY_CLASSES_ROOT\SystemFileAssociations\pszClass.
             };
             hr = AssocCreateForClasses(rgAssocItem, ARRAYSIZE(rgAssocItem), IID_IQueryAssociations, ppv);
             qa = (IQueryAssociations*)*ppv;
@@ -797,7 +797,7 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
 
 
 
-    	
+
         //if (qp->type == 0)
         //{
         //    point = L"Folder";
@@ -834,7 +834,7 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
 
 
         wchar_t riidStr[40], clsidStr[40];
-  
+
         StringFromGUID2(IID_IExtractIconA, riidStr, ARRAYSIZE(riidStr));
         DWORD clsidSize = ARRAYSIZE(clsidStr);
         hr = qa->GetString(ASSOCF_NOUSERSETTINGS, ASSOCSTR_SHELLEXTENSION, riidStr, clsidStr, &clsidSize);
@@ -843,13 +843,13 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
         /*
          *
     windows.storage.dll!CShellItem::BindToHandler()	Unknown
- 	windows.storage.dll!_CreateThumbnailHandler()	Unknown // here
- 	windows.storage.dll!CShellItem::BindToHandler()	Unknown
- 	windows.storage.dll!GetExtractIconW()	Unknown
- 	windows.storage.dll!_GetILIndexFromItem()	Unknown
- 	windows.storage.dll!SHGetIconIndexFromPIDL()	Unknown
- 	windows.storage.dll!MapIDListToIconILIndex()	Unknown
- 	windows.storage.dll!CLoadSystemIconTask::InternalResumeRT()	Unknown
+    windows.storage.dll!_CreateThumbnailHandler()	Unknown // here
+    windows.storage.dll!CShellItem::BindToHandler()	Unknown
+    windows.storage.dll!GetExtractIconW()	Unknown
+    windows.storage.dll!_GetILIndexFromItem()	Unknown
+    windows.storage.dll!SHGetIconIndexFromPIDL()	Unknown
+    windows.storage.dll!MapIDListToIconILIndex()	Unknown
+    windows.storage.dll!CLoadSystemIconTask::InternalResumeRT()	Unknown
 
          *
          *
@@ -873,10 +873,10 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
 * https://github.com/cryptoAlgorithm/nt5src/blob/daad8a087a4e75422ec96b7911f1df4669989611/Source/XPSP1/NT/shell/shell32/defview.cpp
 * https://www.google.com/search?client=firefox-b-d&q=IID_IExtractIconW+ERROR_NO_ASSOCIATION
 * https://docs.microsoft.com/en-us/windows/win32/api/shellapi/ns-shellapi-shellexecuteinfoa
-         * 
+         *
          */
-    
-        
+
+
         wchar_t buffer[512];
         DWORD bufferSz = 510;
         hr = qa->GetString(ASSOCF_INIT_DEFAULTTOSTAR, ASSOCSTR_COMMAND, nullptr, buffer, &bufferSz); bufferSz = 510;
@@ -884,14 +884,14 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
         hr = qa->GetString(ASSOCF_INIT_DEFAULTTOSTAR, ASSOCSTR_DEFAULTICON, nullptr, buffer, &bufferSz); bufferSz = 510;
         hr = qa->GetString(ASSOCF_INIT_DEFAULTTOSTAR, ASSOCSTR_PROGID, nullptr, buffer, &bufferSz); bufferSz = 510;
         hr = qa->GetString(ASSOCF_INIT_DEFAULTTOSTAR, ASSOCSTR_APPICONREFERENCE, nullptr, buffer, &bufferSz);
-    
+
         *ppv = qa;
         return(S_OK);
     }
     else if (IsEqualIID(riid, IID_IExtractImage))
     {
         if (cidl != 1) return(E_INVALIDARG);
-    
+
         return(GetThumbnailHandler(apidl[0], nullptr, riid, ppv));
     }
 
@@ -902,7 +902,7 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
         return E_NOINTERFACE;
     }
 
-   
+
     RIID_TODO(IID_IDropTarget); //#TODO
     RIID_TODO(IID_IItemNameLimits); //#TODO
 
@@ -927,14 +927,14 @@ static HRESULT stringToStrRet(std::wstring_view str, STRRET* sr)
 HRESULT PboFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, SHGDNF uFlags, STRRET* pName)
 {
     CHECK_INIT();
-    
+
     const PboPidl* qp = (const PboPidl*)pidl;
 
     auto dest = qp->GetFilePath().filename();
-	
+
     const wchar_t* name = dest.c_str();
     if (!name) return(E_FAIL);
-    
+
     if ((uFlags & (SHGDN_FORPARSING | SHGDN_INFOLDER)) != SHGDN_FORPARSING)
         return(stringToStrRet(name, pName));
 
@@ -1081,11 +1081,11 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
     if (!PboPidl::IsValidPidl(&pidl->mkid))
         pidl = ILNext(pidl);
 
-	
+
     const PboPidl* qp = (const PboPidl*)pidl;
 
     DebugLogger::TraceLog(std::format(L"file {}", qp->GetFilePath().wstring()), std::source_location::current(), __FUNCTION__);
-    
+
     if (pscid->fmtid == PKEY_ItemNameDisplay.fmtid &&
         pscid->pid == PKEY_ItemNameDisplay.pid)
     {
@@ -1100,10 +1100,10 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
             return E_FAIL;
 
         auto size = file->get().filesize;
-    
+
         pv->vt = VT_I8;
         pv->llVal = size;
-    
+
         return(S_OK);
     }
     //else if (pscid->fmtid == PKEY_DateModified.fmtid &&
@@ -1134,7 +1134,7 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
     {
         return(stringToVariant(L"prop:Name;Write;Size", pv));
     }
-	//#TODO
+    //#TODO
     //else if (pscid->fmtid == FMTID_PropList)
     //{
     //    const wchar_t* props = NULL;
@@ -1171,7 +1171,7 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
     //    return(S_OK);
     //}
 
-	
+
     // C9944A21-A406-48FE-8225-AEC7E24C211B
     // contentviewmodeforbrowse
 
@@ -1180,7 +1180,7 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
     else if (pscid->fmtid == PKEY_DescriptionID.fmtid)
         return(E_INVALIDARG);
     else if (pscid->fmtid == PKEY_FullText.fmtid)
-        return(E_INVALIDARG); 
+        return(E_INVALIDARG);
     else if (pscid->fmtid == PKEY_FileExtension.fmtid) {
         // This is the file extension of the file based item, including the leading period. 
         if (!qp->IsFile()) return(E_FAIL);
@@ -1188,16 +1188,16 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
         return stringToVariant(Util::utf8_decode(qp->GetFilePath().extension().string()), pv);
     }
     else if (pscid->fmtid == PKEY_LayoutPattern_ContentViewModeForBrowse.fmtid)
-        return(E_INVALIDARG);   
+        return(E_INVALIDARG);
     else if (pscid->fmtid == PKEY_ApplicationName.fmtid)
-        return(E_INVALIDARG);  
+        return(E_INVALIDARG);
     else if (pscid->fmtid == PKEY_DateAccessed.fmtid)
         return(E_INVALIDARG);
     else if (pscid->fmtid == PKEY_ParsingBindContext.fmtid)
-        return(E_INVALIDARG); 
+        return(E_INVALIDARG);
     else if (pscid->fmtid == PKEY_StatusBarSelectedItemCount.fmtid) // need to respect pid if you wanna use this
         return(E_INVALIDARG);
-    
+
 
     return(E_INVALIDARG);
 }
@@ -1307,11 +1307,11 @@ HRESULT PboFolder::MapColumnToSCID(UINT iColumn, SHCOLUMNID* pscid)
     case 0:
         *pscid = PKEY_ItemNameDisplay;
         return(S_OK);
-    
+
     case 1:
         *pscid = PKEY_Size;
         return(S_OK);
-    
+
     case 2:
         *pscid = PKEY_DateModified;
         return(S_OK);
@@ -1337,7 +1337,7 @@ HRESULT PboFolder::Initialize(LPCITEMIDLIST pidl)
 
     checkInit();
 
-	
+
     return(S_OK);
 }
 
@@ -1349,26 +1349,26 @@ HRESULT PboFolder::GetCurFolder(LPITEMIDLIST* ppidl)
 
 HRESULT PboFolder::InitializeEx(IBindCtx* pbc, LPCITEMIDLIST pidlRoot, const PERSIST_FOLDER_TARGET_INFO* ppfti)
 {
-    if (ppfti)
-    {
-        auto subPidl = ppfti->pidlTargetFolder;
-    
-        auto qp = (const PboPidl*)ILFindLastID(m_pidl);
-        int count = 0;
-        while (subPidl = ILGetNext(subPidl)) {
-            //subPidl = (LPITEMIDLIST)((uintptr_t)subPidl + subPidl->mkid.cb);
-            auto test = (PboPidl*)subPidl;
-            if (PboPidl::IsValidPidl(&subPidl->mkid.cb))
-                __debugbreak();
-            count++;
-    
-        }
-    }
-	
-  
+    //if (ppfti)
+    //{
+    //    auto subPidl = ppfti->pidlTargetFolder;
+    //
+    //    auto qp = (const PboPidl*)ILFindLastID(m_pidl);
+    //    int count = 0;
+    //    while (subPidl = ILGetNext(subPidl)) {
+    //        //subPidl = (LPITEMIDLIST)((uintptr_t)subPidl + subPidl->mkid.cb);
+    //        auto test = (PboPidl*)subPidl;
+    //        if (PboPidl::IsValidPidl(&subPidl->mkid.cb))
+    //            __debugbreak();
+    //        count++;
+    //
+    //    }
+    //}
 
 
-	
+
+
+
     return(Initialize(pidlRoot));
 }
 
@@ -1395,7 +1395,7 @@ HRESULT PboFolder::GetThumbnailHandler(LPCITEMIDLIST pidlChild, IBindCtx* pbc, c
     ComRef<IQueryAssociations> qa;
     HRESULT hr = GetUIObjectOf(nullptr, 1, &pidlChild, IID_IQueryAssociations, nullptr, qa.AsQueryInterfaceTarget());
     if (FAILED(hr)) return(hr);
-    
+
     wchar_t riidStr[40], clsidStr[40];
     StringFromGUID2(riid, riidStr, ARRAYSIZE(riidStr));
     DWORD clsidSize = ARRAYSIZE(clsidStr);
@@ -1411,8 +1411,8 @@ HRESULT PboFolder::GetThumbnailHandler(LPCITEMIDLIST pidlChild, IBindCtx* pbc, c
     qa->GetString(ASSOCF_NOUSERSETTINGS, ASSOCSTR_COMMAND, nullptr, buffer, &bufferSz); bufferSz = 512;
     qa->GetString(ASSOCF_NOUSERSETTINGS, ASSOCSTR_EXECUTABLE, nullptr, buffer, &bufferSz); bufferSz = 512;
     qa->GetString(ASSOCF_NONE, ASSOCSTR_DEFAULTICON, nullptr, buffer, &bufferSz); bufferSz = 512;
-	
-	//IID_IExtractIconW
+
+    //IID_IExtractIconW
     hr = qa->GetString(ASSOCF_NONE, ASSOCSTR_SHELLEXTENSION, riidStr, clsidStr, &clsidSize);
 
     StringFromGUID2(IID_IExtractIconA, riidStr, ARRAYSIZE(riidStr));
@@ -1425,7 +1425,7 @@ HRESULT PboFolder::GetThumbnailHandler(LPCITEMIDLIST pidlChild, IBindCtx* pbc, c
 
     clsidSize = ARRAYSIZE(clsidStr);
     hr = qa->GetString(ASSOCF_NONE, ASSOCSTR_SHELLEXTENSION, L"", clsidStr, &clsidSize);
-	
+
     if (SUCCEEDED(hr))
     {
         CLSID clsid;
@@ -1452,13 +1452,13 @@ HRESULT PboFolder::GetThumbnailHandler(LPCITEMIDLIST pidlChild, IBindCtx* pbc, c
                         }
                     }
                 }
-    
+
                 if (unk)
                     unk->Release();
             }
         }
     }
-        
+
     return(hr);
 }
 
@@ -1474,8 +1474,8 @@ HRESULT PboFolder::DragEnter(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt
         return S_OK;
     }
 
-   
-       
+
+
 
     ClipboardFormatHandler handler;
     handler.ReadFromFast(pDataObj);
@@ -1518,11 +1518,11 @@ HRESULT PboFolder::DragLeave(void)
 
 
 struct DECLSPEC_NOVTABLE //MIDL_INTERFACE("cd90b4de-869a-43c2-83f9-5505a11cd0d7")
-IUpdateProgress : public IUnknown
+    IUpdateProgress : public IUnknown
 {
 public:
     virtual HRESULT STDMETHODCALLTYPE UpdateProgress() = 0;
-}; 
+};
 
 
 
@@ -1540,8 +1540,8 @@ public:
     __int64 a6,
     __int64 a7,
     _QWORD *a8
-    
-    
+
+
     COperationStatusTile::s_CreateInstance(
                 v17,
                 v23, // a2
@@ -1675,107 +1675,107 @@ HRESULT PboFolder::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWO
     if (false)
     {
 
-    auto pidls = handler.GetPidlsToRead(pDataObj);
+        auto pidls = handler.GetPidlsToRead(pDataObj);
 
 
-    this->AddRef();
-    std::thread([this, pidls = std::move(pidls)]() {
+        this->AddRef();
+        std::thread([this, pidls = std::move(pidls)]() {
 
 
-        /*
+            /*
 
-        The GUID for the IOperationStatusService key is different in the different builds (1703 and 1709) -
+            The GUID for the IOperationStatusService key is different in the different builds (1703 and 1709) -
 
-    {61A969EF-64EA-4C48-BBF5-EEDE3B32BF86} - 1709
-    {0C3C904A-AD89-4851-9C3D-210C080CEE18} - 1703
-
-
-
+        {61A969EF-64EA-4C48-BBF5-EEDE3B32BF86} - 1709
+        {0C3C904A-AD89-4851-9C3D-210C080CEE18} - 1703
 
 
 
 
 
 
-    ____
-    {cd90b4de-869a-43c2-83f9-5505a11cd0d7} - My current windows
 
 
 
-      *(_QWORD *)v1 = &COperationStatusService::`vftable'{for `DirectUI::NativeHWNDHost'};
-  *((_QWORD *)v1 + 6) = &COperationStatusService::`vftable'{for `IOperationStatusService'};
-  *((_QWORD *)v1 + 7) = &COperationStatusService::`vftable'{for `IUpdateProgress'};
-  *((_QWORD *)v1 + 8) = &COperationStatusService::`vftable'{for `IClassFactory'};
-  *((_QWORD *)v1 + 9) = &COperationStatusService::`vftable'{for `IOleWindow'};
-  *((_QWORD *)v1 + 10) = &COperationStatusService::`vftable'{for `DirectUI::IElementListener'};
-  *((_QWORD *)v1 + 11) = &COperationStatusService::`vftable'{for `CThreadRefTaker'};
-  *((_QWORD *)v1 + 13) = &COperationStatusService::`vftable'{for `CTileNotificationsBase'};
-  *((_QWORD *)v1 + 14) = &COperationStatusService::`vftable'{for `CopyTileAnimationUtils::CAnimationCoordinator'};
+        ____
+        {cd90b4de-869a-43c2-83f9-5505a11cd0d7} - My current windows
 
 
 
-
-
-        */
-
-        GUID CLSID_OperationStatusService{ 0x515980C3 , 0x57FE , 0x4C1E , 0x0A5, 0x61, 0x73, 0x0D, 0x0D2, 0x56, 0x0AB, 0x98 };
-
-        //#TODO this is the preferred way, but it requires PboFolder to implement IShellItem and all that comes with it.
-        // We can make it easier though. ITransferDestination CreateItem just make it slow, run the pboPatcher to prepare empty space in the pbo. Then when it tries to write to the stream, just directly write to it?
-        // Though I don't think it tells us how much empty space we need
-/*
-        IShellItem* pish;
-        SHCreateItemFromIDList(m_pidl, IID_IShellItem, (void**)&pish);
-
-
-        IShellItem* PSHCopySource;
-        SHCreateItemFromIDList(pidls.front(), IID_IShellItem, (void**)&PSHCopySource);
+          *(_QWORD *)v1 = &COperationStatusService::`vftable'{for `DirectUI::NativeHWNDHost'};
+      *((_QWORD *)v1 + 6) = &COperationStatusService::`vftable'{for `IOperationStatusService'};
+      *((_QWORD *)v1 + 7) = &COperationStatusService::`vftable'{for `IUpdateProgress'};
+      *((_QWORD *)v1 + 8) = &COperationStatusService::`vftable'{for `IClassFactory'};
+      *((_QWORD *)v1 + 9) = &COperationStatusService::`vftable'{for `IOleWindow'};
+      *((_QWORD *)v1 + 10) = &COperationStatusService::`vftable'{for `DirectUI::IElementListener'};
+      *((_QWORD *)v1 + 11) = &COperationStatusService::`vftable'{for `CThreadRefTaker'};
+      *((_QWORD *)v1 + 13) = &COperationStatusService::`vftable'{for `CTileNotificationsBase'};
+      *((_QWORD *)v1 + 14) = &COperationStatusService::`vftable'{for `CopyTileAnimationUtils::CAnimationCoordinator'};
 
 
 
 
 
-        IFileOperation* pfo;
-        auto hr = CoCreateInstance(CLSID_FileOperation,
-            NULL,
-            CLSCTX_ALL,
-            IID_PPV_ARGS(&pfo));
-        if (SUCCEEDED(hr))
-        {
-            //
-            // Set the operation flags. Turn off all UI from being shown to the
-            // user during the operation. This includes error, confirmation,
-            // and progress dialogs.
-            //
-            hr = pfo->SetOperationFlags(FOF_NO_UI);
+            */
+
+            GUID CLSID_OperationStatusService{ 0x515980C3 , 0x57FE , 0x4C1E , 0x0A5, 0x61, 0x73, 0x0D, 0x0D2, 0x56, 0x0AB, 0x98 };
+
+            //#TODO this is the preferred way, but it requires PboFolder to implement IShellItem and all that comes with it.
+            // We can make it easier though. ITransferDestination CreateItem just make it slow, run the pboPatcher to prepare empty space in the pbo. Then when it tries to write to the stream, just directly write to it?
+            // Though I don't think it tells us how much empty space we need
+    /*
+            IShellItem* pish;
+            SHCreateItemFromIDList(m_pidl, IID_IShellItem, (void**)&pish);
+
+
+            IShellItem* PSHCopySource;
+            SHCreateItemFromIDList(pidls.front(), IID_IShellItem, (void**)&PSHCopySource);
+
+
+
+
+
+            IFileOperation* pfo;
+            auto hr = CoCreateInstance(CLSID_FileOperation,
+                NULL,
+                CLSCTX_ALL,
+                IID_PPV_ARGS(&pfo));
             if (SUCCEEDED(hr))
             {
-
+                //
+                // Set the operation flags. Turn off all UI from being shown to the
+                // user during the operation. This includes error, confirmation,
+                // and progress dialogs.
+                //
+                hr = pfo->SetOperationFlags(FOF_NO_UI);
                 if (SUCCEEDED(hr))
                 {
 
                     if (SUCCEEDED(hr))
                     {
-                        hr = pfo->CopyItem(PSHCopySource, this, L"testFile", NULL);
+
+                        if (SUCCEEDED(hr))
+                        {
+                            hr = pfo->CopyItem(PSHCopySource, this, L"testFile", NULL);
+                        }
+                    }
+
+                    if (SUCCEEDED(hr))
+                    {
+                        //
+                        // Perform the operation to copy the file.
+                        //
+                        hr = pfo->PerformOperations();
                     }
                 }
 
-                if (SUCCEEDED(hr))
-                {
-                    //
-                    // Perform the operation to copy the file.
-                    //
-                    hr = pfo->PerformOperations();
-                }
+                //
+                // Release the IFileOperation interface.
+                //
+                pfo->Release();
             }
 
-            //
-            // Release the IFileOperation interface.
-            //
-            pfo->Release();
-        }
-
-        */
+            */
 
 
 
@@ -1785,60 +1785,60 @@ HRESULT PboFolder::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWO
 
 
 
-        /*
+            /*
 
 
-        if (S_OK == SHCreateItemFromIDList(m_pidl, IID_IShellItem, (void**)&pish)) {
+            if (S_OK == SHCreateItemFromIDList(m_pidl, IID_IShellItem, (void**)&pish)) {
 
-            IProgressDialog* ppd = nullptr;
-            if (SUCCEEDED(CoCreateInstance(CLSID_ProgressDialog, NULL, CLSCTX_INPROC_SERVER, IID_IProgressDialog, (void**)&ppd)))
-            {
-                IOperationsProgressDialog* x2;
-                ppd->QueryInterface(&x2);
-
-
-
-                x2->SetOperation(SPACTION_UPLOADING);
-
-
-
-
-
-                ppd->SetTitle(L"TitleTest");
-                x2->SetMode(PDM_RUN);
-                x2->StartProgressDialog(lastHwnd, PROGDLG_MODAL | PROGDLG_AUTOTIME | OPPROGDLG_ENABLEPAUSE);
-                x2->SetMode(PDM_RUN);
-
-                x2->UpdateLocations(PSHCopySource, pish, PSHCopySource);
-
-                //x2->SetMode(PDM_PREFLIGHT);
-                //Sleep(2000);
-
-
-
-                for (size_t i = 0; i < 1024; i++)
+                IProgressDialog* ppd = nullptr;
+                if (SUCCEEDED(CoCreateInstance(CLSID_ProgressDialog, NULL, CLSCTX_INPROC_SERVER, IID_IProgressDialog, (void**)&ppd)))
                 {
-                    x2->UpdateProgress(i * 1024 * 1024, 1024 * 1024 * 1024, i * 1024 * 1024, 1024 * 1024 * 1024, 1, 1);
-                    Sleep(50);
+                    IOperationsProgressDialog* x2;
+                    ppd->QueryInterface(&x2);
+
+
+
+                    x2->SetOperation(SPACTION_UPLOADING);
+
+
+
+
+
+                    ppd->SetTitle(L"TitleTest");
+                    x2->SetMode(PDM_RUN);
+                    x2->StartProgressDialog(lastHwnd, PROGDLG_MODAL | PROGDLG_AUTOTIME | OPPROGDLG_ENABLEPAUSE);
+                    x2->SetMode(PDM_RUN);
+
+                    x2->UpdateLocations(PSHCopySource, pish, PSHCopySource);
+
+                    //x2->SetMode(PDM_PREFLIGHT);
+                    //Sleep(2000);
+
+
+
+                    for (size_t i = 0; i < 1024; i++)
+                    {
+                        x2->UpdateProgress(i * 1024 * 1024, 1024 * 1024 * 1024, i * 1024 * 1024, 1024 * 1024 * 1024, 1, 1);
+                        Sleep(50);
+                    }
+
+
+                    x2->StopProgressDialog();
+                    x2->Release();
                 }
 
-
-                x2->StopProgressDialog();
-                x2->Release();
             }
 
+            */
+            this->Release();
         }
+        ).detach();
 
-        */
-        this->Release();
+
+        return E_NOTIMPL;
+
+
     }
-    ).detach();
-
-
-    return E_NOTIMPL;
-
-
-}
 
 
     auto operation = new ProgressDialogOperation(L"test1", L"test2", lastHwnd);
@@ -1889,7 +1889,7 @@ HRESULT PboFolder::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWO
             patcher.WriteOutputFile(outputStream);
         }
         this->Release();
-    });
+        });
 
     //#TODO use signal/slot to trigger all root PboFolders to reload their pbo file info
 
@@ -1931,7 +1931,7 @@ HRESULT __stdcall PboFolder::BindToHandler(IBindCtx* pbc, REFGUID bhid, REFIID r
 HRESULT __stdcall PboFolder::GetParent(IShellItem** ppsi)
 {
 
-   
+
     CoTaskMemRefS respidl = ILClone(m_pidl);
     ILRemoveLastID(respidl);
 
@@ -1979,19 +1979,19 @@ bool PboFolder::checkInit()
 
     ITEMIDLIST* subPidl = m_pidl;
 
-    auto qp = (const PboPidl*)ILFindLastID(m_pidl);
-    int count = 0;
-    while (subPidl = ILGetNext(subPidl)) {
-        //subPidl = (LPITEMIDLIST)((uintptr_t)subPidl + subPidl->mkid.cb);
-        auto test = (PboPidl*)subPidl;
-        if (PboPidl::IsValidPidl(&subPidl->mkid))
-            __debugbreak();
-        count++;
-    
-    }
+    //auto qp = (const PboPidl*)ILFindLastID(m_pidl);
+    //int count = 0;
+    //while (subPidl = ILGetNext(subPidl)) {
+    //    //subPidl = (LPITEMIDLIST)((uintptr_t)subPidl + subPidl->mkid.cb);
+    //    auto test = (PboPidl*)subPidl;
+    //    if (PboPidl::IsValidPidl(&subPidl->mkid))
+    //        __debugbreak();
+    //    count++;
+    //
+    //}
 
 
-	//#TODO keep global directory of weak pointers to pbo files and share them
+    //#TODO keep global directory of weak pointers to pbo files and share them
     pboFile = GPboFileDirectory.GetPboFile(path);
 
     //dirMutex.lock();
@@ -2013,7 +2013,7 @@ std::filesystem::path PboFolder::GetTempDir()
         char name2[L_tmpnam];
         tmpnam_s(name2);
 
-    	
+
         m_tempDir = std::filesystem::temp_directory_path() / name2;
         std::filesystem::create_directory(m_tempDir); //#TODO cleanup on dtor
     }

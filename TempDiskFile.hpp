@@ -24,6 +24,7 @@ public:
 
 	bool WasModified();
 	auto GetPath() const { return filePath; }
+	auto GetPboSubPath() const { return pboSubPath; }
 
 	void PatchToOrigin();
 

@@ -18,6 +18,7 @@ public:
 class PboSubFile;
 class PboSubFolder;
 class PboFile;
+class TempDiskFile;
 
 /// <summary>
 /// Interface for a directory inside a pbo. It can either be the root (the pbo itself is a directory) or a subdirectory.
@@ -90,6 +91,9 @@ public:
     std::optional<std::reference_wrapper<const PboSubFile>> GetFileByPath(std::filesystem::path inputPath) const override;
     std::shared_ptr<PboSubFolder> GetFolderByPath(std::filesystem::path inputPath) const override;
     std::unique_ptr<PboPidl> GetPidlListFromPath(std::filesystem::path inputPath) const override;
+
+    //#TODO make this cleaner?
+    std::vector<std::shared_ptr<TempDiskFile>> tempDiskFileKeepAlive;
 };
 
 

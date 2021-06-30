@@ -1,9 +1,11 @@
 #pragma once
 #define NOMINMAX
+#include <algorithm>
 #include <string>
+#include <stdexcept>
 #include <unordered_map>
 
-#include "ClassFactory.hpp"
+#include <Windows.h> //#TODO move utf en/decode into util.cpp and remove the windows.h
 
 using namespace std::string_view_literals;
 

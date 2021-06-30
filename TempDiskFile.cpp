@@ -1,8 +1,9 @@
 #include "TempDiskFile.hpp"
-
+#define NOMINMAX
 #include <mutex>
 #include <unordered_map>
 #include <fstream>
+#include <Shlobj.h>
 #include "PboPatcherLocked.hpp"
 
 #include "Util.hpp"
@@ -10,6 +11,7 @@
 
 extern "C" {
 #include "lib/ArmaPboLib/lib/sha1.h"
+#include "DebugLogger.hpp"
 }
 
 std::mutex TempDiskFileCreationLock;
@@ -95,11 +97,14 @@ TempDiskFile::TempDiskFile(const PboFile& pboRef, std::filesystem::path subfile)
     creationFileSize = GetCurrentSize();
     creationHash = GetCurrentHash();
     creationTime = GetCurrentModtime();
+    DebugLogger::TraceLog(std::format(L"Open Temp File {}", filePath.wstring()), std::source_location::current(), __FUNCTION__);
 }
 
 TempDiskFile::~TempDiskFile() {
     std::unique_lock lock(TempDiskFileCreationLock);
     std::error_code ec;
+    DebugLogger::TraceLog(std::format(L"Delete Temp File {}", filePath.wstring()), std::source_location::current(), __FUNCTION__);
+    //#TODO keep tempfiles open while the PboFile still has references to it.
     std::filesystem::remove(filePath, ec);
 
     auto tempDir = std::filesystem::temp_directory_path() / "PboExplorer";
@@ -158,6 +163,8 @@ std::shared_ptr<TempDiskFile> TempDiskFile::GetFile(const PboFile& pboRef, std::
     if (found == TempFileDirectory.end()) {
         std::shared_ptr<TempDiskFile> newFile = std::make_shared<TempDiskFile>(pboRef, subfile);
         TempFileDirectory[targetPath] = newFile;
+        //#TODO make this cleaner, take parameter for whether we want to keep-alive, don't do this trick to get non-const. Just set keepalive flag, and let PboFile destructor tell us to remove tempfiles
+        pboRef.GetRootFile()->tempDiskFileKeepAlive.push_back(newFile);
         return newFile;
     }
 

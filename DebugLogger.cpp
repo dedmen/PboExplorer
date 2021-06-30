@@ -1,10 +1,16 @@
 #include "DebugLogger.hpp"
-#include <format>
+
 #include <Windows.h>
+#include <shlobj.h>
+#include <Shlwapi.h>
+#include <inspectable.h>
+
+
 #include "Util.hpp"
 
-#include <inspectable.h>
-#include <Shlwapi.h>
+
+#include <chrono>
+#include <format>
 #include <fstream>
 #include <unordered_map>
 
@@ -424,7 +430,7 @@ static std::unordered_map<GUID, LookupInfoT> guidLookupTable{
 	LookupFromType<IProgressDialog>(DebugInterestLevel::Interested),
 	LookupFromType<IDockingWindowSite>(),
 	LookupFromType<IShellChangeNotify>(),
-	LookupFromType<IQueryInfo>(),
+	LookupFromType<IQueryInfo>(DebugInterestLevel::Interested),
 	LookupFromType<IShellFolderViewCB>(),
 	LookupFromType<IShellFolderView>(),
 	LookupFromType<INamedPropertyBag>(),
