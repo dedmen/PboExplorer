@@ -225,13 +225,14 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>ARMA_PBO_LIB_WRITE;ARMA_PBO_LIB_SHA1;_DEBUG;PBOEXPLORER_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ENABLE_SENTRY;ARMA_PBO_LIB_WRITE;ARMA_PBO_LIB_SHA1;_DEBUG;PBOEXPLORER_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>lib/sentry/external/crashpad/third_party/mini_chromium/mini_chromium/;lib/sentry/external/crashpad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -241,8 +242,7 @@
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>
-      </AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>O:\dev\pbofolder\PboExplorer\lib\sentry\build\Debug;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\client\Debug;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\third_party\mini_chromium\Debug;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\util\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugExe|x64'">
@@ -304,6 +304,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -312,6 +313,8 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>PboExplorer.def</ModuleDefinitionFile>
+      <AdditionalLibraryDirectories>O:\dev\pbofolder\PboExplorer\lib\sentry\build\RelWithDebInfo;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\client\RelWithDebInfo;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\third_party\mini_chromium\RelWithDebInfo;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\util\RelWithDebInfo</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

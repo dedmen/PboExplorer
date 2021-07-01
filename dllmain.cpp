@@ -19,8 +19,34 @@
 #include "PboFolder.hpp"
 #include "Util.hpp"
 
+#ifdef ENABLE_SENTRY
+#define SENTRY_BUILD_STATIC 1
+#include "lib/sentry/include/sentry.h"
+// PboExplorer\lib\sentry>cmake -B build -D SENTRY_BACKEND=crashpad SENTRY_BUILD_SHARED_LIBS=OFF --config RelWithDebInfo -S .
+// manually edit the vcproj to be a .lib
+// https://docs.sentry.io/platforms/native/
+#pragma comment(lib, "sentry")
+#pragma comment(lib, "crashpad_client")
+#pragma comment(lib, "crashpad_util")
+#pragma comment(lib, "mini_chromium")
+#pragma comment(lib, "dbghelp")
+#pragma comment(lib, "Version")
+#pragma comment(lib, "Winhttp")
+#include <Lmcons.h>
 
+#define OS_WIN 1
+#include "lib/sentry/external/crashpad/third_party/mini_chromium/mini_chromium/base/files/file_path.h"
+#include "lib/sentry/external/crashpad/util/file/file_reader.h"
+#include "lib/sentry/external/crashpad/util/net/http_body.h"
+#include "lib/sentry/external/crashpad/util/net/http_multipart_builder.h"
+#include "lib/sentry/external/crashpad/util/net/http_transport.h"
+#include "lib/sentry/external/crashpad/util/net/http_headers.h"
 
+//#TODO https://docs.sentry.io/product/cli/releases/#sentry-cli-sourcemaps
+//#TODO https://github.com/getsentry/sentry/issues/12670
+
+#endif
+#include <future>
 
 // data
 HINSTANCE   g_hInst;
@@ -32,17 +58,20 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 {
     switch (ul_reason_for_call)
     {
-    case DLL_PROCESS_ATTACH:
-        g_hInst = hModule;
+	case DLL_PROCESS_ATTACH: {
+		g_hInst = hModule;
 
 		wchar_t szModule[MAX_PATH];
 		GetModuleFileNameW(nullptr, szModule, ARRAYSIZE(szModule));
 		// don't load FileWatcher in regsvr
 		if (std::wstring_view(szModule).find(L"regsvr") == std::string::npos)
 			GFileWatcher.Startup();
+	} break;
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
+		break;
     case DLL_PROCESS_DETACH:
+		sentry_close();
         break;
     }
     return TRUE;
@@ -62,6 +91,132 @@ STDAPI DllCanUnloadNow(VOID)
 STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppReturn)
 {
 	//Util::WaitForDebuggerPrompt();
+#ifdef ENABLE_SENTRY
+	static bool SentryInit = false;
+	if (!SentryInit) {
+		sentry_options_t* options = sentry_options_new();
+		sentry_options_set_dsn(options, "http://cc1dc4103efd4f1dbbc0488599f33e58@lima.dedmen.de:9001/2");
+		sentry_options_set_release(options, "PboExplorer@" __TIMESTAMP__); 
+
+#ifdef _DEBUG
+		sentry_options_set_environment(options, "debug");
+
+		sentry_options_set_logger(options, [](sentry_level_t level, const char* message, va_list args, void* userdata) {
+			Util::WaitForDebuggerPrompt();
+			size_t size = 1024;
+			char buffer[2048];
+			if (vsnprintf(buffer, size, message, args) >= 0)
+			{
+				DebugLogger::TraceLog(std::format("{} - {}", (int)level, &buffer[0]), std::source_location::current(), "sentry");
+			}
+			}, nullptr);
+		sentry_options_set_debug(options, 1);
+#else
+		sentry_options_set_environment(options, "production");
+#endif
+
+		// get this DLL's path and file name
+		wchar_t szModule[MAX_PATH];
+		GetModuleFileName(g_hInst, szModule, ARRAYSIZE(szModule));
+
+		sentry_options_set_handler_pathw(options, (std::filesystem::path(szModule).parent_path() / "crashpad_handler.exe").c_str());
+		sentry_options_set_database_pathw(options, (std::filesystem::path(szModule).parent_path() / "PboExplorerCrashDB").c_str());
+		//sentry_options_set_database_path(options, "O:\\sentry");
+
+		sentry_set_level(SENTRY_LEVEL_DEBUG);
+
+
+		sentry_init(options);
+
+
+		sentry_value_t user = sentry_value_new_object();
+		sentry_value_set_by_key(user, "ip_address", sentry_value_new_string("{{auto}}"));
+		char username[UNLEN + 1];
+		DWORD username_len = UNLEN + 1;
+		GetUserNameA(username, &username_len);
+		sentry_value_set_by_key(user, "username", sentry_value_new_string(username));
+		sentry_set_user(user);
+
+
+		auto event = sentry_value_new_message_event(
+			/*   level */ SENTRY_LEVEL_FATAL,
+			/*  logger */ "custom",
+			/* message */ "It works!"
+		);
+
+		auto thread = sentry_value_new_thread(0, "name");
+		sentry_value_set_by_key(thread, "stacktrace", sentry_value_new_stacktrace(nullptr, 16));
+		sentry_event_add_thread(event, thread);
+
+		sentry_capture_event(event);
+
+		SentryInit = true;
+
+
+		auto uploadDump = [](std::filesystem::path file) {
+			crashpad::HTTPMultipartBuilder http_multipart_builder;
+			http_multipart_builder.SetGzipEnabled(false);
+
+			static constexpr char kMinidumpKey[] = "upload_file_minidump";
+
+			crashpad::FileReader reader;
+			base::FilePath path(file.wstring());
+			reader.Open(path);
+
+			http_multipart_builder.SetFileAttachment(
+				kMinidumpKey,
+				file.filename().string(),
+				&reader,
+				"application/octet-stream");
+
+			std::unique_ptr<crashpad::HTTPTransport> http_transport(crashpad::HTTPTransport::Create());
+			if (!http_transport) {
+				return; // UploadResult::kPermanentFailure;
+			}
+
+			crashpad::HTTPHeaders content_headers;
+			http_multipart_builder.PopulateContentHeaders(&content_headers);
+			for (const auto& content_header : content_headers) {
+				http_transport->SetHeader(content_header.first, content_header.second);
+			}
+			http_transport->SetBodyStream(http_multipart_builder.GetBodyStream());
+			// TODO(mark): The timeout should be configurable by the client.
+			http_transport->SetTimeout(60.0);  // 1 minute.
+
+			std::string url = "http://lima.dedmen.de:9001/api/2/minidump/?sentry_key=cc1dc4103efd4f1dbbc0488599f33e58";
+			http_transport->SetURL(url);
+
+			if (!http_transport->ExecuteSynchronously(nullptr)) {
+				return; // UploadResult::kRetry;
+			}
+			reader.Close();
+		};
+		
+		wchar_t appPath[MAX_PATH];
+		SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, NULL, SHGFP_TYPE_CURRENT, appPath);
+
+		std::error_code ec;
+		auto crashDir = std::filesystem::path(appPath) / "CrashDumps";
+		for (auto& p : std::filesystem::directory_iterator(crashDir, ec)) {
+			if (!p.is_regular_file(ec))
+				continue;
+
+			if (!p.path().filename().string().starts_with("explorer"))
+				continue;
+
+			if (!p.path().filename().string().ends_with("dmp"))
+				continue;
+
+			std::async(std::launch::async, [path = p.path(), uploadDump]() {
+				uploadDump(path);
+				std::error_code ec;
+				std::filesystem::remove(path, ec);
+			});
+		}
+	}
+#endif
+
+
 
 	*ppReturn = nullptr;
 
