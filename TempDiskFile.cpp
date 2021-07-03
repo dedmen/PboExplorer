@@ -7,12 +7,16 @@
 #include "PboPatcherLocked.hpp"
 
 #include "Util.hpp"
-
+#include "DebugLogger.hpp"
+#include "FileWatcher.hpp"
 
 extern "C" {
 #include "lib/ArmaPboLib/lib/sha1.h"
-#include "DebugLogger.hpp"
 }
+
+
+
+
 
 std::mutex TempDiskFileCreationLock;
 struct opt_path_hash {
@@ -104,7 +108,9 @@ TempDiskFile::~TempDiskFile() {
     std::unique_lock lock(TempDiskFileCreationLock);
     std::error_code ec;
     DebugLogger::TraceLog(std::format(L"Delete Temp File {}", filePath.wstring()), std::source_location::current(), __FUNCTION__);
-    //#TODO keep tempfiles open while the PboFile still has references to it.
+
+
+    GFileWatcher.UnwatchFile(filePath);
     std::filesystem::remove(filePath, ec);
 
     auto tempDir = std::filesystem::temp_directory_path() / "PboExplorer";

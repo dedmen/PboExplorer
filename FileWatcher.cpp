@@ -45,6 +45,7 @@ void FileWatcher::Run() {
                         if (change.Action == FILE_ACTION_MODIFIED) {
 
                             std::wstring_view filename(change.FileName, change.FileNameLength / sizeof(wchar_t));
+                            std::unique_lock lck(mainMutex);
 
                             auto found = watchedFiles.find(std::filesystem::path(filename));
                             if (found == watchedFiles.end())
@@ -88,9 +89,12 @@ void FileWatcher::Startup() {
 }
 
 void FileWatcher::WatchFile(std::shared_ptr<TempDiskFile> newFile) {
+    std::unique_lock lck(mainMutex);
     watchedFiles[ std::filesystem::relative(newFile->GetPath(), std::filesystem::temp_directory_path() / "PboExplorer")] = newFile;
 }
 
 void FileWatcher::UnwatchFile(std::filesystem::path file) {
-    //#TODO? call from TempDiskFile destructor
+    std::unique_lock lck(mainMutex);
+
+    watchedFiles.erase(file);
 }
