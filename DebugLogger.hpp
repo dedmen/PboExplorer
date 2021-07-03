@@ -35,6 +35,7 @@ public:
 	static void OnQueryInterfaceExitUnhandled(const GUID& riid, const std::source_location location, const char* funcName);
 	static void TraceLog(const std::string& message, const std::source_location location, const char* funcName);
 	static void TraceLog(const std::wstring& message, const std::source_location location, const char* funcName);
+	static void WarnLog(const std::string& message, const std::source_location location, const char* funcName);
 
 	static bool IsIIDUninteresting(const GUID& riid);
 

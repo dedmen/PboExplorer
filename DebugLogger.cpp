@@ -14,6 +14,11 @@
 #include <fstream>
 #include <unordered_map>
 
+#ifdef ENABLE_SENTRY
+#define SENTRY_BUILD_STATIC 1
+#include "lib/sentry/include/sentry.h"
+#endif
+
 static std::pair<GUID, LookupInfoT> LookupFromText(const char* name, const wchar_t* guid, DebugInterestLevel level = DebugInterestLevel::Normal) {
 	GUID res;
 
@@ -627,6 +632,22 @@ void DebugLogger::OnQueryInterfaceExitUnhandled(const GUID& riid, const std::sou
 	if (guidName.second == DebugInterestLevel::Interested) {
 		logFileBad.write(prnt.c_str(), prnt.length());
 		logFileBad.flush();
+
+
+#ifdef ENABLE_SENTRY
+		auto event = sentry_value_new_message_event(
+			/*   level */ SENTRY_LEVEL_WARNING,
+			/*  logger */ nullptr,
+			/* message */ prnt.c_str()
+		);
+
+		auto thread = sentry_value_new_thread(0, "name");
+		sentry_value_set_by_key(thread, "stacktrace", sentry_value_new_stacktrace(nullptr, 16));
+		sentry_event_add_thread(event, thread);
+
+		sentry_capture_event(event);
+#endif
+
 	}
 }
 
@@ -644,6 +665,30 @@ void DebugLogger::TraceLog(const std::wstring& message, const std::source_locati
 	OutputDebugStringA(prnt.c_str());
 	logFile.write(prnt.c_str(), prnt.length());
 	logFile.flush();
+}
+
+void DebugLogger::WarnLog(const std::string& message, const std::source_location location, const char* funcName)
+{
+	auto prnt = std::format("[{:%T}] T [{}] - {}\n", std::chrono::system_clock::now(), funcName, message);
+	OutputDebugStringA(prnt.c_str());
+	logFile.write(prnt.c_str(), prnt.length());
+	logFile.flush();
+	logFileBad.write(prnt.c_str(), prnt.length());
+	logFileBad.flush();
+
+#ifdef ENABLE_SENTRY
+	auto event = sentry_value_new_message_event(
+		/*   level */ SENTRY_LEVEL_WARNING,
+		/*  logger */ nullptr,
+		/* message */ prnt.c_str()
+	);
+
+	auto thread = sentry_value_new_thread(0, "name");
+	sentry_value_set_by_key(thread, "stacktrace", sentry_value_new_stacktrace(nullptr, 16));
+	sentry_event_add_thread(event, thread);
+
+	sentry_capture_event(event);
+#endif
 }
 
 bool DebugLogger::IsIIDUninteresting(const GUID& riid)
