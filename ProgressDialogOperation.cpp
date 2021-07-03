@@ -61,8 +61,8 @@ void ProgressDialogOperation::DoOperation(std::function<void(const ProgressDialo
 
                 ppd->StartProgressDialog(windowHWND, NULL, PROGDLG_AUTOTIME, NULL);
 
-                ppd->SetLine(1, lines[0].c_str(), 0, NULL);
-                ppd->SetLine(2, lines[1].c_str(), 0, NULL);
+                ppd->SetLine(1, lines[0].c_str(), 1, NULL);
+                ppd->SetLine(2, lines[1].c_str(), 1, NULL);
                 //ppd->SetLine(2, L"test3", 0, NULL);
 
                 func(*this);
