@@ -182,7 +182,7 @@ decltype(PboPatcher::filesToWrite)::iterator PboPatcher::FindFreeSpace(uint32_t 
         if (!dynamic_cast<PboFTW_DummySpace*>(l.get()) || l->getEntryInformation().data_size < size)
             return false; // either not a dummy space, or too small. Rule it out by moving it to the right
 
-        return l->getEntryInformation().data_size >= size < r->getEntryInformation().data_size;
+        return l->getEntryInformation().data_size < r->getEntryInformation().data_size;
     });
 
 
