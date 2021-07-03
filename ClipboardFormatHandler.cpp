@@ -22,9 +22,8 @@ void ClipboardFormatHandler::ReadFromFast(IDataObject* dataObject)
 {
     supportedFormats.resize((int)ClipboardFormatType::_LastSupportedItem+1);
 
-    //#TODO use ComRef
-    IEnumFORMATETC* result = nullptr;
-    if (dataObject->EnumFormatEtc(DATADIR_GET, &result) == S_OK) {
+    ComRef<IEnumFORMATETC> result = nullptr;
+    if (dataObject->EnumFormatEtc(DATADIR_GET, result.AsQueryInterfaceTarget<IEnumFORMATETC>()) == S_OK) {
 
         FORMATETC format{};
 
@@ -77,17 +76,14 @@ void ClipboardFormatHandler::ReadFromFast(IDataObject* dataObject)
 
             }
         }
-
-        result->Release();
     }
 
 }
 
 void ClipboardFormatHandler::LogFormats(IDataObject* dataObject)
 {
-    //#TODO use ComRef
-    IEnumFORMATETC* result = nullptr;
-    if (dataObject->EnumFormatEtc(DATADIR_GET, &result) == S_OK) {
+    ComRef<IEnumFORMATETC> result = nullptr;
+    if (dataObject->EnumFormatEtc(DATADIR_GET, result.AsQueryInterfaceTarget<IEnumFORMATETC>()) == S_OK) {
 
         FORMATETC format{};
 

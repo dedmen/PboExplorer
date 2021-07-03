@@ -73,12 +73,17 @@ public:
 		return newObj;
 	}
 	
-	T* operator*()
+	T& operator*()
+	{
+		return *_ref;
+	}
+
+	T* operator->()
 	{
 		return _ref;
 	}
 
-	T* operator->()
+	const T* operator->() const
 	{
 		return _ref;
 	}
@@ -106,6 +111,14 @@ public:
 	operator bool()
 	{
 		return _ref != nullptr;
+	}
+
+	T* GetRef() {
+		return _ref;
+	}
+
+	const T* GetRef() const {
+		return _ref;
 	}
 };
 

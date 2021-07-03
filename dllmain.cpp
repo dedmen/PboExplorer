@@ -42,7 +42,6 @@
 #include "lib/sentry/external/crashpad/util/net/http_transport.h"
 #include "lib/sentry/external/crashpad/util/net/http_headers.h"
 
-//#TODO https://docs.sentry.io/product/cli/releases/#sentry-cli-sourcemaps
 //#TODO https://github.com/getsentry/sentry/issues/12670
 
 #endif
@@ -102,7 +101,6 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppReturn)
 		sentry_options_set_environment(options, "debug");
 
 		sentry_options_set_logger(options, [](sentry_level_t level, const char* message, va_list args, void* userdata) {
-			Util::WaitForDebuggerPrompt();
 			size_t size = 1024;
 			char buffer[2048];
 			if (vsnprintf(buffer, size, message, args) >= 0)
@@ -128,6 +126,8 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppReturn)
 
 		sentry_init(options);
 
+
+		//#TODO ask for consent
 
 		sentry_value_t user = sentry_value_new_object();
 		sentry_value_set_by_key(user, "ip_address", sentry_value_new_string("{{auto}}"));
@@ -207,11 +207,11 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppReturn)
 			if (!p.path().filename().string().ends_with("dmp"))
 				continue;
 
-			std::async(std::launch::async, [path = p.path(), uploadDump]() {
+			std::thread([path = p.path(), uploadDump]() {
 				uploadDump(path);
 				std::error_code ec;
 				std::filesystem::remove(path, ec);
-			});
+			}).detach();
 		}
 	}
 #endif
