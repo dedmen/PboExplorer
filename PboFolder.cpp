@@ -26,6 +26,8 @@
 
 #include "ProgressDialogOperation.hpp"
 #include "guid.hpp"
+#include "PboFolderContextMenu.hpp"
+#include "PboPatcherLocked.hpp"
 
 
 
@@ -173,13 +175,13 @@ HRESULT PboFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayName
 
 
 
-class QiewerEnumIDList :
+class DirectoryEnumIDList :
     GlobalRefCounted,
-    public RefCountedCOM<QiewerEnumIDList, IEnumIDList>
+    public RefCountedCOM<DirectoryEnumIDList, IEnumIDList>
 {
 public:
-    QiewerEnumIDList(PboFolder& owner, std::shared_ptr<PboSubFolder>, DWORD flags);
-    ~QiewerEnumIDList();
+    DirectoryEnumIDList(PboFolder& owner, std::shared_ptr<PboSubFolder>, DWORD flags);
+    ~DirectoryEnumIDList();
 
     // IUnknown
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
@@ -198,20 +200,33 @@ private:
     ComRef<PboFolder> owner;
     int m_typePos;
     int m_idxPos;
+
+    uint32_t numFolders;
+    uint32_t numFiles;
 };
 
 
-QiewerEnumIDList::QiewerEnumIDList(PboFolder& owner, std::shared_ptr<PboSubFolder> count1, DWORD flags) : flags(flags), subFolder(std::move(count1)), owner(&owner)
+DirectoryEnumIDList::DirectoryEnumIDList(PboFolder& owner, std::shared_ptr<PboSubFolder> count1, DWORD flags) : flags(flags), subFolder(std::move(count1)), owner(&owner)
 {
     m_typePos = m_idxPos = 0;
+
+
+    numFolders = subFolder->subfolders.size();
+    numFiles = subFolder->subfiles.size();
+
+    // //https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/ne-shobjidl_core-_shcontf
+    if (!(flags & SHCONTF_STORAGE))
+    {
+        if (!(flags & SHCONTF_FOLDERS)) numFolders = 0;
+        if (!(flags & SHCONTF_NONFOLDERS)) numFiles = 0;
+    }
 }
-QiewerEnumIDList::~QiewerEnumIDList()
+DirectoryEnumIDList::~DirectoryEnumIDList()
 {
 }
 
-
 // IUnknown
-HRESULT QiewerEnumIDList::QueryInterface(REFIID riid, void** ppvObject)
+HRESULT DirectoryEnumIDList::QueryInterface(REFIID riid, void** ppvObject)
 {
     DebugLogger_OnQueryInterfaceEntry(riid);
     if (IsEqualIID(riid, IID_IEnumIDList))
@@ -226,26 +241,18 @@ HRESULT QiewerEnumIDList::QueryInterface(REFIID riid, void** ppvObject)
     }
 
     AddRef();
-    return(S_OK);
+    return S_OK;
 }
 
-
 // IEnumIDList
-HRESULT QiewerEnumIDList::Next(
+HRESULT DirectoryEnumIDList::Next(
     ULONG celt, LPITEMIDLIST* rgelt, ULONG* pceltFetched)
 {
+
     ULONG i = 0;
     for (; m_typePos < 2; )
     {
-        int qty = !m_typePos ? subFolder->subfolders.size() : subFolder->subfiles.size();
-
-        //https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/ne-shobjidl_core-_shcontf
-        if (!(flags & SHCONTF_STORAGE))
-        {
-            if (!(flags & SHCONTF_FOLDERS) && !m_typePos) qty = 0;
-            if (!(flags & SHCONTF_NONFOLDERS) && m_typePos) qty = 0;
-        }
-
+        int qty = !m_typePos ? numFolders : numFiles;
 
         for (; i < celt && m_idxPos < qty; m_idxPos++)
         {
@@ -274,13 +281,14 @@ HRESULT QiewerEnumIDList::Next(
     if (pceltFetched)
         *pceltFetched = i;
 
-    return(celt == i ? S_OK : S_FALSE);
+    return (celt == i ? S_OK : S_FALSE);
 }
-HRESULT QiewerEnumIDList::Skip(DWORD celt)
+
+HRESULT DirectoryEnumIDList::Skip(DWORD celt)
 {
     while (m_typePos < 2 && celt>0)
     {
-        int qty = m_typePos ? subFolder->subfolders.size() : subFolder->subfiles.size();
+        int qty = !m_typePos ? numFolders : numFiles;
 
         int typeRest = qty - m_idxPos;
         if (typeRest > (int)celt) typeRest = celt;
@@ -295,17 +303,23 @@ HRESULT QiewerEnumIDList::Skip(DWORD celt)
         }
     }
 
-    return(S_OK);
+    return S_OK;
 }
-HRESULT QiewerEnumIDList::Reset(void)
+
+HRESULT DirectoryEnumIDList::Reset(void)
 {
     m_typePos = m_idxPos = 0;
-    return(S_OK);
+    return S_OK;
 }
-HRESULT QiewerEnumIDList::Clone(IEnumIDList** ppenum)
+
+HRESULT DirectoryEnumIDList::Clone(IEnumIDList** ppenum)
 {
-    *ppenum = nullptr;
-    return(E_NOTIMPL);
+    auto newEnumerator = ComRef<DirectoryEnumIDList>::CreateForReturn<IEnumIDList>(ppenum, *owner, subFolder, flags);
+
+    newEnumerator->m_typePos = m_typePos;
+    newEnumerator->m_idxPos = m_idxPos;
+
+    return S_OK;
 }
 
 
@@ -323,18 +337,7 @@ HRESULT PboFolder::EnumObjects(HWND hwnd, DWORD grfFlags, IEnumIDList** ppenumID
     CHECK_INIT();
 
     // we want to split folder and non-folder here
-
-
-    //#TODO forward flags
-    //int dirQty = pboFile->rootFolder
-    ////int streamDirQty = m_dir->getArchiveQty();
-    //int streamQty = 0;
-    //if (!(grfFlags & SHCONTF_STORAGE))
-    //{
-    //    if (!(grfFlags & SHCONTF_FOLDERS)) dirQty = 0;
-    //    if (!(grfFlags & SHCONTF_NONFOLDERS)) streamQty = 0;
-    //}
-    ComRef<QiewerEnumIDList>::CreateForReturn<IEnumIDList>(ppenumIDList, *this, pboFile->GetFolder(), grfFlags);
+    ComRef<DirectoryEnumIDList>::CreateForReturn<IEnumIDList>(ppenumIDList, *this, pboFile->GetFolder(), grfFlags);
 
     return(S_OK);
 }
@@ -533,6 +536,11 @@ HRESULT PboFolder::CreateViewObject(HWND hwnd, const IID& riid, void** ppv)
         AddRef();
         return S_OK;
     }
+    else if (IsEqualIID(riid, IID_IContextMenu))
+    {
+        ComRef<PboFolderContextMenu>::CreateForReturn<IContextMenu>(ppv, this, hwnd);
+        return S_OK;
+    }
 
     else RIID_TODO(IID_IExplorerCommandProvider);
   else RIID_TODO(IID_ITransferDestination); // https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-itransferdestination
@@ -554,14 +562,7 @@ HRESULT PboFolder::CreateViewObject(HWND hwnd, const IID& riid, void** ppv)
 
 HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfInOut)
 {
-    if (cidl != 1)
-    {
-        *rgfInOut &= SFGAO_CANCOPY;
-        return(S_OK);
-    }
-
     const PboPidl* qp = (const PboPidl*)apidl[0];
-
 
     static constexpr Util::FlagSeperator<SFGAOF, 31> seperator({
         { SFGAO_CANCOPY, "SFGAO_CANCOPY"sv },
@@ -595,37 +596,46 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
         { SFGAO_HASSTORAGE, "SFGAO_HASSTORAGE"sv },
         { SFGAO_STREAM, "SFGAO_STREAM"sv },
         { SFGAO_STORAGEANCESTOR, "SFGAO_STORAGEANCESTOR"sv }
-        });
+    });
 
 
-    DebugLogger::TraceLog(std::format("{}, wantedFlags {}", Util::utf8_encode(qp->GetFilePath().wstring()), seperator.SeperateToString(*rgfInOut)), std::source_location::current(), __FUNCTION__);
 
-    //#TODO only return flags that were also requested initially. rgfInOut is pre-filled with the flags it wants to know about
-    switch (qp->type)
+    auto getFlagsFor = [](const PboPidl* qp, SFGAOF mask) -> SFGAOF {
+        DebugLogger::TraceLog(std::format("{}, wantedFlags {}", Util::utf8_encode(qp->GetFilePath().wstring()), seperator.SeperateToString(mask)), std::source_location::current(), __FUNCTION__);
+
+        //#TODO only return flags that were also requested initially. rgfInOut is pre-filled with the flags it wants to know about
+        switch (qp->type)
+        {
+        case PboPidlFileType::Folder:
+            return
+                SFGAO_BROWSABLE | SFGAO_HASSUBFOLDER | SFGAO_CANCOPY |
+                SFGAO_FOLDER | SFGAO_FILESYSANCESTOR | SFGAO_STORAGEANCESTOR
+                | SFGAO_DROPTARGET; // https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ishellfolder-getattributesof
+
+            //case 1:
+            //    *rgfInOut &=
+            //        SFGAO_BROWSABLE | SFGAO_HASSUBFOLDER | SFGAO_CANCOPY |
+            //        SFGAO_FOLDER | SFGAO_FILESYSANCESTOR | SFGAO_STREAM;
+            //    break;
+            //
+        case PboPidlFileType::File:
+            auto flag = SFGAO_CANCOPY | SFGAO_STREAM | SFGAO_CANRENAME | SFGAO_CANDELETE;
+
+            if (qp->GetFilePath().filename().wstring().starts_with(L"$DU"))
+                flag |= SFGAO_GHOSTED | SFGAO_HIDDEN; // The specified items are shown as dimmed and unavailable to the user.
+            return flag;
+        }
+    };
+
+    for (size_t i = 0; i < cidl; i++)
     {
-    case PboPidlFileType::Folder:
-        *rgfInOut =
-            SFGAO_BROWSABLE | SFGAO_HASSUBFOLDER | SFGAO_CANCOPY |
-            SFGAO_FOLDER | SFGAO_FILESYSANCESTOR | SFGAO_STORAGEANCESTOR
-            | SFGAO_DROPTARGET; // https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ishellfolder-getattributesof
-        break;
+        const PboPidl* qp = (const PboPidl*)apidl[i];
+        auto& flags = rgfInOut[i];
 
-        //case 1:
-        //    *rgfInOut &=
-        //        SFGAO_BROWSABLE | SFGAO_HASSUBFOLDER | SFGAO_CANCOPY |
-        //        SFGAO_FOLDER | SFGAO_FILESYSANCESTOR | SFGAO_STREAM;
-        //    break;
-        //
-    case PboPidlFileType::File:
-        *rgfInOut = SFGAO_CANCOPY | SFGAO_STREAM | SFGAO_CANRENAME | SFGAO_CANDELETE;
-
-        if (qp->GetFilePath().filename().wstring().starts_with(L"$DU"))
-            *rgfInOut |= SFGAO_GHOSTED | SFGAO_HIDDEN; // The specified items are shown as dimmed and unavailable to the user.
-
-        break;
+        flags = getFlagsFor(qp, flags);
     }
-
-    return(S_OK);
+ 
+    return S_OK;
 }
 
 HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl, const IID& riid, UINT* rgfReserved,
@@ -1480,11 +1490,17 @@ HRESULT PboFolder::DragEnter(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt
 
     bool canDrop = handler.CanReadAsFile();
 
+
     if (canDrop)
-        *pdwEffect = DROPEFFECT_COPY;
+        if (grfKeyState & MK_SHIFT && (*pdwEffect & DROPEFFECT_MOVE))
+            *pdwEffect = DROPEFFECT_MOVE;
+        else
+            *pdwEffect = DROPEFFECT_COPY;
     else
         return E_INVALIDARG;
 
+    //#TODO we need to seperate folderDropTarget out, and store the wanted drop effect inside that, and remember it on drop
+    dropEffect = *pdwEffect;
 
     return S_OK;
 }
@@ -1838,34 +1854,31 @@ HRESULT PboFolder::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWO
     }
 
 
-    auto operation = new ProgressDialogOperation(L"test1", L"test2", lastHwnd);
+    auto operation = new ProgressDialogOperation(pboFile->GetPboDiskPath(), L"", lastHwnd);
     this->AddRef();
-    operation->DoOperation([=](const ProgressDialogOperation& op) {
+    pDataObj->AddRef();
+    operation->DoOperation([this, pDataObj, filePaths](const ProgressDialogOperation& op) {
 
         op.SetProgress(0, 1024);
-        op.SetTitle(L"TitleTest");
+        op.SetTitle(L"PboExplorer patching");
         op.ResetTimer();
 
-
-        PboPatcher patcher;
+        if (filePaths.size() == 1) {
+            op.SetLineText(2, filePaths[0].path);
+        }
 
         {
-            std::ifstream inputFile(pboFile->GetPboDiskPath(), std::ifstream::in | std::ifstream::binary);
-
-            PboReader reader(inputFile);
-            reader.readHeaders();
-            patcher.ReadInputFile(&reader);
-
+            PboPatcherLocked patcher(pboFile->GetRootFile());
             //#TODO handle a folder being drag&dropped
 
             for (auto& it : filePaths) {
                 auto pboTarget = pboFile->GetFolder()->fullPath / it.path.filename();
 
                 // if file already exists, replace it.
-                auto& readerFiles = reader.getFiles();
+                auto& readerFiles = patcher.GetFilesFromReader();
                 auto found = std::find_if(readerFiles.begin(), readerFiles.end(), [&pboTarget](const PboEntry& entry) {
                     return entry.name == pboTarget; //#TODO case insensitive
-                    });
+                });
 
                 if (found == readerFiles.end()) // new file
                     patcher.AddPatch<PatchAddFileFromDisk>(it.path, pboTarget);
@@ -1873,24 +1886,53 @@ HRESULT PboFolder::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWO
                     patcher.AddPatch<PatchUpdateFileFromDisk>(it.path, pboTarget);
             }
 
-            patcher.ProcessPatches();
+            op.SetProgress(512, 1024);
+
+            //#TODO patcher get bytes to write to target file (only write? or all including notouch?, probably write)
+            //#TODO patcher add progresstracker PboFileToWrite::SetProgressTracker(IPboWriteTracker), tracker gets current file being written (Tracker.StartFile(entryInfo)) and DataWritten(size_t) per file chunk
+
+            // patcher destructor finishes patching
         }
 
-        op.SetProgress(512, 1024);
+       
+        //#TODO turn this into a utility function, global allcoing a memory space, then locking and inserting a thing
 
-        //#TODO patcher get bytes to write to target file (only write? or all including notouch?, probably write)
-        //#TODO patcher add progresstracker PboFileToWrite::SetProgressTracker(IPboWriteTracker), tracker gets current file being written (Tracker.StartFile(entryInfo)) and DataWritten(size_t) per file chunk
+        STGMEDIUM medium;
 
-        {
-            std::fstream outputStream(pboFile->GetPboDiskPath(), std::fstream::binary | std::fstream::in | std::fstream::out);
-            patcher.WriteOutputFile(outputStream);
-        }
+        HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE | GMEM_SHARE | GMEM_DISCARDABLE, sizeof(DWORD));
+        if (!hMem) return(E_OUTOFMEMORY);
+
+        LPDWORD pdw = (LPDWORD)GlobalLock(hMem);
+        *pdw = dropEffect;
+        GlobalUnlock(hMem);
+
+        medium.tymed = TYMED_HGLOBAL;
+        medium.pUnkForRelease = nullptr;
+        medium.hGlobal = hMem;
+
+        FORMATETC fe = { 0, nullptr,DVASPECT_CONTENT,-1,0 };
+        fe.cfFormat = ClipboardFormatHandler::GetCFFromType(ClipboardFormatHandler::ClipboardFormatType::PerformedDropEffect);
+        fe.tymed = TYMED_HGLOBAL;
+
+        pDataObj->SetData(&fe, &medium, 0);
+
+        fe.cfFormat = ClipboardFormatHandler::GetCFFromType(ClipboardFormatHandler::ClipboardFormatType::PasteSucceeded);
+        fe.tymed = TYMED_HGLOBAL;
+
+        pDataObj->SetData(&fe, &medium, 0);
+
+        GlobalFree(hMem);
+
+
+        pDataObj->Release();
         this->Release();
-        });
+    });
+
+    //#TODO shift+drag&drop is still broken
 
     //#TODO use signal/slot to trigger all root PboFolders to reload their pbo file info
 
-    *pdwEffect = DROPEFFECT_COPY;
+    *pdwEffect = dropEffect;
 
     return S_OK;
 }

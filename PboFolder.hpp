@@ -141,4 +141,7 @@ public:
         tempFileRefs.emplace_back(shared);
     }
 
-    };
+    //#TODO move to seperate IDropTarget class
+    DWORD dropEffect;
+
+};

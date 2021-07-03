@@ -299,12 +299,13 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>ARMA_PBO_LIB_WRITE;ARMA_PBO_LIB_SHA1;NDEBUG;PBOEXPLORER_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ENABLE_SENTRY;ARMA_PBO_LIB_WRITE;ARMA_PBO_LIB_SHA1;NDEBUG;PBOEXPLORER_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>lib/sentry/external/crashpad/third_party/mini_chromium/mini_chromium/;lib/sentry/external/crashpad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -330,6 +331,7 @@
     <ClInclude Include="PboFileDirectory.hpp" />
     <ClInclude Include="PboFileStream.hpp" />
     <ClInclude Include="PboFolder.hpp" />
+    <ClInclude Include="PboFolderContextMenu.hpp" />
     <ClInclude Include="PboPatcher.hpp" />
     <ClInclude Include="PboPatcherLocked.hpp" />
     <ClInclude Include="PboPidl.hpp" />
@@ -352,6 +354,7 @@
     <ClCompile Include="PboFileDirectory.cpp" />
     <ClCompile Include="PboFileStream.cpp" />
     <ClCompile Include="PboFolder.cpp" />
+    <ClCompile Include="PboFolderContextMenu.cpp" />
     <ClCompile Include="PboPatcher.cpp" />
     <ClCompile Include="ProgressDialogOperation.cpp" />
     <ClCompile Include="ShellExt.cpp" />

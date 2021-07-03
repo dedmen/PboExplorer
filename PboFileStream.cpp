@@ -92,8 +92,7 @@ HRESULT PboFileStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
     return cb == didRead ? S_OK : S_FALSE;
 }
 
-//#TODO const void*
-HRESULT PboFileStream::Write(void const* pv, ULONG cb, ULONG* pcbWritten)
+HRESULT PboFileStream::Write(const void* pv, ULONG cb, ULONG* pcbWritten)
 {
     // https://docs.microsoft.com/en-us/windows/win32/api/objidl/nf-objidl-isequentialstream-write
     TransformToWritable();
