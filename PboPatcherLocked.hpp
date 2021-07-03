@@ -39,4 +39,8 @@ public:
     void AddPatch(Args&& ...args) {
         patcher.AddPatch<T, Args...>(std::forward<Args>(args)...);
     }
+
+    const auto& GetFilesFromReader() {
+        return reader->getFiles();
+    }
 };

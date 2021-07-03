@@ -1,5 +1,6 @@
 #include "PboPatcher.hpp"
 #include <execution>
+#include "Util.hpp"
 
 /*
 
@@ -115,6 +116,11 @@ void PboPatcher::ReplaceWithDummyFile(std::filesystem::path file, uint32_t index
     // deletes are safe, noone will step on eachother and we won't invalidate iterators, we can skip locks
     if (currentPatchStep == PatchType::Delete) {
         auto foundFile = GetFTWIteratorToFile(file, indexHint);
+        if (foundFile == filesToWrite.end()) {
+            Util::TryDebugBreak();
+            return;
+        }
+
         auto newDummySpace = std::make_shared<PboFTW_DummySpace>(GetNewDummyFileName((*foundFile)->getEntryInformation().startOffset).string(), (*foundFile)->getEntryInformation());
         *foundFile = newDummySpace;
         return;
@@ -155,7 +161,7 @@ decltype(PboPatcher::filesToWrite)::iterator PboPatcher::GetFTWIteratorToFile(co
                 foundFile = std::find_if(std::execution::par_unseq, filesToWrite.begin(), filesToWrite.end(), [&file](const std::shared_ptr<PboFileToWrite>& ftw) {
                     return ftw->getEntryInformation().name == file;
                 });
-            } while ((*foundFile)->getEntryInformation().name != file);
+            } while (foundFile != filesToWrite.end() && (*foundFile)->getEntryInformation().name != file);
     }
 
     return foundFile;
@@ -308,6 +314,10 @@ void PatchUpdateFileFromDisk::Process(PboPatcher& patcher) {
     // get iterator to our file
     std::shared_lock ftwLockS(patcher.ftwMutex);
     auto foundFile = patcher.GetFTWIteratorToFile(pboFilePath);
+    if (foundFile == patcher.filesToWrite.end()) {
+        Util::TryDebugBreak();
+        return;
+    }
     const auto oldFileSize = (*foundFile)->getEntryInformation().data_size;
 
     ftwLockS.unlock();
@@ -371,6 +381,10 @@ void PatchRenameFile::Process(PboPatcher& patcher)
     // get iterator to our file
     std::shared_lock ftwLockS(patcher.ftwMutex);
     auto foundFile = patcher.GetFTWIteratorToFile(pboFilePathOld);
+    if (foundFile == patcher.filesToWrite.end()) {
+        Util::TryDebugBreak();
+        return;
+    }
     (*foundFile)->getEntryInformation().name = pboFilePathNew.string();
 
     ftwLockS.unlock();
@@ -420,10 +434,6 @@ void PboPatcher::ProcessPatches() {
             filesToWrite.emplace_back(std::make_shared<PboFTW_NoTouch>(it));
     }
     endStartOffset = filesToWrite.back()->getEntryInformation().startOffset + filesToWrite.back()->getEntryInformation().data_size;
-
-
-
-
 
 
     // deletes first to free up dummy spaces
