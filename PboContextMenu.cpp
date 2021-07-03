@@ -321,17 +321,25 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
         {
             PboPatcherLocked patcher(m_folder->pboFile->GetRootFile());
 
-            PboPidl* qp = (PboPidl*)m_apidl[0].GetRef();
-            if (qp->IsFile())
-            {
-                patcher.AddPatch<PatchDeleteFile>(qp->GetFilePath());
-            }
-            else
-            {
-                //#TODO folder deletion
-                Util::TryDebugBreak();
+            for (auto& it : m_apidl) {
+                PboPidl* qp = (PboPidl*)it.GetRef(); //#TODO change m_apidl to only store pboPidl* and not convert everytime
+                if (qp->IsFile())
+                {
+                    patcher.AddPatch<PatchDeleteFile>(qp->GetFilePath());
+                }
+                else
+                {
+                    //#TODO folder deletion
+                    Util::TryDebugBreak();
+                }
             }
         }
+
+        for (auto& it : m_apidl) {
+            PboPidl* qp = (PboPidl*)it.GetRef(); 
+            SHChangeNotify(SHCNE_DELETE, SHCNF_PATH, qp->GetFilePath().native().c_str(), 0);
+        }
+       
 
         return S_OK;
     }
