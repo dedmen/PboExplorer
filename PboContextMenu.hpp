@@ -8,6 +8,7 @@
 
 class PboFolder;
 
+//#TODO rename PboFileContextMenu
 class PboContextMenu :
     GlobalRefCounted,
 	public RefCountedCOM<PboContextMenu,

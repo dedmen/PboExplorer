@@ -855,6 +855,7 @@ HRESULT FormatEnumerator::Next(
 
     return (celt == toFetch ? S_OK : S_FALSE);
 }
+
 HRESULT FormatEnumerator::Skip(DWORD celt)
 {
     m_pos += celt;

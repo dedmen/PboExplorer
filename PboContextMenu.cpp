@@ -20,6 +20,7 @@
 #ifndef CMIC_MASK_SHIFT_DOWN
 #define CMIC_MASK_SHIFT_DOWN 0x10000000
 #endif
+#include "PboPatcherLocked.hpp"
 
 
 static bool copyIStreamToFile(IStream* is, std::filesystem::path& fileName, INT64 size = 0, FILETIME* ft = nullptr)
@@ -317,17 +318,8 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
 
     if (cmd == CONTEXT_DELETE)
     {
-
-
-        PboPatcher patcher;
-
         {
-            std::ifstream inputFile(m_folder->pboFile->GetPboDiskPath(), std::ifstream::in | std::ifstream::binary);
-
-            PboReader reader(inputFile);
-            reader.readHeaders();
-            patcher.ReadInputFile(&reader);
-
+            PboPatcherLocked patcher(m_folder->pboFile->GetRootFile());
 
             PboPidl* qp = (PboPidl*)m_apidl[0].GetRef();
             if (qp->IsFile())
@@ -339,13 +331,6 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
                 //#TODO folder deletion
                 Util::TryDebugBreak();
             }
-
-            patcher.ProcessPatches();
-        }
-
-        {
-            std::fstream outputStream(m_folder->pboFile->GetPboDiskPath(), std::fstream::binary | std::fstream::in | std::fstream::out);
-            patcher.WriteOutputFile(outputStream);
         }
 
         return S_OK;
