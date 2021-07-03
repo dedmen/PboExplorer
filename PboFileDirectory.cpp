@@ -292,6 +292,9 @@ void PboFile::ReloadFrom(std::filesystem::path inputPath)
                     );
 
     };
+
+    cleanupFolder(rootFolder);
+
 }
 
 const std::filesystem::path& PboFile::GetPboDiskPath() const
