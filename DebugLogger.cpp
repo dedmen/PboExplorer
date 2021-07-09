@@ -635,6 +635,8 @@ void DebugLogger::OnQueryInterfaceExitUnhandled(const GUID& riid, const std::sou
 
 
 #ifdef ENABLE_SENTRY
+		prnt = std::format("Unimplemented GUID - {} - {}\n", funcName, guidName.first);
+
 		auto event = sentry_value_new_message_event(
 			/*   level */ SENTRY_LEVEL_WARNING,
 			/*  logger */ nullptr,
@@ -669,7 +671,7 @@ void DebugLogger::TraceLog(const std::wstring& message, const std::source_locati
 
 void DebugLogger::WarnLog(const std::string& message, const std::source_location location, const char* funcName)
 {
-	auto prnt = std::format("[{:%T}] T [{}] - {}\n", std::chrono::system_clock::now(), funcName, message);
+	auto prnt = std::format("[{:%T}] W [{}] - {}\n", std::chrono::system_clock::now(), funcName, message);
 	OutputDebugStringA(prnt.c_str());
 	logFile.write(prnt.c_str(), prnt.length());
 	logFile.flush();
@@ -677,6 +679,8 @@ void DebugLogger::WarnLog(const std::string& message, const std::source_location
 	logFileBad.flush();
 
 #ifdef ENABLE_SENTRY
+	prnt = std::format("W [{}] - {}\n", funcName, message);
+
 	auto event = sentry_value_new_message_event(
 		/*   level */ SENTRY_LEVEL_WARNING,
 		/*  logger */ nullptr,

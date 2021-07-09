@@ -1929,6 +1929,9 @@ HRESULT PboFolder::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWO
     });
 
     //#TODO shift+drag&drop is still broken
+    // https://docs.microsoft.com/en-us/windows/win32/shell/datascenarios#handling-delete-on-paste-operations
+    // somehow step 8 doesn't happen, desktop doesn't seem to delete the files
+
 
     //#TODO use signal/slot to trigger all root PboFolders to reload their pbo file info
 
