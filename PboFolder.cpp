@@ -1926,6 +1926,8 @@ HRESULT PboFolder::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWO
 
         pDataObj->Release();
         this->Release();
+
+        return S_OK;
     });
 
     //#TODO shift+drag&drop is still broken
