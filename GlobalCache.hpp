@@ -14,7 +14,7 @@ class GlobalCache
 	// unique ptr so we can reliably return reference and don't need to worry about map realloc maybe messing us up
 	using CacheDirT = Util::unordered_map_stringkey<std::unique_ptr<std::any>>;
 	CacheDirT cacheEntries;
-	std::mutex cacheLock;
+	std::recursive_mutex cacheLock;
 
 public:
 

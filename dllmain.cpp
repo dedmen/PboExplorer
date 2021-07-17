@@ -430,18 +430,32 @@ STDAPI DllRegisterServer(VOID)
 		{HKEY_CLASSES_ROOT, L"PboExplorer\\shell",									L"",					L"open",			true},
 		{HKEY_CLASSES_ROOT, L"PboExplorer\\shellex\\PropertySheetHandlers\\{0}",    L"",                    L"",				true},
 
+		// Context Menu on PBO's (unpack PBO)
+		{HKEY_CLASSES_ROOT, L"PboExplorer\\ShellEx\\ContextMenuHandlers\\PboExplorer",											true},
+		{HKEY_CLASSES_ROOT, L"PboExplorer\\ShellEx\\ContextMenuHandlers\\PboExplorer",L"",					L"{0}",				true},
+
+		// Context Menu on PBO's (non pbox)
+		//{HKEY_CLASSES_ROOT, L".pbo\\ShellEx\\ContextMenuHandlers\\PboExplorer",											true},
+		//{HKEY_CLASSES_ROOT, L".pbo\\ShellEx\\ContextMenuHandlers\\PboExplorer",L"",					L"{0}",				true},
+		//{HKEY_CLASSES_ROOT, L".pbo_auto_file\\ShellEx\\ContextMenuHandlers\\PboExplorer",											true},
+		//{HKEY_CLASSES_ROOT, L".pbo_auto_file\\ShellEx\\ContextMenuHandlers\\PboExplorer",L"",					L"{0}",				true},
+
 		// Context Menu on folders (create PBO from folder)
 		{HKEY_CLASSES_ROOT, L"Folder\\ShellEx\\ContextMenuHandlers\\PboExplorer",												true},
 		{HKEY_CLASSES_ROOT, L"Folder\\ShellEx\\ContextMenuHandlers\\PboExplorer",	L"",					L"{0}",				true},
 
 		// .pbo file format general, association, its handled by PboExplorer key
-		{HKEY_CLASSES_ROOT, L".pbox",																							true},
-		{HKEY_CLASSES_ROOT, L".pbox",												L"",					L"PboExplorer",		true}, // reference to HKEY_CLASSES_ROOT/PboExplorer key
+		{HKEY_CLASSES_ROOT, L".pbo",																							true},
+		{HKEY_CLASSES_ROOT, L".pbo",												L"",					L"PboExplorer",		true}, // reference to HKEY_CLASSES_ROOT/PboExplorer key
 
 		// Same thing again? just for CLSID? Dunno.
-		{HKEY_CLASSES_ROOT, L"SystemFileAssociations\\.pbox",																	true},
-		{HKEY_CLASSES_ROOT, L"SystemFileAssociations\\.pbox\\CLSID",				L"",					L"{0}",				true}
+		{HKEY_CLASSES_ROOT, L"SystemFileAssociations\\.pbo",																	true},
+		{HKEY_CLASSES_ROOT, L"SystemFileAssociations\\.pbo\\CLSID",				L"",					L"{0}",				true}
 	};
+
+	//#TODO Computer\HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.pbo\OpenWithProgids
+	// in there, it may have a .pbo\UserChoice folder that overrides the default open action and can also block PboExplorer context menu on pbo files. That needs to be deleted
+
 
 	// register the extension as approved by NT
 	//OSVERSIONINFO  osvi;
@@ -554,12 +568,12 @@ STDAPI DllUnregisterServer(VOID)
 	{HKEY_CLASSES_ROOT, L"Folder\\ShellEx\\ContextMenuHandlers\\PboExplorer",	L"",					L"{0}",				true},
 
 	// .pbo file format general, association, its handled by PboExplorer key
-	{HKEY_CLASSES_ROOT, L".pbox",																							true},
-	{HKEY_CLASSES_ROOT, L".pbox",												L"",					L"PboExplorer",		true}, // reference to HKEY_CLASSES_ROOT/PboExplorer key
+	{HKEY_CLASSES_ROOT, L".pbo",																							true},
+	{HKEY_CLASSES_ROOT, L".pbo",												L"",					L"PboExplorer",		true}, // reference to HKEY_CLASSES_ROOT/PboExplorer key
 
 	// Same thing again? just for CLSID? Dunno.
-	{HKEY_CLASSES_ROOT, L"SystemFileAssociations\\.pbox",																	true},
-	{HKEY_CLASSES_ROOT, L"SystemFileAssociations\\.pbox\\CLSID",				L"",					L"{0}",				true}
+	{HKEY_CLASSES_ROOT, L"SystemFileAssociations\\.pbo",																	true},
+	{HKEY_CLASSES_ROOT, L"SystemFileAssociations\\.pbo\\CLSID",				L"",					L"{0}",				true}
 	};
 
 	// register the extension as approved by NT

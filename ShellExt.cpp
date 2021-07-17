@@ -2,6 +2,9 @@
 
 #include "resource.h"
 #include "DebugLogger.hpp"
+#include "GlobalCache.hpp"
+
+#include <fstream> // Addon builder reading config file
 
 // CreatePropertySheetPageW
 #pragma comment( lib, "Comctl32" )
@@ -39,8 +42,8 @@ STDMETHODIMP ShellExt::QueryInterface(REFIID riid, LPVOID* ppReturn)
 	//	*ppReturn = static_cast<IClassFactory*>(this);
 	//else if (IsEqualIID(riid, IID_IShellFolder2))
 	//	*ppReturn = static_cast<IShellFolder2*>(this);
-	else
-		__debugbreak();
+	//else
+	//	__debugbreak();
 	
 
 
@@ -87,12 +90,20 @@ STDMETHODIMP ShellExt::Initialize(
 		return E_INVALIDARG;
 	}
 
-	// Get the name of the first file and store it in our member variable m_szFile.
-	if (0 == DragQueryFile(hDrop, 0, m_szFile, MAX_PATH))
-		hr = E_INVALIDARG;
+	TCHAR m_szFile[MAX_PATH];
+	for (size_t i = 0; i < uNumFiles; i++)
+	{
+		// Get the name of the first file and store it in our member variable m_szFile.
+		if (0 == DragQueryFile(hDrop, i, m_szFile, MAX_PATH))
+			hr = E_INVALIDARG;
+
+		selectedFiles.push_back(m_szFile);
+	}
 
 	GlobalUnlock(stg.hGlobal);
 	ReleaseStgMedium(&stg);
+
+	contextMenu = QueryContextMenuFromCache();
 
 	return hr;
 }
@@ -105,10 +116,114 @@ STDMETHODIMP ShellExt::QueryContextMenu(
 	if (uFlags & CMF_DEFAULTONLY)
 		return MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, 0);
 
-	InsertMenu(hmenu, uMenuIndex, MF_BYPOSITION, uidFirstCmd, L"PboExplorer Test Item");
+	//InsertMenu(hmenu, uMenuIndex, MF_BYPOSITION, uidFirstCmd, L"PboExplorer Test Item");
 
-	return MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, 1);
+	auto startIndex = uMenuIndex;
+	cmdFirst = uidFirstCmd;
+
+	contextMenu.InsertIntoMenu(hmenu, uMenuIndex, uidFirstCmd);
+
+	return MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, (uMenuIndex - startIndex + 1));
 }
+
+STDMETHODIMP ShellExt::GetCommandString(
+	UINT_PTR idCmd, UINT uFlags, UINT* pwReserved, LPSTR pszName, UINT cchMax)
+{
+	//USES_CONVERSION;
+
+	// Check idCmd, it must be 0 since we have only one menu item.
+	//if (0 != idCmd)
+	//	return E_INVALIDARG;
+
+	// If Explorer is asking for a help string, copy our string into the
+	// supplied buffer.
+	if (uFlags == GCS_HELPTEXT)
+	{
+		LPCTSTR szText = L"This is the simple shell extension's help";
+
+		if (uFlags & GCS_UNICODE)
+		{
+			lstrcpynW((LPWSTR)pszName, L"This is the simple shell extension's help", cchMax);
+		}
+		else
+		{
+			// Use the ANSI string copy API to return the help string.
+			lstrcpynA(pszName, "This is the simple shell extension's help", cchMax);
+		}
+
+		return S_OK;
+	}
+
+	
+
+	if (uFlags == GCS_VERB)
+	{
+		auto verb = contextMenu.GetVerb(idCmd + cmdFirst);
+
+		if (verb.empty()) 
+			return E_INVALIDARG;
+
+		LPCTSTR szText = L"This is the simple shell extension's help";
+
+		if (uFlags & GCS_UNICODE)
+		{
+			lstrcpynW((LPWSTR)pszName, verb.data(), cchMax);
+		}
+		else
+		{
+			__debugbreak(); // #TODO convert
+			// Use the ANSI string copy API to return the help string.
+			lstrcpynA(pszName, "This is the simple shell extension's help", cchMax);
+		}
+
+		return S_OK;
+	}
+
+
+
+	return E_INVALIDARG;
+}
+
+STDMETHODIMP ShellExt::InvokeCommand(LPCMINVOKECOMMANDINFO pCmdInfo)
+{
+	LPCMINVOKECOMMANDINFOEX test = (LPCMINVOKECOMMANDINFOEX)pCmdInfo;
+
+	// If lpVerb really points to a string, ignore this function call and bail out.
+	if (0 != HIWORD(pCmdInfo->lpVerb)) {
+
+		// its a string
+
+
+		return E_INVALIDARG;
+	}
+		
+
+	return contextMenu.InvokeByCmd(LOWORD(pCmdInfo->lpVerb) + cmdFirst, selectedFiles);
+
+
+
+	// Get the command index - the only valid one is 0.
+	switch (LOWORD(pCmdInfo->lpVerb))
+	{
+	case 0:
+	{
+		TCHAR szMsg[MAX_PATH + 32];
+
+		wsprintf(szMsg, L"The selected file was:\n\n%s", selectedFiles.front().string().c_str());
+
+		MessageBox(pCmdInfo->hwnd, szMsg, L"PboExplorer",
+			MB_ICONINFORMATION);
+
+		return S_OK;
+	}
+	break;
+
+	default:
+		return E_INVALIDARG;
+		break;
+	}
+}
+
 
 BOOL OnInitDialog(HWND hwnd, LPARAM lParam);
 BOOL OnApply(HWND hwnd, PSHNOTIFY* phdr);
@@ -219,90 +334,492 @@ HRESULT ShellExt::AddPages(LPFNADDPROPSHEETPAGE lpfnAddPageProc, LPARAM lParam) 
 	TCHAR          szPageTitle[MAX_PATH];
 
 
-		// 'it' points at the next filename. Allocate a new copy of the string
-		// that the page will own.
-		//LPCTSTR szFile = _tcsdup(it->c_str());
-		psp.dwSize = sizeof(PROPSHEETPAGE);
-		psp.dwFlags =PSP_USETITLE |
-			PSP_USECALLBACK; // PSP_USEICONID | PSP_USEREFPARENT | 
-		psp.hInstance = g_hInst;
-		psp.pszTemplate = MAKEINTRESOURCE(IDD_PROPPAGE_LARGE);
-		psp.pszIcon = nullptr; // MAKEINTRESOURCE(IDI_TAB_ICON);
-		psp.pszTitle = L"PboExplorer";
-		psp.pfnDlgProc = PropPageDlgProc;
-		//psp.lParam = (LPARAM)szFile;
-		psp.pfnCallback = PropPageCallbackProc;
-		psp.pcRefParent = nullptr; // (UINT*)&_Module.m_nLockCnt;
-		hPage = CreatePropertySheetPage(&psp);
-		if (NULL != hPage)
-		{
-			// Call the shell's callback function, so it adds the page to
-			// the property sheet.
-			if (!lpfnAddPageProc(hPage, lParam))
-				DestroyPropertySheetPage(hPage);
-		}
+	// 'it' points at the next filename. Allocate a new copy of the string
+	// that the page will own.
+	//LPCTSTR szFile = _tcsdup(it->c_str());
+	psp.dwSize = sizeof(PROPSHEETPAGE);
+	psp.dwFlags = PSP_USETITLE |
+		PSP_USECALLBACK; // PSP_USEICONID | PSP_USEREFPARENT | 
+	psp.hInstance = g_hInst;
+	psp.pszTemplate = MAKEINTRESOURCE(IDD_PROPPAGE_LARGE);
+	psp.pszIcon = nullptr; // MAKEINTRESOURCE(IDI_TAB_ICON);
+	psp.pszTitle = L"PboExplorer";
+	psp.pfnDlgProc = PropPageDlgProc;
+	//psp.lParam = (LPARAM)szFile;
+	psp.pfnCallback = PropPageCallbackProc;
+	psp.pcRefParent = nullptr; // (UINT*)&_Module.m_nLockCnt;
+	hPage = CreatePropertySheetPage(&psp);
+	if (NULL != hPage)
+	{
+		// Call the shell's callback function, so it adds the page to
+		// the property sheet.
+		if (!lpfnAddPageProc(hPage, lParam))
+			DestroyPropertySheetPage(hPage);
+	}
 
 	return S_OK;
 }
 
-STDMETHODIMP ShellExt::GetCommandString(
-	UINT_PTR idCmd, UINT uFlags, UINT* pwReserved, LPSTR pszName, UINT cchMax)
+
+
+ContextMenuItem ShellExt::QueryContextMenuFromCache()
 {
-	//USES_CONVERSION;
+	bool isFolders = std::ranges::all_of(selectedFiles, [](const std::filesystem::path path) -> bool {
+		return std::filesystem::is_directory(path);
+	});
 
-	// Check idCmd, it must be 0 since we have only one menu item.
-	if (0 != idCmd)
-		return E_INVALIDARG;
-
-
+	bool isSingleElement = selectedFiles.size() == 1;
 
 
-	// If Explorer is asking for a help string, copy our string into the
-	// supplied buffer.
-	if (uFlags & GCS_HELPTEXT)
-	{
-		LPCTSTR szText = L"This is the simple shell extension's help";
-
-		if (uFlags & GCS_UNICODE)
-		{
-			lstrcpynW((LPWSTR)pszName, L"This is the simple shell extension's help", cchMax);
-		}
+	if (isFolders)
+		if (isSingleElement)
+			return GCache.GetFromCache("SHEX_FldrS", CreateContextMenu_SingleFolder);
 		else
-		{
-			// Use the ANSI string copy API to return the help string.
-			lstrcpynA(pszName, "This is the simple shell extension's help", cchMax);
-		}
+			return GCache.GetFromCache("SHEX_FldrM", CreateContextMenu_MultiFolder);
 
-		return S_OK;
-	}
+	bool isPBOs = std::ranges::all_of(selectedFiles, [](const std::filesystem::path path) -> bool {
+		return path.extension() == ".pbo";
+	});
 
-	return E_INVALIDARG;
+	if (isPBOs)
+		if (isSingleElement)
+			return GCache.GetFromCache("SHEX_PboS", CreateContextMenu_SinglePbo);
+		else
+			return GCache.GetFromCache("SHEX_PboM", CreateContextMenu_MultiPbo);
+
+	//#TODO derapify .bin (if file has correct header, need to open and read)
+
+	return {};
 }
 
-STDMETHODIMP ShellExt::InvokeCommand(LPCMINVOKECOMMANDINFO pCmdInfo)
+std::filesystem::path ReadRegistryFilePathKey(HKEY hkey, std::wstring path, std::wstring key) {
+
+	HKEY hKey;
+	auto lRes = RegOpenKeyExW(hkey, path.data(), 0, KEY_READ, &hKey);
+	if (!SUCCEEDED(lRes))
+		return {};
+
+	WCHAR szBuffer[MAX_PATH];
+	DWORD dwBufferSize = sizeof(szBuffer);
+	DWORD type = 0;
+	lRes = RegQueryValueExW(hKey, key.data(), 0, &type, (LPBYTE)szBuffer, &dwBufferSize);
+	if (!SUCCEEDED(lRes))
+		return {};
+
+	if (type == REG_SZ && std::filesystem::exists(szBuffer))
+		return szBuffer;
+	if (type == REG_EXPAND_SZ) {
+		WCHAR szBufferEx[512];
+		ExpandEnvironmentStringsW(szBuffer, szBufferEx, sizeof(szBufferEx));
+		if (std::filesystem::exists(szBufferEx))
+			return szBufferEx;
+	}
+
+	return {};
+}
+
+std::filesystem::path GetA3ToolsPath() {
+	auto path = ReadRegistryFilePathKey(HKEY_CURRENT_USER, L"SOFTWARE\\Bohemia Interactive\\Arma 3 Tools", L"path");
+
+	if (!path.empty())
+		return path;
+
+	// Check some random paths of known Arma tools to see if we can find it that way
+	for (auto& it : {
+			L"SOFTWARE\\Bohemia Interactive\\CfgConvert",
+			L"SOFTWARE\\Bohemia Interactive\\Binarize",
+			L"SOFTWARE\\Bohemia Interactive\\BankRev",
+			L"SOFTWARE\\Bohemia Interactive\\DSUtils",
+			L"SOFTWARE\\Bohemia Interactive\\ImageToPAA",
+			L"SOFTWARE\\Bohemia Interactive\\Publisher",
+			L"SOFTWARE\\Bohemia Interactive\\TerrainBuilder"
+		}) {
+		path = ReadRegistryFilePathKey(HKEY_CURRENT_USER, it, L"path");
+
+		if (!path.empty())
+			return path.parent_path();
+	}
+
+	// fail
+	return {};
+}
+
+std::filesystem::path GetMikeroToolsPath() {
+	auto path = ReadRegistryFilePathKey(HKEY_CURRENT_USER, L"SOFTWARE\\Mikero\\DePbo", L"path");
+
+	if (!path.empty())
+		return path;
+
+	// Check some other paths to see if we can find it that way
+	for (auto& it : {
+			L"SOFTWARE\\Mikero\\DeOgg",
+			L"SOFTWARE\\Mikero\\DeRap",
+			L"SOFTWARE\\Mikero\\ExtractPbo",
+			L"SOFTWARE\\Mikero\\makePbo",
+			L"SOFTWARE\\Mikero\\Rapify"
+		}) {
+		path = ReadRegistryFilePathKey(HKEY_CURRENT_USER, it, L"path");
+
+		if (!path.empty())
+			return path.parent_path();
+	}
+
+	// fail
+	return {};
+}
+
+
+ContextMenuItem ShellExt::CreateContextMenu_SingleFolder()
 {
-	// If lpVerb really points to a string, ignore this function call and bail out.
-	if (0 != HIWORD(pCmdInfo->lpVerb))
-		return E_INVALIDARG;
 
-	// Get the command index - the only valid one is 0.
-	switch (LOWORD(pCmdInfo->lpVerb))
-	{
-	case 0:
-	{
-		TCHAR szMsg[MAX_PATH + 32];
+	// Pack with makePbo
+	// Pack with pboProject
+	// Pack with fileBank
+	// Pack with PboExplorer
+	// cpbo? how find?
 
-		wsprintf(szMsg, L"The selected file was:\n\n%s", m_szFile);
+	ContextMenuItem rootItem{ L"Pack PBO with..", L"packWithAny", [](const std::vector<std::filesystem::path>& files) {
+		//#TODO select first available child
+		return E_NOTIMPL;
+	} };
 
-		MessageBox(pCmdInfo->hwnd, szMsg, L"PboExplorer",
-			MB_ICONINFORMATION);
+	auto a3ToolsPath = GCache.GetFromCache("A3ToolsPath", GetA3ToolsPath);
+	if (!a3ToolsPath.empty()) {
 
-		return S_OK;
+		if (std::filesystem::exists(a3ToolsPath / "FileBank" / "FileBank.exe"))
+			rootItem.AddChild({ L"..FileBank", L"packWithFileBank", [a3ToolsPath](const std::vector<std::filesystem::path>& files) {
+				//#TODO manually parse pboprefix
+				/*
+				 FileBank {options} source [source]
+				   source may be directory name or log file name (.log)
+
+				   Options:
+				   -property name=value   Store a named property
+				   -exclude filename      List of patterns which should not be included in the pbo file
+				   -dst path              path to folder to store PBO
+				*/
+
+
+				SHELLEXECUTEINFO sei;
+				ZeroMemory(&sei, sizeof(sei));
+				sei.cbSize = (DWORD)sizeof(sei);
+				sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
+				auto path = (a3ToolsPath / "FileBank" / "FileBank.exe").native();
+				sei.lpFile = path.c_str();
+				auto params = std::format(L"dst \"{}\" \"{}\"", files.front().parent_path().native(), files.front().native());
+				sei.lpParameters = params.c_str();
+				auto workDir = files.front().parent_path().native();
+				sei.lpDirectory = workDir.c_str();
+				//sei.hwnd = hwnd; //#TODO get HWND
+				sei.nShow = SW_SHOWNORMAL;
+
+				return ShellExecuteEx(&sei) ? S_OK : E_UNEXPECTED;
+			} });
+	
+		if (std::filesystem::exists(a3ToolsPath / "AddonBuilder" / "AddonBuilder.exe"))
+			rootItem.AddChild({ L"..AddonBuilder", L"packWithAddonBuilder", [a3ToolsPath](const std::vector<std::filesystem::path>& files) {
+				// cheaty trick to open UI with our target path, set the stored last used source folder path, and then just open UI and it will use that
+
+				// find addon builder config
+
+				std::filesystem::path addonBuilderConfig;
+				wchar_t appPath[MAX_PATH];
+				SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, NULL, SHGFP_TYPE_CURRENT, appPath);
+				std::error_code ec;
+				for (auto& p : std::filesystem::recursive_directory_iterator(std::filesystem::path(appPath) / "Bohemia_Interactive", ec)) {
+					if (!p.is_regular_file(ec))
+						continue;
+
+					if (!p.path().filename().native().starts_with(L"user.config"))
+						continue;
+
+					auto test = p.path().lexically_relative(std::filesystem::path(appPath) / "Bohemia_Interactive").native();
+					if (!p.path().lexically_relative(std::filesystem::path(appPath) / "Bohemia_Interactive").native().starts_with(L"AddonBuilder.exe"))
+						continue;
+
+					addonBuilderConfig = p.path();
+					break;
+				}
+
+				if (!addonBuilderConfig.empty()) {
+					//#TODO wstring support, utf8
+					std::ifstream t(addonBuilderConfig);
+					std::string str((std::istreambuf_iterator<char>(t)),
+									std::istreambuf_iterator<char>());
+
+					auto srcDirOffs = str.find("<setting name=\"SourceDir\" serializeAs=\"String\">");
+
+					if (srcDirOffs != std::string::npos) {
+						auto srcDirValOffs = str.find("<value>", srcDirOffs);
+						auto srcDirValEndOffs = str.find("</value>", srcDirValOffs);
+						if (srcDirValOffs != std::string::npos && srcDirValEndOffs != std::string::npos)
+							str.replace(srcDirValOffs + 7, srcDirValEndOffs - (srcDirValOffs + 7), files.front().string());
+					}
+
+					auto dstDirOffs = str.find("<setting name=\"DestDir\" serializeAs=\"String\">");
+
+					if (dstDirOffs != std::string::npos) {
+						auto dstDirValOffs = str.find("<value>", dstDirOffs);
+						auto dstDirValEndOffs = str.find("</value>", dstDirValOffs);
+						if (dstDirValOffs != std::string::npos && dstDirValEndOffs != std::string::npos) 
+							str.replace(dstDirValOffs + 7, dstDirValEndOffs - (dstDirValOffs + 7), (files.front().parent_path() / (files.front().filename().string() + ".pbo")).string());
+					}
+
+					std::ofstream to(addonBuilderConfig);
+					to.write(str.data(), str.length());
+
+				}
+				
+
+
+				SHELLEXECUTEINFO sei;
+				ZeroMemory(&sei, sizeof(sei));
+				sei.cbSize = (DWORD)sizeof(sei);
+				sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
+				auto path = (a3ToolsPath / "AddonBuilder" / "AddonBuilder.exe").native();
+				sei.lpFile = path.c_str();
+				sei.lpParameters = nullptr;
+				auto workDir = files.front().parent_path().native();
+				sei.lpDirectory = workDir.c_str();
+				//sei.hwnd = hwnd; //#TODO get HWND
+				sei.nShow = SW_SHOWNORMAL;
+
+				return ShellExecuteEx(&sei) ? S_OK : E_UNEXPECTED;
+			} });
+
 	}
-	break;
 
-	default:
-		return E_INVALIDARG;
-		break;
+	auto MikeroToolsPath = GCache.GetFromCache("MikeroToolsPath", GetMikeroToolsPath);
+	if (!MikeroToolsPath.empty()) {
+		if (std::filesystem::exists(MikeroToolsPath / "bin" / "MakePbo.exe"))
+			rootItem.AddChild({ L"..MakePbo", L"packWithMakePbo", [MikeroToolsPath](const std::vector<std::filesystem::path>& files) {
+				/*
+				MakePbo Version 2.04, Dll 7.46 "no_file"
+				------args---------
+				Syntax: MakePbo [-option(s)] pbofolder [FolderAndOrFile[.pbo|.ebo|.xbo|.ifa]]
+				options:-! obfuscate
+						-@=Prefix
+						-$ Enable no Prefix
+						-U Allow unbinarised p3d's
+						-P Don't pause
+						-D Don't produce datestamps
+						-Z=Compression (see documentation)
+						-A Arma (default)
+						-C CWC
+						-E Elite
+						-R Resistance
+						-V Vbs (see documentation)
+						-N wyswig: (almost no error checking) OR
+								-B Rapify (default)
+								-M Do not Rapify mission.sqm
+								-F rebuild requiredAddons
+								-S show rapified output
+								-G check for missing files
+								-W warnings are errors
+								-X=exclude files (see documentation)
+				*/
+
+
+				SHELLEXECUTEINFO sei;
+				ZeroMemory(&sei, sizeof(sei));
+				sei.cbSize = (DWORD)sizeof(sei);
+				sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
+				auto path = (MikeroToolsPath / "bin" / "MakePbo.exe").native();
+				sei.lpFile = path.c_str();
+				//#TODO can specify multiple files here and reuse exact same code for multipbo
+				auto params = std::format(L"\"{}\"", files.front().native());
+				sei.lpParameters = params.c_str();
+				auto workDir = files.front().parent_path().native();
+				sei.lpDirectory = workDir.c_str();
+				//sei.hwnd = hwnd; //#TODO get HWND
+				sei.nShow = SW_SHOWNORMAL;
+
+				return ShellExecuteEx(&sei) ? S_OK : E_UNEXPECTED;
+			} });
+
+		if (std::filesystem::exists(MikeroToolsPath / "bin" / "pboProject.exe"))
+			rootItem.AddChild({ L"..PboProject", L"packWithPboProject", [MikeroToolsPath](const std::vector<std::filesystem::path>& files) {
+				/*
+				syntax:
+					+|-? or -syntax, show syntax and options
+					+|-A Remove appid
+					+|-A=123 set appid
+					+|-B=Do/Don't binarise sqm or cpp
+					+|-C Clear/Don't clear temp\project folder
+					+|-E=whatever. Engine is arrowhead arma3 or dayz
+					+|-F Deprecated: was (don't)rebuild required addons
+					+|-G=Do/Don't convert wav/wss to ogg.
+					+|-H=Do/Don't convert png to paa. (Dayz only)
+					+|-I=somefolder see wrp config documentation
+					+|-K enable/disable signing
+					+K=whatever  use this key
+					+|-P do not pause
+					+|-M=SomeFolder mod output
+					+|-N Noisy to log on/off
+					+|-!
+					+|-O Obfuscate (same)
+					+|-R Restore original settings after this session
+					+|-S (don't)stop processing after any error
+					+|-W=warnings are errors on/off
+					+|-Z compress on/off
+
+					Command line params are bad. See documentation for syntax
+				*/
+
+				// cheaty trick to open UI with our target path, set the stored last used source folder path, and then just open UI and it will use that
+
+				HKEY hKey;
+				DWORD dwDisp;
+
+				auto lResult = RegCreateKeyEx(HKEY_CURRENT_USER,
+					L"SOFTWARE\\Mikero\\pboProject\\Settings",
+					0,
+					nullptr,
+					REG_OPTION_NON_VOLATILE,
+					KEY_WRITE,
+					nullptr,
+					&hKey,
+					&dwDisp);
+
+				if (lResult == NOERROR)
+				{
+					auto folderPath = files.front().native();
+					lResult = RegSetValueExW(hKey,
+						L"fs_source_folder",
+						0,
+						REG_SZ,
+						(LPBYTE)folderPath.c_str(),
+						(DWORD)folderPath.length() * 2 + 2);
+
+					RegCloseKey(hKey);
+				}
+
+				SHELLEXECUTEINFO sei;
+				ZeroMemory(&sei, sizeof(sei));
+				sei.cbSize = (DWORD)sizeof(sei);
+				sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
+				auto path = (MikeroToolsPath / "bin" / "pboProject.exe").native();
+				sei.lpFile = path.c_str();
+				sei.lpParameters = nullptr;
+				auto workDir = files.front().parent_path().native();
+				sei.lpDirectory = workDir.c_str();
+				//sei.hwnd = hwnd; //#TODO get HWND
+				sei.nShow = SW_SHOWNORMAL;
+
+				return ShellExecuteEx(&sei) ? S_OK : E_UNEXPECTED;
+			} });
 	}
+
+
+	rootItem.AddChild({ L"..PboExplorer", L"packWithNative", [MikeroToolsPath](const std::vector<std::filesystem::path>& files) {
+		return E_NOTIMPL;
+	} });
+
+	if (rootItem.HasChildren())	// only if we have actual unpack options //#TODO remove when adding native unpack
+		return rootItem;
+	return {};
+}
+
+ContextMenuItem ShellExt::CreateContextMenu_MultiFolder()
+{
+	return {};
+}
+
+ContextMenuItem ShellExt::CreateContextMenu_SinglePbo()
+{
+	//#TODO sign with bisign, need multiple toplevel items
+
+	ContextMenuItem rootItem{ L"Unpack with..", L"unpackWithAny", [](const std::vector<std::filesystem::path>& files) { 
+		//#TODO select first available child
+		return E_NOTIMPL;
+	} };
+
+
+	auto a3ToolsPath = GCache.GetFromCache("A3ToolsPath", GetA3ToolsPath);
+	if (!a3ToolsPath.empty()) {
+
+		if (std::filesystem::exists(a3ToolsPath / "BankRev" / "BankRev.exe"))
+			rootItem.AddChild({ L"..BankRev", L"unpackWithBankRev", [a3ToolsPath](const std::vector<std::filesystem::path>& files) {
+
+
+				/*
+				Bankrev [-f|-folder destiantion] [-t|-time] PBO_file [PBO_file_2 ...]
+					  or -d|-diff PBO_file1 PBO_file2 (compare two PBOs)
+					  or -l|-log PBO_file (write to stdout list of files in archive)
+					  or -lf|-logFull PBO_file (write to stdout list of files in archive, path with prefix)
+					  or -p|-properties PBO_file (write out PBO properties)
+					  or -hash PBO_file (write out hash of PBO)
+					  or -statistics PBO_file (write the statistics of files lengths)
+					  or -prefix (the output folder will be set according to the PBO prefix)
+					  or -t|-time (keep file time from archive)
+				*/
+
+
+				SHELLEXECUTEINFO sei;
+				ZeroMemory(&sei, sizeof(sei));
+				sei.cbSize = (DWORD)sizeof(sei);
+				sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
+				auto path = (a3ToolsPath / "BankRev" / "BankRev.exe").native();
+				sei.lpFile = path.c_str();
+				//#TODO can specify multiple files here and reuse exact same code for multipbo
+				auto params = std::format(L"-t \"{}\"", files.front().native());
+				sei.lpParameters = params.c_str();
+				auto workDir = files.front().parent_path().native();
+				sei.lpDirectory = workDir.c_str();
+				//sei.hwnd = hwnd; //#TODO get HWND
+				sei.nShow = SW_SHOWNORMAL;
+
+				return ShellExecuteEx(&sei) ? S_OK : E_UNEXPECTED;
+			} });
+	}
+
+	auto MikeroToolsPath = GCache.GetFromCache("MikeroToolsPath", GetMikeroToolsPath);
+	if (!MikeroToolsPath.empty()) {
+		if (std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPbo.exe"))
+			rootItem.AddChild({ L"..ExtractPbo", L"unpackWithExtractPbo", [MikeroToolsPath](const std::vector<std::filesystem::path>& files) {
+				/*
+				ExtractPbo Version 2.20, Dll 7.46 "no_file"
+
+				Syntax: ExtractPbo [-options...] PboName[.pbo|.xbo|.ifa]|FolderName|Extraction.lst|.txt  [destination]
+
+				destination *must* contain a drive specifier
+
+				Options (case insensitive)
+
+					-F=File(s) ToExtract[,...]
+					-L list contents only (do not extract)
+					-LB brief listing (dir style)
+					-N Noisy
+					-P Don't pause
+					-W warnings are errors
+				*/
+
+
+				SHELLEXECUTEINFO sei;
+				ZeroMemory(&sei, sizeof(sei));
+				sei.cbSize = (DWORD)sizeof(sei);
+				sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
+				auto path = (MikeroToolsPath / "bin" / "ExtractPbo.exe").native();
+				sei.lpFile = path.c_str();
+				//#TODO can specify multiple files here and reuse exact same code for multipbo
+				auto params = std::format(L"\"{}\"", files.front().native());
+				sei.lpParameters = params.c_str();
+				auto workDir = files.front().parent_path().native();
+				sei.lpDirectory = workDir.c_str();
+				//sei.hwnd = hwnd; //#TODO get HWND
+				sei.nShow = SW_SHOWNORMAL;
+
+				return ShellExecuteEx(&sei) ? S_OK : E_UNEXPECTED;
+			} });
+	}
+
+
+	if (rootItem.HasChildren())	// only if we have actual unpack options //#TODO remove when adding native unpack
+		return rootItem;
+	return {};
+}
+
+ContextMenuItem ShellExt::CreateContextMenu_MultiPbo()
+{
+	return {};
 }

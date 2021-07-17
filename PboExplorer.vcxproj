@@ -70,7 +70,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <EnableASAN>false</EnableASAN>
   </PropertyGroup>
@@ -321,6 +321,7 @@
   <ItemGroup>
     <ClInclude Include="ClipboardFormatHandler.hpp" />
     <ClInclude Include="ComRef.hpp" />
+    <ClInclude Include="ContextMenu.hpp" />
     <ClInclude Include="DebugLogger.hpp" />
     <ClInclude Include="FileWatcher.hpp" />
     <ClInclude Include="GlobalCache.hpp" />
@@ -344,6 +345,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ClipboardFormatHandler.cpp" />
+    <ClCompile Include="ContextMenu.cpp" />
     <ClCompile Include="DebugLogger.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="FileWatcher.cpp" />

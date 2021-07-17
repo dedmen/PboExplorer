@@ -1,9 +1,13 @@
 #pragma once
+
+#include <filesystem>
+
 #include <ShlObj.h>
 #include <Windows.h>
 
 #include "ComRef.hpp"
 #include "guid.hpp"
+#include "ContextMenu.hpp"
 
 class ShellExt :
 	GlobalRefCounted,
@@ -30,6 +34,19 @@ public:
 		return E_NOTIMPL;
 	}
 
+private:
+	ContextMenuItem QueryContextMenuFromCache();
+	static ContextMenuItem CreateContextMenu_SingleFolder();
+	static ContextMenuItem CreateContextMenu_MultiFolder();
+	static ContextMenuItem CreateContextMenu_SinglePbo();
+	static ContextMenuItem CreateContextMenu_MultiPbo();
+
+
+
+
 protected:
-	TCHAR m_szFile[MAX_PATH];
+	std::vector<std::filesystem::path> selectedFiles;
+	ContextMenuItem contextMenu;
+	uint32_t cmdFirst;
 };
+

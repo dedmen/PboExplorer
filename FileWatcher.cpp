@@ -43,6 +43,8 @@ void FileWatcher::Run() {
                 if (res == WAIT_OBJECT_0) {
                     for (auto& change : buffer)
                         if (change.Action == FILE_ACTION_MODIFIED) {
+                            if (!change.FileName[0])
+                                continue; // don't know why it gives us empty string but FilenameLength != 0
 
                             std::wstring_view filename(change.FileName, change.FileNameLength / sizeof(wchar_t));
                             std::unique_lock lck(mainMutex);
