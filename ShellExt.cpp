@@ -5,9 +5,19 @@
 #include "GlobalCache.hpp"
 
 #include <fstream> // Addon builder reading config file
+#include "PboFileDirectory.hpp"
+#include "PboPatcherLocked.hpp"
 
 // CreatePropertySheetPageW
 #pragma comment( lib, "Comctl32" )
+
+
+//#TODO util? https://github.com/vbaderks/msf/blob/4e91fcc409d196f8ddc350a467f484daf40fc0e1/include/msf/cf_shell_id_list.h
+// https://www.codeproject.com/Articles/11674/The-Mini-Shell-Extension-Framework-Part-III#ishellfolder_interface
+// https://github.com/vbaderks/msf/blob/4e91fcc409d196f8ddc350a467f484daf40fc0e1/include/msf/shell_folder_impl.h#L1146
+
+
+
 
 ShellExt::ShellExt()
 {
@@ -218,61 +228,110 @@ STDMETHODIMP ShellExt::InvokeCommand(LPCMINVOKECOMMANDINFO pCmdInfo)
 BOOL OnInitDialog(HWND hwnd, LPARAM lParam);
 BOOL OnApply(HWND hwnd, PSHNOTIFY* phdr);
 
+
 BOOL OnInitDialog(HWND hwnd, LPARAM lParam)
 {
 	PROPSHEETPAGE* ppsp = (PROPSHEETPAGE*)lParam;
-	LPCTSTR         szFile = (LPCTSTR)ppsp->lParam;
-	HANDLE          hFind;
-	WIN32_FIND_DATA rFind;
+	ShellExt* shellEx = (ShellExt*)ppsp->lParam;
+
 
 	// Store the filename in this window's user data area, for later use.
-	//SetWindowLong(hwnd, GWL_USERDATA, (LONG)szFile);
+	SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)shellEx);
 
-	//hFind = FindFirstFile(szFile, &rFind);
+	auto& files = shellEx->GetSelectedFiles();
 
-	//if (INVALID_HANDLE_VALUE != hFind)
-	//{
-	//	// Initialize the DTP controls.
-	//	SetDTPCtrl(hwnd, IDC_MODIFIED_DATE, IDC_MODIFIED_TIME,
-	//		&rFind.ftLastWriteTime);
-	//
-	//	SetDTPCtrl(hwnd, IDC_ACCESSED_DATE, 0,
-	//		&rFind.ftLastAccessTime);
-	//
-	//	SetDTPCtrl(hwnd, IDC_CREATED_DATE, IDC_CREATED_TIME,
-	//		&rFind.ftCreationTime);
-	//
-	//	FindClose(hFind);
-	//}
-	//PathSetDlgItemPath(hwnd, IDC_FILENAME, szFile);
-	return FALSE;
+	//#TODO support multiple files? would need multiple pages
+	auto pboFile = files.front();
+
+	auto file = GPboFileDirectory.GetPboFile(pboFile);
+	if (!file) return TRUE;
+
+	std::wstring buffer;
+	buffer.reserve(1024);
+
+	for (auto& it : file->properties) {
+		buffer.append(Util::utf8_decode(std::format("{}={}\r\n", it.first, it.second)));
+	}
+	buffer.pop_back();
+	buffer.pop_back();
+
+	SetDlgItemText(hwnd, IDC_EDIT1, buffer.data());
+	// SendDlgItemMessage(hwnd, IDC_EDIT1, EM_SETSEL, 0, 5); //#TODO figure out why this doesn't work?
+
+	return TRUE;
 }
 
 BOOL OnApply(HWND hwnd, PSHNOTIFY* phdr)
 {
-	//LPCTSTR  szFile = (LPCTSTR)GetWindowLong(hwnd, GWL_USERDATA);
-	//HANDLE   hFile;
-	//FILETIME ftModified, ftAccessed, ftCreated;
+	std::wstring buffer;
+	buffer.resize(2048);
 
-	// Open the file.
-	//hFile = CreateFile(szFile, GENERIC_WRITE, FILE_SHARE_READ, NULL,
-	//	OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	//if (INVALID_HANDLE_VALUE != hFile)
-	//{
-	//	// Retrieve the dates/times from the DTP controls.
-	//	ReadDTPCtrl(hwnd, IDC_MODIFIED_DATE, IDC_MODIFIED_TIME, &ftModified);
-	//	ReadDTPCtrl(hwnd, IDC_ACCESSED_DATE, 0, &ftAccessed);
-	//	ReadDTPCtrl(hwnd, IDC_CREATED_DATE, IDC_CREATED_TIME, &ftCreated);
-	//
-	//	// Change the file's created, accessed, and last modified times.
-	//	SetFileTime(hFile, &ftCreated, &ftAccessed, &ftModified);
-	//	CloseHandle(hFile);
-	//}
-	//else
-	//	// <<Error handling omitted>>
-	//
-	//  // Return PSNRET_NOERROR to allow the sheet to close if the user clicked OK.
-	//	SetWindowLong(hwnd, DWL_MSGRESULT, PSNRET_NOERROR);
+	GetDlgItemText(hwnd, IDC_EDIT1, buffer.data(), 2048);
+
+	// parse out properties
+
+	std::vector<std::pair<std::string, std::string>> newProperties;
+
+	uint32_t curOffs = 0;
+
+	while (buffer[curOffs]) {
+
+		auto found = buffer.find(L"\r\n", curOffs);
+		if (found == std::string::npos)
+			found = buffer.find(L'\0', curOffs);
+
+		if (found == std::string::npos)
+			return false; // failed to parse properly
+
+		std::wstring_view line(buffer.data() + curOffs, buffer.data() + found);
+		curOffs = found + 2; // next line
+
+		auto sep = line.find(L'=');
+		if (sep == std::string::npos)
+			return false; // failed to parse properly
+
+		auto propName = line.substr(0, sep);
+		auto propValue = line.substr(sep + 1);
+
+		newProperties.emplace_back(Util::utf8_encode(propName), Util::utf8_encode(propValue));
+
+	}
+
+	// patch	
+
+	//#TODO this is not viable, make a map to associate hwnd to proper Ref to ShellExt, can clean it up in PropPageCallbackProc
+	ShellExt* shellEx = (ShellExt*)GetWindowLong(hwnd, GWLP_USERDATA);
+
+
+	auto file = GPboFileDirectory.GetPboFile(shellEx->GetSelectedFiles().front());
+	if (!file) return FALSE;
+
+	if (newProperties == file->properties)
+		return FALSE; //nothing to update
+
+	{
+		PboPatcherLocked patcher(file);
+
+		// find deletes
+		for (auto& it : file->properties) {
+			if (std::ranges::none_of(newProperties, [&it](const std::pair<std::string, std::string>& entry) {
+				return entry.first == it.first;
+				})) {
+				// new properties doesn't contain this key	
+				patcher.AddPatch<PatchDeleteProperty>(it.first);
+			}
+		}
+
+		// adds/replaces, currently doesn't matter
+		for (auto& it : newProperties) {
+			patcher.AddPatch<PatchUpdateProperty>(it);
+		}
+	}
+
+
+
+
+
 	return TRUE;
 }
 
@@ -309,8 +368,8 @@ INT_PTR CALLBACK PropPageDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 UINT CALLBACK PropPageCallbackProc(HWND hwnd, UINT uMsg, LPPROPSHEETPAGE ppsp)
 {
-	//if (PSPCB_RELEASE == uMsg)
-	//	free((void*)ppsp->lParam);
+	if (PSPCB_RELEASE == uMsg)
+		((ShellExt*)ppsp->lParam)->Release();
 
 	return 1;
 }
@@ -335,7 +394,8 @@ HRESULT ShellExt::AddPages(LPFNADDPROPSHEETPAGE lpfnAddPageProc, LPARAM lParam) 
 	psp.pszIcon = nullptr; // MAKEINTRESOURCE(IDI_TAB_ICON);
 	psp.pszTitle = L"PboExplorer";
 	psp.pfnDlgProc = PropPageDlgProc;
-	//psp.lParam = (LPARAM)szFile;
+	psp.lParam = (LPARAM)this;
+	AddRef(); //PropPageCallbackProc
 	psp.pfnCallback = PropPageCallbackProc;
 	psp.pcRefParent = nullptr; // (UINT*)&_Module.m_nLockCnt;
 	hPage = CreatePropertySheetPage(&psp);

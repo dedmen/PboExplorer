@@ -94,6 +94,9 @@ public:
 
     //#TODO make this cleaner?
     std::vector<std::shared_ptr<TempDiskFile>> tempDiskFileKeepAlive;
+
+
+    std::vector<std::pair<std::string, std::string>> properties;
 };
 
 

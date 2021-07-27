@@ -198,6 +198,10 @@ void PboFile::ReadFrom(std::filesystem::path inputPath)
         newFile.fullPath = filePath;
         curFolder->subfiles.emplace_back(std::move(newFile));
     }
+
+    properties.clear();
+    for (auto& it : reader.getProperties())
+        properties.emplace_back(it.key, it.value);
 }
 
 void PboFile::ReloadFrom(std::filesystem::path inputPath)
@@ -276,6 +280,11 @@ void PboFile::ReloadFrom(std::filesystem::path inputPath)
             subfileFound->startOffset = it.startOffset;
         }
     }
+
+    properties.clear();
+    for (auto& it : reader.getProperties())
+        properties.emplace_back(it.key, it.value);
+
 
     // remove deleted files
     std::function<void(std::shared_ptr<PboSubFolder>&)> cleanupFolder = [&](std::shared_ptr<PboSubFolder>& folder) {

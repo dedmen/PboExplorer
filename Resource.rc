@@ -110,7 +110,8 @@ STYLE DS_SETFONT | DS_FIXEDSYS | WS_CHILD | WS_DISABLED | WS_CAPTION
 CAPTION "Property Page"
 FONT 8, "MS Shell Dlg", 400, 0, 0x0
 BEGIN
-    LTEXT           "TODO: layout property page",IDC_STATIC,73,74,90,8
+    LTEXT           "Pbo Properties:",IDC_STATIC,7,18,90,8
+    EDITTEXT        IDC_EDIT1,7,34,221,115,ES_MULTILINE | ES_AUTOHSCROLL | ES_NOHIDESEL | ES_WANTRETURN
 END
 
 
@@ -131,6 +132,17 @@ BEGIN
     END
 END
 #endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_PROPPAGE_LARGE AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
 
 #endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////

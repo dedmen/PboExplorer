@@ -2,6 +2,7 @@
 
 #include <filesystem>
 
+#define NOMINMAX
 #include <ShlObj.h>
 #include <Windows.h>
 
@@ -33,6 +34,8 @@ public:
 	STDMETHODIMP ReplacePage(UINT, LPFNADDPROPSHEETPAGE, LPARAM) override {
 		return E_NOTIMPL;
 	}
+
+	const auto& GetSelectedFiles() const { return selectedFiles; }
 
 private:
 	std::vector<ContextMenuItem> QueryContextMenuFromCache();
