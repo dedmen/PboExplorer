@@ -468,6 +468,91 @@ std::filesystem::path GetMikeroToolsPath() {
 	return {};
 }
 
+#pragma region ContextMenuTools
+
+HRESULT MikeroExtractPboToSubfolders(const std::vector<std::filesystem::path>& files) {
+	auto MikeroToolsPath = GCache.GetFromCache("MikeroToolsPath", GetMikeroToolsPath);
+	if (MikeroToolsPath.empty() || !std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPbo.exe"))
+		return E_FAIL;
+
+	/*
+	ExtractPbo Version 2.20, Dll 7.46 "no_file"
+
+	Syntax: ExtractPbo [-options...] PboName[.pbo|.xbo|.ifa]|FolderName|Extraction.lst|.txt  [destination]
+
+	destination *must* contain a drive specifier
+
+	Options (case insensitive)
+
+		-F=File(s) ToExtract[,...]
+		-L list contents only (do not extract)
+		-LB brief listing (dir style)
+		-N Noisy
+		-P Don't pause
+		-W warnings are errors
+	*/
+
+	SHELLEXECUTEINFO sei;
+	ZeroMemory(&sei, sizeof(sei));
+	sei.cbSize = (DWORD)sizeof(sei);
+	sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
+	auto path = (MikeroToolsPath / "bin" / "ExtractPbo.exe").native();
+	sei.lpFile = path.c_str();
+	//sei.hwnd = hwnd; //#TODO get HWND
+	sei.nShow = SW_SHOWNORMAL;
+
+	bool allGood = true;
+
+	for (auto& it : files) {
+		auto params = std::format(files.size() > 1 ? L"-P \"{}\"": L"\"{}\"", it.native()); // silent mode if unpacking several
+		sei.lpParameters = params.c_str();
+		auto workDir = it.parent_path().native();
+		sei.lpDirectory = workDir.c_str();
+		allGood &= ShellExecuteEx(&sei);
+	}
+
+	return allGood ? S_OK : E_UNEXPECTED;
+}
+
+HRESULT BankRevExtractPboToSubfolders(const std::vector<std::filesystem::path>& files) {
+	auto a3ToolsPath = GCache.GetFromCache("A3ToolsPath", GetA3ToolsPath);
+	if (a3ToolsPath.empty() || !std::filesystem::exists(a3ToolsPath / "BankRev" / "BankRev.exe"))
+		return E_FAIL;
+
+	/*
+	Bankrev [-f|-folder destiantion] [-t|-time] PBO_file [PBO_file_2 ...]
+		  or -d|-diff PBO_file1 PBO_file2 (compare two PBOs)
+		  or -l|-log PBO_file (write to stdout list of files in archive)
+		  or -lf|-logFull PBO_file (write to stdout list of files in archive, path with prefix)
+		  or -p|-properties PBO_file (write out PBO properties)
+		  or -hash PBO_file (write out hash of PBO)
+		  or -statistics PBO_file (write the statistics of files lengths)
+		  or -prefix (the output folder will be set according to the PBO prefix)
+		  or -t|-time (keep file time from archive)
+	*/
+
+	SHELLEXECUTEINFO sei;
+	ZeroMemory(&sei, sizeof(sei));
+	sei.cbSize = (DWORD)sizeof(sei);
+	sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
+	auto path = (a3ToolsPath / "BankRev" / "BankRev.exe").native();
+	sei.lpFile = path.c_str();
+	//#TODO can specify multiple files here and reuse exact same code for multipbo
+	auto params = std::format(L"-t \"{}\"", files.front().native());
+	sei.lpParameters = params.c_str();
+	auto workDir = files.front().parent_path().native();
+	sei.lpDirectory = workDir.c_str();
+	//sei.hwnd = hwnd; //#TODO get HWND
+	sei.nShow = SW_SHOWNORMAL;
+
+	return ShellExecuteEx(&sei) ? S_OK : E_UNEXPECTED;
+}
+
+#pragma endregion ContextMenuTools
+
+
+
+
 
 ContextMenuItem ShellExt::CreateContextMenu_SingleFolder()
 {
@@ -730,10 +815,22 @@ ContextMenuItem ShellExt::CreateContextMenu_SinglePbo()
 	//#TODO sign with bisign, need multiple toplevel items
 
 	ContextMenuItem rootItem{ L"Unpack with..", L"unpackWithAny", [](const std::vector<std::filesystem::path>& files) { 
-		//#TODO select first available child
-		return E_NOTIMPL;
-	} };
+		// prefer mikero if available
 
+		auto MikeroToolsPath = GCache.GetFromCache("MikeroToolsPath", GetMikeroToolsPath);
+		if (!MikeroToolsPath.empty() && std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPbo.exe")) {
+			return MikeroExtractPboToSubfolders(files);
+		}
+		else 
+		{
+			auto a3ToolsPath = GCache.GetFromCache("A3ToolsPath", GetA3ToolsPath);
+			if (!a3ToolsPath.empty() && std::filesystem::exists(a3ToolsPath / "BankRev" / "BankRev.exe")) {
+				return BankRevExtractPboToSubfolders(files);
+			}
+		}
+
+		return E_FAIL;
+	}};
 
 	auto a3ToolsPath = GCache.GetFromCache("A3ToolsPath", GetA3ToolsPath);
 	if (!a3ToolsPath.empty()) {
@@ -776,41 +873,7 @@ ContextMenuItem ShellExt::CreateContextMenu_SinglePbo()
 	auto MikeroToolsPath = GCache.GetFromCache("MikeroToolsPath", GetMikeroToolsPath);
 	if (!MikeroToolsPath.empty()) {
 		if (std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPbo.exe"))
-			rootItem.AddChild({ L"..ExtractPbo", L"unpackWithExtractPbo", [MikeroToolsPath](const std::vector<std::filesystem::path>& files) {
-				/*
-				ExtractPbo Version 2.20, Dll 7.46 "no_file"
-
-				Syntax: ExtractPbo [-options...] PboName[.pbo|.xbo|.ifa]|FolderName|Extraction.lst|.txt  [destination]
-
-				destination *must* contain a drive specifier
-
-				Options (case insensitive)
-
-					-F=File(s) ToExtract[,...]
-					-L list contents only (do not extract)
-					-LB brief listing (dir style)
-					-N Noisy
-					-P Don't pause
-					-W warnings are errors
-				*/
-
-
-				SHELLEXECUTEINFO sei;
-				ZeroMemory(&sei, sizeof(sei));
-				sei.cbSize = (DWORD)sizeof(sei);
-				sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
-				auto path = (MikeroToolsPath / "bin" / "ExtractPbo.exe").native();
-				sei.lpFile = path.c_str();
-				//#TODO can specify multiple files here and reuse exact same code for multipbo
-				auto params = std::format(L"\"{}\"", files.front().native());
-				sei.lpParameters = params.c_str();
-				auto workDir = files.front().parent_path().native();
-				sei.lpDirectory = workDir.c_str();
-				//sei.hwnd = hwnd; //#TODO get HWND
-				sei.nShow = SW_SHOWNORMAL;
-
-				return ShellExecuteEx(&sei) ? S_OK : E_UNEXPECTED;
-			} });
+			rootItem.AddChild({ L"..ExtractPbo", L"unpackWithExtractPbo", MikeroExtractPboToSubfolders });
 	}
 
 
@@ -821,5 +884,170 @@ ContextMenuItem ShellExt::CreateContextMenu_SinglePbo()
 
 ContextMenuItem ShellExt::CreateContextMenu_MultiPbo()
 {
+	//#TODO sign with bisign, need multiple toplevel items
+
+
+	auto a3ToolsPath = GCache.GetFromCache("A3ToolsPath", GetA3ToolsPath);
+	auto MikeroToolsPath = GCache.GetFromCache("MikeroToolsPath", GetMikeroToolsPath);
+
+#pragma region UnpackerDefinitions
+	auto unpackBankRevHere = [a3ToolsPath](const std::vector<std::filesystem::path>& files) {
+
+		/*
+		Bankrev [-f|-folder destiantion] [-t|-time] PBO_file [PBO_file_2 ...]
+			  or -d|-diff PBO_file1 PBO_file2 (compare two PBOs)
+			  or -l|-log PBO_file (write to stdout list of files in archive)
+			  or -lf|-logFull PBO_file (write to stdout list of files in archive, path with prefix)
+			  or -p|-properties PBO_file (write out PBO properties)
+			  or -hash PBO_file (write out hash of PBO)
+			  or -statistics PBO_file (write the statistics of files lengths)
+			  or -prefix (the output folder will be set according to the PBO prefix)
+			  or -t|-time (keep file time from archive)
+		*/
+
+		SHELLEXECUTEINFO sei;
+		ZeroMemory(&sei, sizeof(sei));
+		sei.cbSize = (DWORD)sizeof(sei);
+		sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
+		auto path = (a3ToolsPath / "BankRev" / "BankRev.exe").native();
+		sei.lpFile = path.c_str();
+		//sei.hwnd = hwnd; //#TODO get HWND
+		sei.nShow = SW_SHOWNORMAL;
+
+		bool allGood = true;
+
+		for (auto& it : files) {
+			auto params = std::format(L"-t \"{}\" -f .", it.native()); // -f . == current directory (workdir is parent)
+			sei.lpParameters = params.c_str();
+			auto workDir = it.parent_path().native();
+			sei.lpDirectory = workDir.c_str();
+
+			allGood &= ShellExecuteEx(&sei);
+		}
+
+		return allGood ? S_OK : E_UNEXPECTED;
+	};
+
+	auto unpackBankRevSubfolder = BankRevExtractPboToSubfolders;
+
+	auto unpackExtractPboHere = [MikeroToolsPath](const std::vector<std::filesystem::path>& files) {
+		/*
+		ExtractPbo Version 2.20, Dll 7.46 "no_file"
+
+		Syntax: ExtractPbo [-options...] PboName[.pbo|.xbo|.ifa]|FolderName|Extraction.lst|.txt  [destination]
+
+		destination *must* contain a drive specifier
+
+		Options (case insensitive)
+
+			-F=File(s) ToExtract[,...]
+			-L list contents only (do not extract)
+			-LB brief listing (dir style)
+			-N Noisy
+			-P Don't pause
+			-W warnings are errors
+		*/
+
+
+		SHELLEXECUTEINFO sei;
+		ZeroMemory(&sei, sizeof(sei));
+		sei.cbSize = (DWORD)sizeof(sei);
+		sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
+		auto path = (MikeroToolsPath / "bin" / "ExtractPbo.exe").native();
+		sei.lpFile = path.c_str();
+		//sei.hwnd = hwnd; //#TODO get HWND
+		sei.nShow = SW_SHOWNORMAL;
+
+		bool allGood = true;
+
+		for (auto& it : files) {
+			auto params = std::format(L"-P \"{}\" \"{}\"", it.native(), it.parent_path().native());
+			sei.lpParameters = params.c_str();
+			auto workDir = it.parent_path().native();
+			sei.lpDirectory = workDir.c_str();
+
+			allGood &= ShellExecuteEx(&sei);
+		}
+
+		return allGood ? S_OK : E_UNEXPECTED;
+
+
+		return ShellExecuteEx(&sei) ? S_OK : E_UNEXPECTED;
+	};
+
+	auto unpackExtractPboSubfolder = MikeroExtractPboToSubfolders;
+
+#pragma endregion UnpackerDefinitions
+
+	auto unpackSubfolderWithAny = [unpackExtractPboSubfolder, unpackBankRevSubfolder](const std::vector<std::filesystem::path>& files) {
+
+		// prefer mikero if available
+
+		auto MikeroToolsPath = GCache.GetFromCache("MikeroToolsPath", GetMikeroToolsPath);
+		if (!MikeroToolsPath.empty() && std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPbo.exe")) {
+			return unpackExtractPboSubfolder(files);
+		}
+		else 
+		{
+			auto a3ToolsPath = GCache.GetFromCache("A3ToolsPath", GetA3ToolsPath);
+			if (!a3ToolsPath.empty() && std::filesystem::exists(a3ToolsPath / "BankRev" / "BankRev.exe")) {
+				return unpackBankRevSubfolder(files);
+			}
+		}
+
+		return E_FAIL;
+	};
+
+	auto unpackHereWithAny = [unpackExtractPboHere, unpackBankRevHere](const std::vector<std::filesystem::path>& files) {
+		// prefer mikero if available
+
+		auto MikeroToolsPath = GCache.GetFromCache("MikeroToolsPath", GetMikeroToolsPath);
+		if (!MikeroToolsPath.empty() && std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPbo.exe")) {
+			return unpackExtractPboHere(files);
+		}
+		else
+		{
+			auto a3ToolsPath = GCache.GetFromCache("A3ToolsPath", GetA3ToolsPath);
+			if (!a3ToolsPath.empty() && std::filesystem::exists(a3ToolsPath / "BankRev" / "BankRev.exe")) {
+				return unpackBankRevHere(files);
+			}
+		}
+
+		return E_FAIL;
+	};
+
+
+
+	ContextMenuItem rootItem{ L"Unpack..", L"unpackAny", unpackSubfolderWithAny};
+
+
+	//  Unpack...
+	//  	Unpack Here with
+	//  		Bankrev...
+	//  	Unpack to *\ with
+	//  		Bankrev...
+
+	ContextMenuItem unpackHereRoot{ L"Here with..", L"unpackHereWithAny", unpackHereWithAny };
+	ContextMenuItem unpackSubfolderRoot{ L"to *\\ with..", L"unpackSubfolderWithAny", unpackSubfolderWithAny };
+
+
+
+	if (!a3ToolsPath.empty() && std::filesystem::exists(a3ToolsPath / "BankRev" / "BankRev.exe")) {
+		unpackHereRoot.AddChild({ L"..BankRev", L"unpackHereWithBankRev",  unpackBankRevHere });
+		unpackSubfolderRoot.AddChild({ L"..BankRev", L"unpackSubfolderWithBankRev", unpackBankRevSubfolder });
+	}
+
+	if (!MikeroToolsPath.empty() && std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPbo.exe")) {
+		unpackHereRoot.AddChild({ L"..ExtractPbo", L"unpackHereWithExtractPbo",  unpackExtractPboHere });
+		unpackSubfolderRoot.AddChild({ L"..ExtractPbo", L"unpackSubfolderWithExtractPbo",  unpackExtractPboSubfolder });
+	}
+
+	if (unpackHereRoot.HasChildren())
+		rootItem.AddChild(unpackHereRoot);
+	if (unpackSubfolderRoot.HasChildren())
+		rootItem.AddChild(unpackSubfolderRoot);
+
+	if (rootItem.HasChildren())	// only if we have actual unpack options //#TODO remove when adding native unpack
+		return rootItem;
 	return {};
 }
