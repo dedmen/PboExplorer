@@ -522,7 +522,7 @@ std::filesystem::path GetMikeroToolsPath() {
 
 HRESULT MikeroExtractPboToSubfolders(const std::vector<std::filesystem::path>& files) {
 	auto MikeroToolsPath = GCache.GetFromCache("MikeroToolsPath", GetMikeroToolsPath);
-	if (MikeroToolsPath.empty() || !std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPbo.exe"))
+	if (MikeroToolsPath.empty() || !std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPboDos.exe"))
 		return E_FAIL;
 
 	/*
@@ -546,7 +546,7 @@ HRESULT MikeroExtractPboToSubfolders(const std::vector<std::filesystem::path>& f
 	ZeroMemory(&sei, sizeof(sei));
 	sei.cbSize = (DWORD)sizeof(sei);
 	sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
-	auto path = (MikeroToolsPath / "bin" / "ExtractPbo.exe").native();
+	auto path = (MikeroToolsPath / "bin" / "ExtractPboDos.exe").native();
 	sei.lpFile = path.c_str();
 	//sei.hwnd = hwnd; //#TODO get HWND
 	sei.nShow = SW_SHOWNORMAL;
@@ -929,7 +929,7 @@ std::vector<ContextMenuItem> ShellExt::CreateContextMenu_SinglePbo()
 		// prefer mikero if available
 
 		auto MikeroToolsPath = GCache.GetFromCache("MikeroToolsPath", GetMikeroToolsPath);
-		if (!MikeroToolsPath.empty() && std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPbo.exe")) {
+		if (!MikeroToolsPath.empty() && std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPboDos.exe")) {
 			return MikeroExtractPboToSubfolders(files);
 		}
 		else 
@@ -983,7 +983,7 @@ std::vector<ContextMenuItem> ShellExt::CreateContextMenu_SinglePbo()
 
 	auto MikeroToolsPath = GCache.GetFromCache("MikeroToolsPath", GetMikeroToolsPath);
 	if (!MikeroToolsPath.empty()) {
-		if (std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPbo.exe"))
+		if (std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPboDos.exe"))
 			rootItem.AddChild({ L"..ExtractPbo", L"unpackWithExtractPbo", MikeroExtractPboToSubfolders });
 	}
 
@@ -1070,7 +1070,7 @@ std::vector<ContextMenuItem> ShellExt::CreateContextMenu_MultiPbo()
 		ZeroMemory(&sei, sizeof(sei));
 		sei.cbSize = (DWORD)sizeof(sei);
 		sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
-		auto path = (MikeroToolsPath / "bin" / "ExtractPbo.exe").native();
+		auto path = (MikeroToolsPath / "bin" / "ExtractPboDos.exe").native();
 		sei.lpFile = path.c_str();
 		//sei.hwnd = hwnd; //#TODO get HWND
 		sei.nShow = SW_SHOWNORMAL;
@@ -1101,7 +1101,7 @@ std::vector<ContextMenuItem> ShellExt::CreateContextMenu_MultiPbo()
 		// prefer mikero if available
 
 		auto MikeroToolsPath = GCache.GetFromCache("MikeroToolsPath", GetMikeroToolsPath);
-		if (!MikeroToolsPath.empty() && std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPbo.exe")) {
+		if (!MikeroToolsPath.empty() && std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPboDos.exe")) {
 			return unpackExtractPboSubfolder(files);
 		}
 		else 
@@ -1119,7 +1119,7 @@ std::vector<ContextMenuItem> ShellExt::CreateContextMenu_MultiPbo()
 		// prefer mikero if available
 
 		auto MikeroToolsPath = GCache.GetFromCache("MikeroToolsPath", GetMikeroToolsPath);
-		if (!MikeroToolsPath.empty() && std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPbo.exe")) {
+		if (!MikeroToolsPath.empty() && std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPboDos.exe")) {
 			return unpackExtractPboHere(files);
 		}
 		else
@@ -1154,7 +1154,7 @@ std::vector<ContextMenuItem> ShellExt::CreateContextMenu_MultiPbo()
 		unpackSubfolderRoot.AddChild({ L"..BankRev", L"unpackSubfolderWithBankRev", unpackBankRevSubfolder });
 	}
 
-	if (!MikeroToolsPath.empty() && std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPbo.exe")) {
+	if (!MikeroToolsPath.empty() && std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPboDos.exe")) {
 		unpackHereRoot.AddChild({ L"..ExtractPbo", L"unpackHereWithExtractPbo",  unpackExtractPboHere });
 		unpackSubfolderRoot.AddChild({ L"..ExtractPbo", L"unpackSubfolderWithExtractPbo",  unpackExtractPboSubfolder });
 	}
