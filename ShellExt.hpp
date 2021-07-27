@@ -35,18 +35,18 @@ public:
 	}
 
 private:
-	ContextMenuItem QueryContextMenuFromCache();
-	static ContextMenuItem CreateContextMenu_SingleFolder();
-	static ContextMenuItem CreateContextMenu_MultiFolder();
-	static ContextMenuItem CreateContextMenu_SinglePbo();
-	static ContextMenuItem CreateContextMenu_MultiPbo();
+	std::vector<ContextMenuItem> QueryContextMenuFromCache();
+	static std::vector<ContextMenuItem> CreateContextMenu_SingleFolder();
+	static std::vector<ContextMenuItem> CreateContextMenu_MultiFolder();
+	static std::vector<ContextMenuItem> CreateContextMenu_SinglePbo();
+	static std::vector<ContextMenuItem> CreateContextMenu_MultiPbo();
 
 
 
 
 protected:
 	std::vector<std::filesystem::path> selectedFiles;
-	ContextMenuItem contextMenu;
+	std::vector<ContextMenuItem> contextMenu;
 	uint32_t cmdFirst;
 };
 

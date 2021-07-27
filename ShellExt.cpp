@@ -121,9 +121,10 @@ STDMETHODIMP ShellExt::QueryContextMenu(
 	auto startIndex = uMenuIndex;
 	cmdFirst = uidFirstCmd;
 
-	contextMenu.InsertIntoMenu(hmenu, uMenuIndex, uidFirstCmd);
+	for (auto& it : contextMenu)
+		it.InsertIntoMenu(hmenu, uMenuIndex, uidFirstCmd);
 
-	return MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, (uMenuIndex - startIndex + 1));
+	return MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, ((uidFirstCmd - cmdFirst) + 1));
 }
 
 STDMETHODIMP ShellExt::GetCommandString(
@@ -158,10 +159,16 @@ STDMETHODIMP ShellExt::GetCommandString(
 
 	if (uFlags == GCS_VERB)
 	{
-		auto verb = contextMenu.GetVerb(idCmd + cmdFirst);
-
-		if (verb.empty()) 
+		std::wstring verb;
+		for (auto& it : contextMenu) {
+			verb = it.GetVerb(idCmd + cmdFirst);
+			if (verb.empty())
+				continue;
+		}
+			
+		if (verb.empty())
 			return E_INVALIDARG;
+		
 
 		LPCTSTR szText = L"This is the simple shell extension's help";
 
@@ -197,31 +204,14 @@ STDMETHODIMP ShellExt::InvokeCommand(LPCMINVOKECOMMANDINFO pCmdInfo)
 		return E_INVALIDARG;
 	}
 		
-
-	return contextMenu.InvokeByCmd(LOWORD(pCmdInfo->lpVerb) + cmdFirst, selectedFiles);
-
-
-
-	// Get the command index - the only valid one is 0.
-	switch (LOWORD(pCmdInfo->lpVerb))
-	{
-	case 0:
-	{
-		TCHAR szMsg[MAX_PATH + 32];
-
-		wsprintf(szMsg, L"The selected file was:\n\n%s", selectedFiles.front().string().c_str());
-
-		MessageBox(pCmdInfo->hwnd, szMsg, L"PboExplorer",
-			MB_ICONINFORMATION);
-
-		return S_OK;
+	for (auto& it : contextMenu) {
+	
+		auto res = it.InvokeByCmd(LOWORD(pCmdInfo->lpVerb) + cmdFirst, selectedFiles);
+		if (SUCCEEDED(res))
+			return res;
 	}
-	break;
 
-	default:
-		return E_INVALIDARG;
-		break;
-	}
+	return E_INVALIDARG; // when we get here, all context menus failed to resolve
 }
 
 
@@ -362,7 +352,7 @@ HRESULT ShellExt::AddPages(LPFNADDPROPSHEETPAGE lpfnAddPageProc, LPARAM lParam) 
 
 
 
-ContextMenuItem ShellExt::QueryContextMenuFromCache()
+std::vector<ContextMenuItem> ShellExt::QueryContextMenuFromCache()
 {
 	bool isFolders = std::ranges::all_of(selectedFiles, [](const std::filesystem::path path) -> bool {
 		return std::filesystem::is_directory(path);
@@ -537,15 +527,76 @@ HRESULT BankRevExtractPboToSubfolders(const std::vector<std::filesystem::path>& 
 	sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
 	auto path = (a3ToolsPath / "BankRev" / "BankRev.exe").native();
 	sei.lpFile = path.c_str();
-	//#TODO can specify multiple files here and reuse exact same code for multipbo
-	auto params = std::format(L"-t \"{}\"", files.front().native());
-	sei.lpParameters = params.c_str();
-	auto workDir = files.front().parent_path().native();
-	sei.lpDirectory = workDir.c_str();
 	//sei.hwnd = hwnd; //#TODO get HWND
 	sei.nShow = SW_SHOWNORMAL;
 
-	return ShellExecuteEx(&sei) ? S_OK : E_UNEXPECTED;
+	bool allGood = true;
+
+	for (auto& it : files) {
+		auto params = std::format(L"-t \"{}\"", it.native());
+		sei.lpParameters = params.c_str();
+		auto workDir = it.parent_path().native();
+		sei.lpDirectory = workDir.c_str();
+
+		allGood &= ShellExecuteEx(&sei);
+	}
+
+	return allGood ? S_OK : E_UNEXPECTED;
+}
+
+HRESULT SignPbos(const std::vector<std::filesystem::path>& files) {
+	auto a3ToolsPath = GCache.GetFromCache("A3ToolsPath", GetA3ToolsPath);
+	if (a3ToolsPath.empty() || !std::filesystem::exists(a3ToolsPath / "DSSignFile" / "DSSignFile.exe"))
+		return E_FAIL;
+
+	/*
+	Usage: DSSignFile private_key file_to_sign [-v2]
+		>> private_key - path to the bikeyprivate file used to sign the file
+		>> file_to_sign - path to the file we want to sign
+		>> -v2 - OPTIONAL - when used, the file is signed with a v2 signature (v3 by default)
+	*/
+
+	OPENFILENAMEW info {};
+
+	info.lStructSize = sizeof(OPENFILENAMEW);
+	//info.hwndOwner =  //#TODO
+	info.lpstrFilter = L"BI Private Key\0*.biprivatekey\0\0";
+	info.nFilterIndex = 1;
+	info.Flags = OFN_DONTADDTORECENT | OFN_FILEMUSTEXIST;
+	info.lpstrTitle = L"PBOExplorer: Please select the .biprivatekey to sign the PBO's with";
+
+	auto workDir = files.front().parent_path().native();
+	info.lpstrInitialDir = workDir.c_str();
+	wchar_t pathBuffer[MAX_PATH] {};
+
+	info.lpstrFile = pathBuffer;
+	info.nMaxFile = MAX_PATH;
+
+	if (!GetOpenFileNameW(&info))
+		return E_FAIL;
+
+
+	SHELLEXECUTEINFO sei;
+	ZeroMemory(&sei, sizeof(sei));
+	sei.cbSize = (DWORD)sizeof(sei);
+	sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
+	auto path = (a3ToolsPath / "DSSignFile" / "DSSignFile.exe").native();
+	sei.lpFile = path.c_str();
+	//sei.hwnd = hwnd; //#TODO get HWND
+	sei.nShow = SW_SHOWNORMAL;
+
+	bool allGood = true;
+
+	for (auto& it : files) {
+		auto params = std::format(L"\"{}\" \"{}\"", pathBuffer, it.native());
+		sei.lpParameters = params.c_str();
+		auto workDir = it.parent_path().native();
+		sei.lpDirectory = workDir.c_str();
+
+		allGood &= ShellExecuteEx(&sei);
+	}
+
+	return allGood ? S_OK : E_UNEXPECTED;
 }
 
 #pragma endregion ContextMenuTools
@@ -554,7 +605,7 @@ HRESULT BankRevExtractPboToSubfolders(const std::vector<std::filesystem::path>& 
 
 
 
-ContextMenuItem ShellExt::CreateContextMenu_SingleFolder()
+std::vector<ContextMenuItem> ShellExt::CreateContextMenu_SingleFolder()
 {
 
 	// Pack with makePbo
@@ -801,16 +852,16 @@ ContextMenuItem ShellExt::CreateContextMenu_SingleFolder()
 	} });
 
 	if (rootItem.HasChildren())	// only if we have actual unpack options //#TODO remove when adding native unpack
-		return rootItem;
+		return { rootItem };
 	return {};
 }
 
-ContextMenuItem ShellExt::CreateContextMenu_MultiFolder()
+std::vector<ContextMenuItem> ShellExt::CreateContextMenu_MultiFolder()
 {
 	return {};
 }
 
-ContextMenuItem ShellExt::CreateContextMenu_SinglePbo()
+std::vector<ContextMenuItem> ShellExt::CreateContextMenu_SinglePbo()
 {
 	//#TODO sign with bisign, need multiple toplevel items
 
@@ -876,13 +927,19 @@ ContextMenuItem ShellExt::CreateContextMenu_SinglePbo()
 			rootItem.AddChild({ L"..ExtractPbo", L"unpackWithExtractPbo", MikeroExtractPboToSubfolders });
 	}
 
+	std::vector<ContextMenuItem> result;
 
 	if (rootItem.HasChildren())	// only if we have actual unpack options //#TODO remove when adding native unpack
-		return rootItem;
-	return {};
+		result.emplace_back(std::move(rootItem));
+
+	if (!a3ToolsPath.empty() && std::filesystem::exists(a3ToolsPath / "DSSignFile" / "DSSignFile.exe")) {
+		result.emplace_back(L"Sign PBOs", L"signPbo", SignPbos);
+	}
+
+	return result;
 }
 
-ContextMenuItem ShellExt::CreateContextMenu_MultiPbo()
+std::vector<ContextMenuItem> ShellExt::CreateContextMenu_MultiPbo()
 {
 	//#TODO sign with bisign, need multiple toplevel items
 
@@ -1047,7 +1104,14 @@ ContextMenuItem ShellExt::CreateContextMenu_MultiPbo()
 	if (unpackSubfolderRoot.HasChildren())
 		rootItem.AddChild(unpackSubfolderRoot);
 
+	std::vector<ContextMenuItem> result;
+
 	if (rootItem.HasChildren())	// only if we have actual unpack options //#TODO remove when adding native unpack
-		return rootItem;
-	return {};
+		result.emplace_back(std::move(rootItem));
+
+	if (!a3ToolsPath.empty() && std::filesystem::exists(a3ToolsPath / "DSSignFile" / "DSSignFile.exe")) {
+		result.emplace_back(L"Sign PBOs", L"signPbo", SignPbos);
+	}
+
+	return result;
 }

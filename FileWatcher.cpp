@@ -16,7 +16,7 @@ void FileWatcher::Run() {
         NULL
     );
 
-    OVERLAPPED oRead = { 0 };
+    OVERLAPPED oRead {};
     oRead.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
 
 

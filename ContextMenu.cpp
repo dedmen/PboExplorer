@@ -10,7 +10,7 @@ uint16_t ContextMenuItem::InsertIntoMenu(HMENU parentMenu, uint32_t& position, u
 
     uint16_t subItemCount = 0;
 
-    MENUITEMINFOW info{ 0 };
+    MENUITEMINFOW info{};
     info.cbSize = sizeof(info);
     info.fMask = MIIM_STRING; // text itself
     info.fMask |= MIIM_DATA; // dunno if useful
@@ -22,9 +22,10 @@ uint16_t ContextMenuItem::InsertIntoMenu(HMENU parentMenu, uint32_t& position, u
 
     if (!children.empty()) {
         HMENU submenu = CreatePopupMenu();
+        uint32_t childPosition = 0;
 
         for (auto& child : children)
-            subItemCount += child.InsertIntoMenu(submenu, position, id);
+            subItemCount += child.InsertIntoMenu(submenu, childPosition, id);
 
 
         info.fMask |= MIIM_SUBMENU;
