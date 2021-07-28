@@ -229,19 +229,20 @@ BOOL OnInitDialog(HWND hwnd, LPARAM lParam);
 BOOL OnApply(HWND hwnd, PSHNOTIFY* phdr);
 
 
+struct PropSheePageInfo {
+	std::filesystem::path pboFilePath;
+};
+
+std::unordered_map<HWND, PropSheePageInfo> openPropSheets;
+
+
 BOOL OnInitDialog(HWND hwnd, LPARAM lParam)
 {
 	PROPSHEETPAGE* ppsp = (PROPSHEETPAGE*)lParam;
-	ShellExt* shellEx = (ShellExt*)ppsp->lParam;
+	auto pboFile = * ((std::filesystem::path*)ppsp->lParam);
+	delete ((std::filesystem::path*)ppsp->lParam);
 
-
-	// Store the filename in this window's user data area, for later use.
-	SetWindowLongPtr(hwnd, GWLP_USERDATA, (LONG_PTR)shellEx);
-
-	auto& files = shellEx->GetSelectedFiles();
-
-	//#TODO support multiple files? would need multiple pages
-	auto pboFile = files.front();
+	openPropSheets.insert({ hwnd, PropSheePageInfo{pboFile} });
 
 	auto file = GPboFileDirectory.GetPboFile(pboFile);
 	if (!file) return TRUE;
@@ -269,7 +270,6 @@ BOOL OnApply(HWND hwnd, PSHNOTIFY* phdr)
 	GetDlgItemText(hwnd, IDC_EDIT1, buffer.data(), 2048);
 
 	// parse out properties
-
 	std::vector<std::pair<std::string, std::string>> newProperties;
 
 	uint32_t curOffs = 0;
@@ -294,16 +294,15 @@ BOOL OnApply(HWND hwnd, PSHNOTIFY* phdr)
 		auto propValue = line.substr(sep + 1);
 
 		newProperties.emplace_back(Util::utf8_encode(propName), Util::utf8_encode(propValue));
-
 	}
 
 	// patch	
 
-	//#TODO this is not viable, make a map to associate hwnd to proper Ref to ShellExt, can clean it up in PropPageCallbackProc
-	ShellExt* shellEx = (ShellExt*)GetWindowLong(hwnd, GWLP_USERDATA);
+	auto found = openPropSheets.find(hwnd);
+	if (found == openPropSheets.end())
+		return FALSE;
 
-
-	auto file = GPboFileDirectory.GetPboFile(shellEx->GetSelectedFiles().front());
+	auto file = GPboFileDirectory.GetPboFile(found->second.pboFilePath);
 	if (!file) return FALSE;
 
 	if (newProperties == file->properties)
@@ -368,8 +367,10 @@ INT_PTR CALLBACK PropPageDlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
 
 UINT CALLBACK PropPageCallbackProc(HWND hwnd, UINT uMsg, LPPROPSHEETPAGE ppsp)
 {
-	if (PSPCB_RELEASE == uMsg)
-		((ShellExt*)ppsp->lParam)->Release();
+	if (PSPCB_RELEASE == uMsg) {	
+		openPropSheets.erase(hwnd);
+	}
+		
 
 	return 1;
 }
@@ -378,33 +379,33 @@ extern HINSTANCE   g_hInst;
 
 HRESULT ShellExt::AddPages(LPFNADDPROPSHEETPAGE lpfnAddPageProc, LPARAM lParam) {
 
-	PROPSHEETPAGE  psp;
-	HPROPSHEETPAGE hPage;
-	TCHAR          szPageTitle[MAX_PATH];
-
-
-	// 'it' points at the next filename. Allocate a new copy of the string
-	// that the page will own.
-	//LPCTSTR szFile = _tcsdup(it->c_str());
+	PROPSHEETPAGE psp{};
 	psp.dwSize = sizeof(PROPSHEETPAGE);
-	psp.dwFlags = PSP_USETITLE |
-		PSP_USECALLBACK; // PSP_USEICONID | PSP_USEREFPARENT | 
+	psp.dwFlags = PSP_USETITLE | PSP_USECALLBACK; // PSP_USEICONID | PSP_USEREFPARENT | 
 	psp.hInstance = g_hInst;
 	psp.pszTemplate = MAKEINTRESOURCE(IDD_PROPPAGE_LARGE);
 	psp.pszIcon = nullptr; // MAKEINTRESOURCE(IDI_TAB_ICON);
-	psp.pszTitle = L"PboExplorer";
 	psp.pfnDlgProc = PropPageDlgProc;
-	psp.lParam = (LPARAM)this;
-	AddRef(); //PropPageCallbackProc
 	psp.pfnCallback = PropPageCallbackProc;
 	psp.pcRefParent = nullptr; // (UINT*)&_Module.m_nLockCnt;
-	hPage = CreatePropertySheetPage(&psp);
-	if (NULL != hPage)
-	{
-		// Call the shell's callback function, so it adds the page to
-		// the property sheet.
-		if (!lpfnAddPageProc(hPage, lParam))
-			DestroyPropertySheetPage(hPage);
+
+
+	for (auto& it : selectedFiles) {
+		if (it.extension() != ".pbo")
+			continue;
+
+		auto titleText = std::format(L"PboExplorer ({})", it.filename().wstring());
+		psp.pszTitle = titleText.data();
+		psp.lParam = (LPARAM)new std::filesystem::path(it); // cleaned up in OnInitDialog
+
+		auto hPage = CreatePropertySheetPage(&psp);
+		if (hPage)
+		{
+			// Call the shell's callback function, so it adds the page to
+			// the property sheet.
+			if (!lpfnAddPageProc(hPage, lParam))
+				DestroyPropertySheetPage(hPage);
+		}
 	}
 
 	return S_OK;
