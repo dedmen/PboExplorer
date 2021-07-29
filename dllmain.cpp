@@ -1,6 +1,7 @@
 #include <Windows.h>
 #include <ShlObj.h>
 #include <OleCtl.h>
+#include <fstream>
 #include <string>
 #include <variant>
 
@@ -46,6 +47,7 @@
 
 #endif
 #include <future>
+#include "Updater.hpp"
 
 // data
 HINSTANCE   g_hInst;
@@ -70,7 +72,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     case DLL_THREAD_DETACH:
 		break;
     case DLL_PROCESS_DETACH:
+#ifdef ENABLE_SENTRY
 		sentry_close();
+#endif
         break;
     }
     return TRUE;
@@ -84,6 +88,30 @@ STDAPI DllCanUnloadNow(VOID)
 	return (g_DllRefCount ? S_FALSE : S_OK);
 }
 
+
+std::string GetClipboardText()
+{
+	if (!OpenClipboard(nullptr)) return "";
+
+	HANDLE hData = GetClipboardData(CF_TEXT);
+	if (hData == nullptr) return "";
+
+	// Lock the handle to get the actual text pointer
+	char* pszText = static_cast<char*>(GlobalLock(hData));
+
+	if (pszText == nullptr) return "";
+
+	std::string text(pszText);
+
+	GlobalUnlock(hData);
+	CloseClipboard();
+
+	return text;
+}
+
+extern std::string ReadWholeFile(std::filesystem::path file); // Updater.cpp
+
+
 /*---------------------------------------------------------------*/
 // DllGetClassObject()
 /*---------------------------------------------------------------*/
@@ -95,7 +123,7 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppReturn)
 	if (!SentryInit) {
 		sentry_options_t* options = sentry_options_new();
 		sentry_options_set_dsn(options, "http://cc1dc4103efd4f1dbbc0488599f33e58@lima.dedmen.de:9001/2");
-		sentry_options_set_release(options, "PboExplorer@" __TIMESTAMP__); 
+		sentry_options_set_release(options, std::format("PboExplorer@{}", VERSIONNO).c_str());
 
 #ifdef _DEBUG
 		sentry_options_set_environment(options, "debug");
@@ -119,7 +147,12 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppReturn)
 
 		sentry_options_set_handler_pathw(options, (std::filesystem::path(szModule).parent_path() / "crashpad_handler.exe").c_str());
 		sentry_options_set_database_pathw(options, (std::filesystem::path(szModule).parent_path() / "PboExplorerCrashDB").c_str());
+		try {
+			std::filesystem::create_directories(std::filesystem::path(szModule).parent_path() / "PboExplorerCrashDB");
+		} catch (...) {}
 		//sentry_options_set_database_path(options, "O:\\sentry");
+
+		sentry_options_set_require_user_consent(options, 1);
 
 		sentry_set_level(SENTRY_LEVEL_DEBUG);
 
@@ -127,16 +160,67 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppReturn)
 		sentry_init(options);
 
 
-		//#TODO ask for consent
+		if (sentry_user_consent_get() == SENTRY_USER_CONSENT_UNKNOWN) {
+			if (MessageBoxA(GetDesktopWindow(),
+				"Hello and welcome to PBOExplorer!\n"
+				"I would like to request your permission to collect some data that i need to keep track of Errors and Crashes.\n\n"
+				"Transmitted data contains:\n"
+				"- explorer.exe crashdumps (they will be uploaded to a server and analyzed automatically)\n"
+				"- PboExplorer internal logmessages (when an error or unexpected thing happens somewhere)\n"
+				"- Your Username as identification so I can attribute crashes/errors for further equestions\n"
+				"You can change your Username in the next message box after you click yes.",
+				"PboExplorer", MB_YESNO | MB_ICONINFORMATION | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST) == IDNO) {
+				sentry_user_consent_revoke();
+			}
+			else 
+			{
+				if (MessageBoxA(GetDesktopWindow(),
+					"Thank you! If you want to have a custom username, please copy the text into your Clipboard and click Yes.\n\n"
+					"If you press No I will use your windows username",
+					"PboExplorer", MB_YESNO | MB_ICONINFORMATION | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST) == IDYES) {
+
+					// custom username selection loop
+
+					int res = 0;
+					do {
+						auto text = GetClipboardText();
+						if (text.length() > 2) {
+							auto msg = std::format("Thank you, I got \"{}\" is that correct? If no I'll read the clipboard again.", text);
+
+							res = MessageBoxA(GetDesktopWindow(), msg.c_str(), "PboExplorer", MB_YESNO | MB_ICONINFORMATION | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST);
+
+							if (res == IDYES) {
+								std::ofstream ofs(std::filesystem::path(szModule).parent_path() / "PboExplorerCrashDB" / "username.txt");
+								ofs.write(text.data(), text.size());
+								sentry_user_consent_give();
+							}
+						}
+						else 
+						{
+							res = MessageBoxA(GetDesktopWindow(), "Uh, the stuff I got is empty, do you want to quit and let me use your windows username?\nThe name is stored in \"username.txt\" and can be changed later.\n\nIf you press No I'll read clipboard again.", "PboExplorer", MB_YESNO | MB_ICONINFORMATION | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST);
+						}
+										
+					} while (res != IDYES);
+				}
+			}
+		}
+		
+
+
+		char usernameBuf[UNLEN + 1];
+		DWORD username_len = UNLEN + 1;
+		GetUserNameA(usernameBuf, &username_len);
+		std::string username(usernameBuf, username_len);
+
+		if (std::filesystem::exists(std::filesystem::path(szModule).parent_path() / "PboExplorerCrashDB" / "username.txt")) {
+			username = ReadWholeFile(std::filesystem::path(szModule).parent_path() / "PboExplorerCrashDB" / "username.txt");
+		}
 
 		sentry_value_t user = sentry_value_new_object();
 		sentry_value_set_by_key(user, "ip_address", sentry_value_new_string("{{auto}}"));
-		char username[UNLEN + 1];
-		DWORD username_len = UNLEN + 1;
-		GetUserNameA(username, &username_len);
-		sentry_value_set_by_key(user, "username", sentry_value_new_string(username));
+		
+		sentry_value_set_by_key(user, "username", sentry_value_new_string(username.c_str()));
 		sentry_set_user(user);
-
 
 		auto event = sentry_value_new_message_event(
 			/*   level */ SENTRY_LEVEL_INFO,
@@ -152,71 +236,81 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppReturn)
 
 		SentryInit = true;
 
+		if (sentry_user_consent_get() == SENTRY_USER_CONSENT_GIVEN) {
+			auto uploadDump = [](std::filesystem::path file) {
+				crashpad::HTTPMultipartBuilder http_multipart_builder;
+				http_multipart_builder.SetGzipEnabled(false);
 
-		auto uploadDump = [](std::filesystem::path file) {
-			crashpad::HTTPMultipartBuilder http_multipart_builder;
-			http_multipart_builder.SetGzipEnabled(false);
+				static constexpr char kMinidumpKey[] = "upload_file_minidump";
 
-			static constexpr char kMinidumpKey[] = "upload_file_minidump";
+				crashpad::FileReader reader;
+				base::FilePath path(file.wstring());
+				reader.Open(path);
 
-			crashpad::FileReader reader;
-			base::FilePath path(file.wstring());
-			reader.Open(path);
+				http_multipart_builder.SetFileAttachment(
+					kMinidumpKey,
+					file.filename().string(),
+					&reader,
+					"application/octet-stream");
 
-			http_multipart_builder.SetFileAttachment(
-				kMinidumpKey,
-				file.filename().string(),
-				&reader,
-				"application/octet-stream");
+				std::unique_ptr<crashpad::HTTPTransport> http_transport(crashpad::HTTPTransport::Create());
+				if (!http_transport) {
+					return; // UploadResult::kPermanentFailure;
+				}
 
-			std::unique_ptr<crashpad::HTTPTransport> http_transport(crashpad::HTTPTransport::Create());
-			if (!http_transport) {
-				return; // UploadResult::kPermanentFailure;
+				crashpad::HTTPHeaders content_headers;
+				http_multipart_builder.PopulateContentHeaders(&content_headers);
+				for (const auto& content_header : content_headers) {
+					http_transport->SetHeader(content_header.first, content_header.second);
+				}
+				http_transport->SetBodyStream(http_multipart_builder.GetBodyStream());
+				// TODO(mark): The timeout should be configurable by the client.
+				http_transport->SetTimeout(60.0);  // 1 minute.
+
+				std::string url = "http://lima.dedmen.de:9001/api/2/minidump/?sentry_key=cc1dc4103efd4f1dbbc0488599f33e58";
+				http_transport->SetURL(url);
+
+				if (!http_transport->ExecuteSynchronously(nullptr)) {
+					return; // UploadResult::kRetry;
+				}
+				reader.Close();
+			};
+
+			wchar_t appPath[MAX_PATH];
+			SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, NULL, SHGFP_TYPE_CURRENT, appPath);
+
+			std::error_code ec;
+			auto crashDir = std::filesystem::path(appPath) / "CrashDumps";
+			for (auto& p : std::filesystem::directory_iterator(crashDir, ec)) {
+				if (!p.is_regular_file(ec))
+					continue;
+
+				if (!p.path().filename().string().starts_with("explorer"))
+					continue;
+
+				if (!p.path().filename().string().ends_with("dmp"))
+					continue;
+
+				std::thread([path = p.path(), uploadDump]() {
+					uploadDump(path);
+					std::error_code ec;
+					std::filesystem::remove(path, ec);
+				}).detach();
 			}
-
-			crashpad::HTTPHeaders content_headers;
-			http_multipart_builder.PopulateContentHeaders(&content_headers);
-			for (const auto& content_header : content_headers) {
-				http_transport->SetHeader(content_header.first, content_header.second);
-			}
-			http_transport->SetBodyStream(http_multipart_builder.GetBodyStream());
-			// TODO(mark): The timeout should be configurable by the client.
-			http_transport->SetTimeout(60.0);  // 1 minute.
-
-			std::string url = "http://lima.dedmen.de:9001/api/2/minidump/?sentry_key=cc1dc4103efd4f1dbbc0488599f33e58";
-			http_transport->SetURL(url);
-
-			if (!http_transport->ExecuteSynchronously(nullptr)) {
-				return; // UploadResult::kRetry;
-			}
-			reader.Close();
-		};
-		
-		wchar_t appPath[MAX_PATH];
-		SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, NULL, SHGFP_TYPE_CURRENT, appPath);
-
-		std::error_code ec;
-		auto crashDir = std::filesystem::path(appPath) / "CrashDumps";
-		for (auto& p : std::filesystem::directory_iterator(crashDir, ec)) {
-			if (!p.is_regular_file(ec))
-				continue;
-
-			if (!p.path().filename().string().starts_with("explorer"))
-				continue;
-
-			if (!p.path().filename().string().ends_with("dmp"))
-				continue;
-
-			std::thread([path = p.path(), uploadDump]() {
-				uploadDump(path);
-				std::error_code ec;
-				std::filesystem::remove(path, ec);
-			}).detach();
 		}
 	}
 #endif
 
+	static bool FirstStartup = true;
+	if (FirstStartup) {
+		FirstStartup = false;
+	
+		std::thread([]() {
+			Updater::OnStartup();
+		}).detach();
+	}
 
+	
 
 	*ppReturn = nullptr;
 
@@ -373,8 +467,6 @@ public:
 };
 
 [[noreturn]] void RestartAsAdmin() {
-
-
 	MessageBoxA(GetDesktopWindow(), "PboExplorer needs Admin rights to register itself into the Windows Explorer, I will now prompt you for that.", "PboExplorer", MB_OK | MB_ICONINFORMATION | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST);
 
 
@@ -386,8 +478,16 @@ public:
 	int nArgs = 0;
 	auto args = CommandLineToArgvW(commandLine, &nArgs);
 
-	if (nArgs >= 2)
+	if (nArgs >= 2) {
 		commandLine = commandLine + std::wstring_view(commandLine).find(args[1]);
+		// readd the quote if there was one
+		if (*(commandLine - 1) == '"')
+			--commandLine;
+	}
+		
+
+	
+
 
 	LocalFree(args);
 
