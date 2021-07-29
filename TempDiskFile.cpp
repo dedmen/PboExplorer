@@ -10,14 +10,6 @@
 #include "DebugLogger.hpp"
 #include "FileWatcher.hpp"
 
-extern "C" {
-#include "lib/ArmaPboLib/lib/sha1.h"
-}
-
-
-
-
-
 std::mutex TempDiskFileCreationLock;
 struct opt_path_hash {
     std::size_t operator()(const std::filesystem::path& path) const {
@@ -29,19 +21,17 @@ std::unordered_map<std::filesystem::path, std::weak_ptr<TempDiskFile>, opt_path_
 std::mutex TempFileDirectoryLock;
 
 uint64_t TempDiskFile::GetCurrentHash() {
-    SHA1Context context;
-    SHA1Reset(&context);
-
+    Util::FNV1A_Hash result;
     std::ifstream inp(filePath, std::ifstream::binary | std::ifstream::in);
 
     std::array<char, 4096> buf;
     do {
         inp.read(buf.data(), buf.size());
-        SHA1Input(&context, reinterpret_cast<const unsigned char*>(buf.data()), inp.gcount());
+        result.Add(reinterpret_cast<const uint8_t*>(buf.data()), inp.gcount());
     } while (inp.gcount() > 0);
 
     // This is cheating... FNV hash?
-    return *reinterpret_cast<uint64_t*>(&context.Message_Digest);
+    return result.currentValue;
 }
 
 uint64_t TempDiskFile::GetCurrentSize() const {

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31313.381
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31521.260
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PboExplorer", "PboExplorer.vcxproj", "{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}"
 EndProject
@@ -15,6 +15,8 @@ Global
 		DebugExe|x86 = DebugExe|x86
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
+		UpdateHelperExe|x64 = UpdateHelperExe|x64
+		UpdateHelperExe|x86 = UpdateHelperExe|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.Debug|x64.ActiveCfg = Debug|x64
@@ -33,6 +35,10 @@ Global
 		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.Release|x64.Build.0 = Release|x64
 		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.Release|x86.ActiveCfg = Release|Win32
 		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.Release|x86.Build.0 = Release|Win32
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.UpdateHelperExe|x64.ActiveCfg = UpdateHelperExe|x64
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.UpdateHelperExe|x64.Build.0 = UpdateHelperExe|x64
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.UpdateHelperExe|x86.ActiveCfg = UpdateHelperExe|Win32
+		{97BA4F80-8F00-4E4D-8601-DB4FF0ED24BE}.UpdateHelperExe|x86.Build.0 = UpdateHelperExe|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

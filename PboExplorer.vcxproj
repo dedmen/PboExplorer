@@ -33,6 +33,14 @@
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="UpdateHelperExe|Win32">
+      <Configuration>UpdateHelperExe</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="UpdateHelperExe|x64">
+      <Configuration>UpdateHelperExe</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -67,6 +75,13 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
@@ -95,6 +110,13 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
@@ -112,6 +134,9 @@
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -122,6 +147,9 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
@@ -137,6 +165,9 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
@@ -148,6 +179,10 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <TargetName>PboExplorerUpdateHelper</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -201,6 +236,27 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;PBOEXPLORER_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableUAC>false</EnableUAC>
+      <ModuleDefinitionFile>PboExplorer.def</ModuleDefinitionFile>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -318,6 +374,32 @@
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>ENABLE_SENTRY;ARMA_PBO_LIB_WRITE;ARMA_PBO_LIB_SHA1;NDEBUG;PBOEXPLORER_EXPORTS;_WINDOWS;_USRDLL;IS_RESTART_HELPER;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>lib/sentry/external/crashpad/third_party/mini_chromium/mini_chromium/;lib/sentry/external/crashpad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableUAC>false</EnableUAC>
+      <ModuleDefinitionFile>
+      </ModuleDefinitionFile>
+      <AdditionalLibraryDirectories>O:\dev\pbofolder\PboExplorer\lib\sentry\build\RelWithDebInfo;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\client\RelWithDebInfo;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\third_party\mini_chromium\RelWithDebInfo;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\util\RelWithDebInfo</AdditionalLibraryDirectories>
+      <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="ClipboardFormatHandler.hpp" />
     <ClInclude Include="ComRef.hpp" />
@@ -341,27 +423,66 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="ShellExt.hpp" />
     <ClInclude Include="TempDiskFile.hpp" />
+    <ClInclude Include="Updater.hpp" />
     <ClInclude Include="Util.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ClipboardFormatHandler.cpp" />
-    <ClCompile Include="ContextMenu.cpp" />
-    <ClCompile Include="DebugLogger.cpp" />
-    <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="FileWatcher.cpp" />
+    <ClCompile Include="ClipboardFormatHandler.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="ContextMenu.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="DebugLogger.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="dllmain.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="FileWatcher.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="lib\ArmaPboLib\lib\sha1.c" />
     <ClCompile Include="lib\ArmaPboLib\src\pbo.cpp" />
-    <ClCompile Include="PboContextMenu.cpp" />
-    <ClCompile Include="PboDataObject.cpp" />
-    <ClCompile Include="PboFileDirectory.cpp" />
-    <ClCompile Include="PboFileStream.cpp" />
-    <ClCompile Include="PboFolder.cpp" />
-    <ClCompile Include="PboFolderContextMenu.cpp" />
-    <ClCompile Include="PboPatcher.cpp" />
-    <ClCompile Include="ProgressDialogOperation.cpp" />
-    <ClCompile Include="ShellExt.cpp" />
-    <ClCompile Include="TempDiskFile.cpp" />
-    <ClCompile Include="TestExe.cpp" />
+    <ClCompile Include="PboContextMenu.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="PboDataObject.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="PboFileDirectory.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="PboFileStream.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="PboFolder.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="PboFolderContextMenu.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="PboPatcher.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="ProgressDialogOperation.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="UpdateHelperExe.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="ShellExt.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="TempDiskFile.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="TestExe.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Updater.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="Util.cpp" />
   </ItemGroup>
   <ItemGroup>

@@ -7,6 +7,9 @@
 
 #include <Windows.h> //#TODO move utf en/decode into util.cpp and remove the windows.h
 
+#define VERSIONNO 202107081553ull
+
+
 using namespace std::string_view_literals;
 
 template<char... Cs>
@@ -170,6 +173,30 @@ namespace Util
 
     template<typename T>
     using unordered_map_stringkey = std::unordered_map<std::string, T, string_hash, MyEqual >;
+
+
+    class FNV1A_Hash {
+    public:
+        uint64_t currentValue = 0xcbf29ce484222325;
+
+        static uint64_t Add(uint64_t& hashValue, const uint8_t* data, size_t dataLength) {
+            const uint64_t fnvPrime = 0x00000100000001b3;
+            auto dataEnd = data + dataLength;
+
+            for (; data < dataEnd; data++)
+                hashValue = (hashValue ^ *data) * fnvPrime;
+
+            return hashValue;
+        }
+
+        void Add(const uint8_t* data, size_t dataLength) {
+            Add(currentValue, data, dataLength);
+        }
+    };
+
+    std::string base64_encode(std::string_view s);
+    std::string base64_decode(std::string_view s);
+
 };
 
 
