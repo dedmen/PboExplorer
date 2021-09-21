@@ -8,6 +8,7 @@
 #pragma comment (lib,"urlmon.lib")
 #pragma comment(lib, "Dnsapi.lib")
 
+#include <array>
 #include <charconv>
 #include <fstream>
 #include <string>

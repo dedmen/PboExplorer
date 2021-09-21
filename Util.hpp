@@ -1,6 +1,7 @@
 #pragma once
 #define NOMINMAX
 #include <algorithm>
+#include <array>
 #include <string>
 #include <stdexcept>
 #include <unordered_map>

@@ -3,6 +3,7 @@
 #include "PboPatcher.hpp"
 
 #include <functional>
+#include <numeric>
 #include <unordered_set>
 
 #include <windows.h>
@@ -31,7 +32,7 @@ std::shared_ptr<PboFile> PboSubFolder::GetRootFile() const
 
 std::optional<std::reference_wrapper<const PboSubFile>> PboSubFolder::GetFileByPath(std::filesystem::path inputPath) const
 {
-    auto relPath = inputPath.lexically_relative(fullPath);
+    auto relPath = inputPath;  //#TODO cleanup
 
     auto elementCount = std::distance(relPath.begin(), relPath.end());
 
@@ -39,10 +40,10 @@ std::optional<std::reference_wrapper<const PboSubFile>> PboSubFolder::GetFileByP
         // only a filename
 
 
-        auto subfileFound = std::find_if(subfiles.begin(), subfiles.end(), [relPath](const PboSubFile& subf)
-            {
-                return subf.filename == relPath;
-            });
+        const auto subfileFound = std::ranges::find_if(subfiles, [relPath](const PboSubFile& subf)
+        {
+            return subf.filename == relPath;
+        });
 
         if (subfileFound == subfiles.end())
             return {};
@@ -72,14 +73,14 @@ std::shared_ptr<PboSubFolder> PboSubFolder::GetFolderByPath(std::filesystem::pat
     std::shared_ptr<PboSubFolder> curFolder = std::const_pointer_cast<PboSubFolder>(shared_from_this());
 
     // get proper root directory in case we are a subfolder inside a pbo
-    auto relPath = inputPath.lexically_relative(fullPath);
+    auto relPath = inputPath; //#TODO cleanup
 
-    for (auto& it : inputPath)
+    for (auto& it : relPath)
     {
-        auto subfolderFound = std::find_if(curFolder->subfolders.begin(), curFolder->subfolders.end(), [it](const std::shared_ptr<PboSubFolder>& subf)
-            {
-                return subf->filename == it;
-            });
+        auto subfolderFound = std::ranges::find_if(curFolder->subfolders, [it](const std::shared_ptr<PboSubFolder>& subf)
+        {
+            return subf->filename == it;
+        });
 
         if (subfolderFound != curFolder->subfolders.end())
         {
@@ -89,57 +90,66 @@ std::shared_ptr<PboSubFolder> PboSubFolder::GetFolderByPath(std::filesystem::pat
     return curFolder;
 }
 
-std::unique_ptr<PboPidl> PboSubFolder::GetPidlListFromPath(std::filesystem::path inputPath) const
+std::unique_ptr<PboPidl> PboSubFolder::GetPidlListFromPath(std::filesystem::path inputPath) const //#TODO take path by const ref, we are copying here
 {
-    std::vector<PboPidl> resultPidl;
+    struct TempPidl {
+        PboPidlFileType type;
+        std::filesystem::path fileName;
+    };
+
+    std::vector<TempPidl> resultPidl;
 
     std::shared_ptr<PboSubFolder> curFolder = std::const_pointer_cast<PboSubFolder>(shared_from_this());
-
-    // get proper root directory in case we are a subfolder inside a pbo
-    auto relPath = inputPath.lexically_relative(fullPath);
+    auto relPath = inputPath;
 
     for (auto& it : relPath)
     {
-        auto subfolderFound = std::find_if(curFolder->subfolders.begin(), curFolder->subfolders.end(), [it](const std::shared_ptr<PboSubFolder>& subf)
-            {
-                return subf->filename == it;
-            });
+        auto subfolderFound = std::ranges::find_if(curFolder->subfolders, [it](const std::shared_ptr<PboSubFolder>& subf)
+        {
+            return subf->filename == it;
+        });
 
         if (subfolderFound != curFolder->subfolders.end())
         {
-            // every pidl has fullpath, can't we just shorten this to 1 pidl, lets try...
-            //resultPidl.emplace_back(PboPidl{ sizeof(PboPidl), PboPidlFileType::Folder, (*subfolderFound)->fullPath, -1 });
+            resultPidl.emplace_back(TempPidl{ PboPidlFileType::Folder, (*subfolderFound)->filename });
             curFolder = *subfolderFound;
             continue;
         }
 
-        auto subfileFound = std::find_if(curFolder->subfiles.begin(), curFolder->subfiles.end(), [it](const PboSubFile& subf)
-            {
-                return subf.filename == it;
-            });
+        auto subfileFound = std::ranges::find_if(curFolder->subfiles, [it](const PboSubFile& subf)
+        {
+            return subf.filename == it;
+        });
 
 
         if (subfileFound != curFolder->subfiles.end()) {
-
-            const auto& path = (*subfileFound).fullPath;
-
-            auto data = new PboPidl[(PboPidl::GetPidlSizeForPath(path) / sizeof(PboPidl)) + 1];
-            PboPidl::CreatePidlAt(data, path, PboPidlFileType::File);
-
-            return std::unique_ptr<PboPidl>(data);
+            resultPidl.emplace_back(TempPidl{ PboPidlFileType::File, (*subfileFound).filename });
+            break; // file is always end of path
+        } else {
+            Util::TryDebugBreak(); // not found
+            //
+            // not found, pidl is still valid
+            return nullptr;
         }
     }
 
+    auto size = std::accumulate(resultPidl.begin(), resultPidl.end(), 0u, [](uint32_t size, const TempPidl& pidl) {
+        return size + PboPidl::GetPidlSizeForPath(pidl.fileName);
+    });
 
-    if (curFolder->filename == relPath.filename()) {
-        Util::TryDebugBreak();
-        // return this folder as pidl, instead of returning a file pidl
+    size += 2; // 2 byte 0 cb as terminator
+    //#TODO use real alloc here instead of this mess, destructor will call delete instead of delete[] anyway and this is messy, need to propagate the dealloc way into the unique_ptr?
+    auto data = new PboPidl[(size / sizeof(PboPidl)) + 1];
+    auto dataWrite = data;
 
+    for (auto& it : resultPidl) {
+        dataWrite = PboPidl::CreatePidlAt(data, it.fileName, it.type);
     }
 
-    Util::TryDebugBreak();
-    // not found, pidl is still valid, just not for full path
-    return nullptr;
+    // null terminator
+    dataWrite->cb = 0;
+
+    return std::unique_ptr<PboPidl>(data);
 }
 
 PboFile::PboFile()
@@ -171,12 +181,13 @@ void PboFile::ReadFrom(std::filesystem::path inputPath)
         segments.pop_back();
 
         std::shared_ptr<PboSubFolder> curFolder = rootFolder;
+        rootFolder->rootFile = weak_from_this();
         for (auto& it : segments)
         {
-            auto subfolderFound = std::find_if(curFolder->subfolders.begin(), curFolder->subfolders.end(), [it](const std::shared_ptr<PboSubFolder>& subf)
-                {
-                    return subf->filename == it;
-                });
+            auto subfolderFound = std::ranges::find_if(curFolder->subfolders, [it](const std::shared_ptr<PboSubFolder>& subf)
+            {
+                return subf->filename == it;
+            });
 
             if (subfolderFound != curFolder->subfolders.end())
             {
@@ -186,6 +197,7 @@ void PboFile::ReadFrom(std::filesystem::path inputPath)
             auto newSub = std::make_shared<PboSubFolder>();
             newSub->filename = it;
             newSub->fullPath = filePath.parent_path();
+            newSub->rootFile = weak_from_this();
             curFolder->subfolders.emplace_back(std::move(newSub));
             curFolder = curFolder->subfolders.back();
         }
@@ -240,10 +252,10 @@ void PboFile::ReloadFrom(std::filesystem::path inputPath)
         std::shared_ptr<PboSubFolder> curFolder = rootFolder;
         for (auto& it : segments)
         {
-            auto subfolderFound = std::find_if(curFolder->subfolders.begin(), curFolder->subfolders.end(), [it](const std::shared_ptr<PboSubFolder>& subf)
-                {
-                    return subf->filename == it;
-                });
+            auto subfolderFound = std::ranges::find_if(curFolder->subfolders, [it](const std::shared_ptr<PboSubFolder>& subf)
+            {
+                return subf->filename == it;
+            });
 
             if (subfolderFound != curFolder->subfolders.end())
             {
@@ -253,14 +265,15 @@ void PboFile::ReloadFrom(std::filesystem::path inputPath)
             auto newSub = std::make_shared<PboSubFolder>();
             newSub->filename = it;
             newSub->fullPath = filePath.parent_path();
+            newSub->rootFile = weak_from_this();
             curFolder->subfolders.emplace_back(std::move(newSub));
             curFolder = curFolder->subfolders.back();
         }
 
-        auto subfileFound = std::find_if(curFolder->subfiles.begin(), curFolder->subfiles.end(), [&fileName](const PboSubFile& subf)
-            {
-                return subf.filename == fileName;
-            });
+        auto subfileFound = std::ranges::find_if(curFolder->subfiles, [&fileName](const PboSubFile& subf)
+        {
+            return subf.filename == fileName;
+        });
 
         if (subfileFound == curFolder->subfiles.end()) {
             // add new file
@@ -293,12 +306,12 @@ void PboFile::ReloadFrom(std::filesystem::path inputPath)
             cleanupFolder(it);
 
         folder->subfiles.erase(
-            std::remove_if(folder->subfiles.begin(), folder->subfiles.end(), [&](const PboSubFile& file) {
+            std::ranges::remove_if(folder->subfiles, [&](const PboSubFile& file) {
                 //#TODO case insensitive
                 return existingFiles.find(file.fullPath.wstring()) == existingFiles.end();
-                }),
+            }).begin(),
             folder->subfiles.end()
-                    );
+        );
 
     };
 
@@ -328,14 +341,17 @@ std::optional<std::reference_wrapper<const PboSubFile>> PboFile::GetFileByPath(s
     std::shared_ptr<PboSubFolder> curFolder = rootFolder;
 
     // get proper root directory in case we are a subfolder inside a pbo
+    bool check = rootFolder->fullPath.empty();
+    if (!check)
+        Util::TryDebugBreak(); // lexically_relative moooost likely needs to be removed here, need check
     auto relPath = inputPath.lexically_relative(rootFolder->fullPath);
 
     for (auto& it : relPath)
     {
-        auto subfolderFound = std::find_if(curFolder->subfolders.begin(), curFolder->subfolders.end(), [it](const std::shared_ptr<PboSubFolder>& subf)
-            {
-                return subf->filename == it;
-            });
+        auto subfolderFound = std::ranges::find_if(curFolder->subfolders, [it](const std::shared_ptr<PboSubFolder>& subf)
+        {
+            return subf->filename == it;
+        });
 
         if (subfolderFound != curFolder->subfolders.end())
         {
@@ -343,10 +359,10 @@ std::optional<std::reference_wrapper<const PboSubFile>> PboFile::GetFileByPath(s
             continue;
         }
 
-        auto subfileFound = std::find_if(curFolder->subfiles.begin(), curFolder->subfiles.end(), [it](const PboSubFile& subf)
-            {
-                return subf.filename == it;
-            });
+        const auto subfileFound = std::ranges::find_if(curFolder->subfiles, [it](const PboSubFile& subf)
+        {
+            return subf.filename == it;
+        });
 
         if (subfileFound == curFolder->subfiles.end())
             return {};
@@ -364,7 +380,7 @@ std::unique_ptr<PboPidl> PboFile::GetPidlListFromPath(std::filesystem::path inpu
     return rootFolder->GetPidlListFromPath(inputPath);
 }
 
-PboSubFolderActiveRef::PboSubFolderActiveRef(std::shared_ptr<PboSubFolder> subFolder) : folder(folder), rootFile(folder->GetRootFile()) {
+PboSubFolderActiveRef::PboSubFolderActiveRef(std::shared_ptr<PboSubFolder> subFolder) : folder(subFolder), rootFile(subFolder->GetRootFile()) {
     if (!rootFile) { // should never happen
         Util::WaitForDebuggerPrompt();
         Util::TryDebugBreak();
@@ -417,5 +433,3 @@ void PboFileDirectory::ReleaseGlobalPatchLock()
 
     if (GMutex) ReleaseMutex(GMutex);
 }
-
-

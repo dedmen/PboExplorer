@@ -49,7 +49,13 @@ TempDiskFile::TempDiskFile(const PboFile& pboRef, std::filesystem::path subfile)
     pboPath = pboRef.diskPath;
     pboSubPath = subfile;
 
-    std::filesystem::create_directories(filePath.parent_path());
+    try {
+        std::filesystem::create_directories(filePath.parent_path());
+    }
+    catch (...) {
+        //#TODO handle already exists properly
+    }
+    
 
     //#TODO properly handle existing file, this is bad. We should never do that
     if (!std::filesystem::exists(filePath))

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -12,7 +13,17 @@ class IPboSub
 {
 public:
     std::wstring filename;
+    /// <summary>
+    /// Full path relative to pbo root
+    /// </summary>
+    /// <example>config.cpp</example>
+    /// <example>functions/fnc_init.sqf</example>
+    /// <example>UI/textures/icon_co.paa</example>
     std::filesystem::path fullPath;
+
+
+    // Iterates through all subfiles/folders (if current object is a file, only runs that one file, if its a folder, iterates through all subfolders)
+    virtual void ForEachFileOrFolder(std::function<void(const IPboSub*)> func) const = 0;
 };
 
 class PboSubFile;
@@ -44,6 +55,9 @@ public:
 
     virtual std::optional<std::reference_wrapper<const PboSubFile>> GetFileByPath(std::filesystem::path inputPath) const = 0;
     virtual std::shared_ptr<PboSubFolder> GetFolderByPath(std::filesystem::path inputPath) const = 0;
+    /// <summary>
+    /// Returns A multi-level pidl for inputPath, relative to current folder
+    /// </summary>
     virtual std::unique_ptr<PboPidl> GetPidlListFromPath(std::filesystem::path inputPath) const = 0;
 };
 
@@ -54,6 +68,9 @@ public:
     uint32_t filesize;
     uint32_t dataSize;
     uint32_t startOffset;
+
+    // Inherited via IPboSub
+    void ForEachFileOrFolder(std::function<void(const IPboSub*)> func) const override { func(this); }
 };
 
 class PboSubFolder final : public IPboSub, public IPboFolder, public std::enable_shared_from_this<PboSubFolder>
@@ -70,6 +87,18 @@ public:
     std::optional<std::reference_wrapper<const PboSubFile>> GetFileByPath(std::filesystem::path inputPath) const override;
     std::shared_ptr<PboSubFolder> GetFolderByPath(std::filesystem::path inputPath) const override;
     std::unique_ptr<PboPidl> GetPidlListFromPath(std::filesystem::path inputPath) const override;
+
+    // Inherited via IPboSub
+    void ForEachFileOrFolder(std::function<void(const IPboSub*)> func) const override {
+        func(this);
+
+        for (auto& it : subfolders) 
+            func(it.get());
+
+        for (auto& it : subfiles)
+            func(&it);
+
+    }
 };
 
 class PboFile final : public IPboFolder, public std::enable_shared_from_this<PboFile>

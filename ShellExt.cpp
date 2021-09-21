@@ -134,6 +134,9 @@ STDMETHODIMP ShellExt::QueryContextMenu(
 	for (auto& it : contextMenu)
 		it.InsertIntoMenu(hmenu, uMenuIndex, uidFirstCmd);
 
+	//#TODO should probably do Shell_MergeMenus
+
+
 	return MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, ((uidFirstCmd - cmdFirst) + 1));
 }
 

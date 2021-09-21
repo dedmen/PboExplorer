@@ -191,12 +191,16 @@ HRESULT PboContextMenu::QueryContextMenu(
     //return m_DefCtxMenu->QueryContextMenu(hmenu, indexMenu, idCmdFirst, idCmdLast, uFlags);
 
 
+    //#TODO Ah I guess thats a good right-click feature to just copy a files full path including (or not including) prefix
+
     //#TODO query filetype contextmenu and use them?
     // add notepad++ manually?
 
     if (m_apidl.size() == 1)
     {
-        DebugLogger::TraceLog(std::format("file {}", ((PboPidl*)m_apidl[0].GetRef())->GetFilePath().string()), std::source_location::current(), __FUNCTION__);
+        EXPECT_SINGLE_PIDL((PboPidl*)m_apidl[0].GetRef());
+
+        DebugLogger::TraceLog(std::format("file {}", (m_folder->pboFile->GetFolder()->fullPath / ((PboPidl*)m_apidl[0].GetRef())->GetFilePath()).string()), std::source_location::current(), __FUNCTION__);
 
         InsertMenu(hmenu, indexMenu++, MF_STRING | MF_BYPOSITION,
             idCmdFirst + CONTEXT_OPEN, getContextText(CONTEXT_OPEN));
@@ -270,20 +274,14 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
             cmd = CONTEXT_DELETE;
         else
             Util::TryDebugBreak(); // rename, refresh, paste, explore, find? properties.
-        //#TODO "delete"
 
         // paste ftpcm.cpp _InvokePaste
-
-
 
     }
     else cmd = LOWORD(pici->lpVerb);
 
     if (cmd < 0 || cmd >= CONTEXT_QTY) {
-
-
-        DebugLogger::TraceLog(std::format("NOT IMPLEMENTED COMMAND"), std::source_location::current(), __FUNCTION__);
-        //#TODO warn log
+        DebugLogger::WarnLog(std::format("NOT IMPLEMENTED COMMAND"), std::source_location::current(), __FUNCTION__);
         return(E_INVALIDARG);
     }
 
@@ -292,6 +290,7 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
 
     if (cmd == CONTEXT_COPY)
     {
+        EXPECT_SINGLE_PIDL((PboPidl*)m_apidl[0].GetRef());
         ComRef<IDataObject> dataObject;
         HRESULT hr = m_folder->GetUIObjectOf(
             hwnd, m_apidl.size(), const_cast<LPCITEMIDLIST*>(&m_apidl[0]),
@@ -323,9 +322,10 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
 
             for (auto& it : m_apidl) {
                 PboPidl* qp = (PboPidl*)it.GetRef(); //#TODO change m_apidl to only store pboPidl* and not convert everytime
+                EXPECT_SINGLE_PIDL(qp);
                 if (qp->IsFile())
                 {
-                    patcher.AddPatch<PatchDeleteFile>(qp->GetFilePath());
+                    patcher.AddPatch<PatchDeleteFile>(m_folder->pboFile->GetFolder()->fullPath / qp->GetFilePath());
                 }
                 else
                 {
@@ -337,7 +337,7 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
 
         for (auto& it : m_apidl) {
             PboPidl* qp = (PboPidl*)it.GetRef(); 
-            SHChangeNotify(SHCNE_DELETE, SHCNF_PATH, qp->GetFilePath().native().c_str(), 0);
+            SHChangeNotify(SHCNE_DELETE, SHCNF_PATH, (m_folder->pboFile->GetFolder()->fullPath / qp->GetFilePath()).native().c_str(), 0);
         }
        
 
@@ -345,8 +345,9 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
     }
 
 
-
+    
     PboPidl* qp = (PboPidl*)m_apidl[0].GetRef();
+    EXPECT_SINGLE_PIDL(qp);
     if (qp->IsFile())
     {
         HRESULT hr;
@@ -393,6 +394,7 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
             //}
 
             STRRET displayName;
+            EXPECT_SINGLE_PIDL((PboPidl*)m_apidl[0].GetRef());
             hr = m_folder->GetDisplayNameOf(m_apidl[0], SHGDN_INFOLDER, &displayName);
             if (FAILED(hr)) return(hr);
 
@@ -406,8 +408,10 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
         }
         else
         {
-            
-            auto tempFile = TempDiskFile::GetFile(*m_folder->pboFile->GetRootFile(), qp->GetFilePath());
+            //#TODO make sure that everyhwere where we actually access this file, we use the fullpath, relative to our parent folder, all pidls here are relative to parent
+            //#TODO make this "m_folder->pboFile->GetFolder()->fullPath" shorter, maybe can put helper func directly into pboFile, it'll know whether its a subfolder or not. Just add GetFullPath to IPboFolder and IPboFile
+            //#TODO rename qp->GetFilePath() to GetFullPath, use GetFileName here and in other placesto be clear what the meaning is
+            auto tempFile = TempDiskFile::GetFile(*m_folder->pboFile->GetRootFile(), m_folder->pboFile->GetFolder()->fullPath / qp->GetFilePath());
             fileTarget = tempFile->GetPath();
             GFileWatcher.WatchFile(tempFile);
 
@@ -526,6 +530,7 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
         return(hr);
     }
 
+    EXPECT_SINGLE_PIDL((PboPidl*)m_apidl[0].GetRef());
     LPITEMIDLIST pidlFull = ILCombine(m_pidlRoot, m_apidl[0]);
     SHELLEXECUTEINFO sei;
     ZeroMemory(&sei, sizeof(sei));

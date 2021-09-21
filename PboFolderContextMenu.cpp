@@ -143,6 +143,9 @@ HRESULT PboFolderContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
     {
         HRESULT hres = E_FAIL;
         //#TODO support move paste
+
+        //#TODO https://www.geoffchappell.com/studies/windows/shell/shlwapi/api/util/simulatedrop.htm ? Thats what zipfldr uses
+
         {
             ComRef<IDataObject> pdto;
             hres = OleGetClipboard(&pdto);

@@ -1,4 +1,4 @@
-#include "PboFolder.hpp"
+﻿#include "PboFolder.hpp"
 
 #include <codecvt>
 #include <Shlwapi.h>
@@ -115,11 +115,15 @@ HRESULT PboFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayName
 {
     CHECK_INIT();
 
+    std::wstring_view path(pszDisplayName);
+    if (path.ends_with(L'/') || path.ends_with(L'\\')) // #TODO Util::trim start and end slashes
+        path.remove_suffix(1);
 
-    std::filesystem::path subPath(pszDisplayName);
+    std::filesystem::path subPath(path);
     auto pidlList = pboFile->GetPidlListFromPath(subPath.lexically_normal());
 
-
+    EXPECT_SINGLE_PIDL(pidlList.get()); // If this is not a single pidl here, need to adjust GetAttributesOf down below, should be able to just pass pidlList directly to it, that will be correct multi-level pidl. But GetAttributesOf does not handle multi-level yet
+    
     if (!pidlList)
         return(E_FAIL); // doesn't exist
 
@@ -129,34 +133,41 @@ HRESULT PboFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayName
 
 
     //auto totalSize = std::accumulate(pidlList.begin(), pidlList.end(), 0ul, [](uint32_t inp, const PboPidl& pidl) { return inp + pidl.cb; });
-    auto totalSize = pidlList->cb;
 
+    auto totalSize = ILGetSize((LPCITEMIDLIST)pidlList.get());
 
+    //#TODO I think we are pushing double null terminator here, maybe GetPidlListFromPath could instead be reverted back to returning array of elements?
     auto resPidl = (LPITEMIDLIST)CoTaskMemAlloc(totalSize + sizeof(PboPidl::cb));
 
+    // is this right??
+
+    std::memcpy(resPidl, pidlList.get(), totalSize);
+
+
+
     // last cbSize is 0
-    uint16_t* afterCB = (uint16_t*)(((uintptr_t)resPidl) + totalSize);
-    *afterCB = 0x13; // test
-
-
-    char* outputBuf = (char*)resPidl;
-    for (auto& it : { *pidlList }) {
-        std::memcpy(outputBuf, &it, it.cb);
-        outputBuf += it.cb;
-    }
-
-    if (((PboPidl*)outputBuf)->cb != 0x13) {
-        Util::TryDebugBreak();
-    }
-
-    ((PboPidl*)outputBuf)->cb = 0;
+    //uint16_t* afterCB = (uint16_t*)(((uintptr_t)resPidl) + totalSize);
+    //*afterCB = 0x13; // test
+    //
+    ////#TODO cleanup??
+    //char* outputBuf = (char*)resPidl;
+    //for (auto& it : { *pidlList }) {
+    //    std::memcpy(outputBuf, &it, it.cb);
+    //    outputBuf += it.cb;
+    //}
+    //
+    //if (((PboPidl*)outputBuf)->cb != 0x13) {
+    //    Util::TryDebugBreak();
+    //}
+    //
+    //((PboPidl*)outputBuf)->cb = 0;
 
 
     *ppidl = resPidl;
 
 
-
-    PboPidl* qp = (PboPidl*)ILFindLastID(*ppidl);
+    auto qp = reinterpret_cast<PboPidl*>(ILFindLastID(*ppidl));
+    EXPECT_SINGLE_PIDL(qp);
     ULONG eaten = 0;
     if (qp)
     {
@@ -256,7 +267,9 @@ HRESULT DirectoryEnumIDList::Next(
 
         for (; i < celt && m_idxPos < qty; m_idxPos++)
         {
-            const auto& filePath = (m_typePos) ? subFolder->subfiles[m_idxPos].fullPath : subFolder->subfolders[m_idxPos]->fullPath;
+            // DirectoryEnumIDList returns pidl's that are sub-entries of the current directory being enumerated, we don't want to use full paths here, these pidls will be combined with the parent to result in a full path
+
+            const auto& filePath = (m_typePos) ? subFolder->subfiles[m_idxPos].filename : subFolder->subfolders[m_idxPos]->filename;
 
             auto pidlSize = PboPidl::GetPidlSizeForPath(filePath);
             PboPidl* qp = (PboPidl*)CoTaskMemAlloc(pidlSize + sizeof(USHORT));
@@ -357,9 +370,11 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
 #endif
 
     if (IsEqualIID(riid, IID_IShellFolder) ||
-        IsEqualIID(riid, IID_IShellFolder2))
+        IsEqualIID(riid, IID_IShellFolder2)) // open subfolder
     {
-        auto subPidl = (const PboPidl*)pidl;
+
+        auto subPidl = reinterpret_cast<const PboPidl*>(pidl);
+        EXPECT_SINGLE_PIDL(subPidl); //#TODO should support multi-level?
 
         if (subPidl->IsFile()) // cannot enter file as if its a folder
             return(E_FAIL);
@@ -402,7 +417,7 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
 
         qp = (const PboPidl*)ILFindLastID(pidl);
 
-        ComRef<PboFileStream>::CreateForReturn<IStream>(ppv, pboFile->GetRootFile(), qp->GetFilePath());
+        ComRef<PboFileStream>::CreateForReturn<IStream>(ppv, pboFile->GetRootFile(), pboFile->GetFolder()->fullPath / qp->GetFilePath());
         return S_OK;
 
 
@@ -438,6 +453,10 @@ HRESULT PboFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIST 
     auto qp1 = (const PboPidl*)ILFindLastID(pidl1);
     auto qp2 = (const PboPidl*)ILFindLastID(pidl2);
 
+    EXPECT_SINGLE_PIDL(qp1);
+    EXPECT_SINGLE_PIDL(qp2);
+
+
     if (!qp1->IsValidPidl() || !qp2->IsValidPidl())
         return MAKE_HRESULT(0, 0, (unsigned short)-1);
 
@@ -454,7 +473,7 @@ HRESULT PboFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIST 
             break;
         }
 
-        res = qp1->GetFilePath().filename() < qp2->GetFilePath().filename() ? -1 : 1;
+        res = qp1->GetFileName().filename() < qp2->GetFileName().filename() ? -1 : 1;
         break;
     }
     break;
@@ -463,13 +482,13 @@ HRESULT PboFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIST 
         uint64_t size1 = 0, size2 = 0;
 
         {
-            auto file = pboFile->GetFileByPath(qp1->GetFilePath());
+            auto file = pboFile->GetFileByPath(qp1->GetFileName());
             if (file)
                 size1 = file->get().dataSize;
         }
 
         {
-            auto file = pboFile->GetFileByPath(qp2->GetFilePath());
+            auto file = pboFile->GetFileByPath(qp2->GetFileName());
             if (file)
                 size2 = file->get().dataSize;
         }
@@ -547,6 +566,79 @@ HRESULT PboFolder::CreateViewObject(HWND hwnd, const IID& riid, void** ppv)
   //#TODO we want the above ^, ITransferAdviseSink::ConfirmOverwrite, ITransferAdviseSink::UpdateProgress
   // but we probably don't want to offer that here? We kinda only want to offer this if a drop action is running
      else RIID_TODO(IID_ITransferSource); // #TODO
+
+
+     //#TODO do this, zipfldr has IShellView, IDropTarget, IContextMenu, ITransferSource, ITransferHelper. I have the first 3, the other two zip has combined
+
+     /*
+     ; const CZipTransfer::`vftable'{for `ITransferHelper'}
+.rdata:0000000171236B10 ??_7CZipTransfer@@6BITransferHelper@@@ dq offset ?QueryInterface@CZipTransfer@@WBA@EAAJAEBU_GUID@@PEAPEAX@Z
+.rdata:0000000171236B10                                         ; DATA XREF: CZipTransfer_CreateInstance+6B↑o
+.rdata:0000000171236B10                                         ; CZipTransfer::~CZipTransfer(void)+1E↑o
+.rdata:0000000171236B10                                         ; [thunk]:CZipTransfer::QueryInterface`adjustor{16}' (_GUID const &,void * *)
+.rdata:0000000171236B18                 dq offset ?AddRef@CDummyUnknown@@WBA@EAAKXZ ; [thunk]:CDummyUnknown::AddRef`adjustor{16}' (void)
+.rdata:0000000171236B20                 dq offset ?Release@CZipTransfer@@WBA@EAAKXZ ; [thunk]:CZipTransfer::Release`adjustor{16}' (void)
+.rdata:0000000171236B28                 dq offset ?GetDestinationFlags@CZipTransfer@@UEAAJPEAUIShellItem@@PEAW4TRANSFERDESTFLAGS@@@Z ; CZipTransfer::GetDestinationFlags(IShellItem *,TRANSFERDESTFLAGS *)
+.rdata:0000000171236B30                 dq offset ?GetSourceFlags@CZipTransfer@@UEAAJPEAUIShellItem@@PEAW4TRANSFERSOURCEFLAGS@@@Z ; CZipTransfer::GetSourceFlags(IShellItem *,TRANSFERSOURCEFLAGS *)
+.rdata:0000000171236B38                 dq offset ?SetMode@CDummyUnknown@@UEAAJW4FOLDER_ENUM_MODE@@@Z ; CDummyUnknown::SetMode(FOLDER_ENUM_MODE)
+.rdata:0000000171236B40                 dq offset ?SetMode@CDummyUnknown@@UEAAJW4FOLDER_ENUM_MODE@@@Z ; CDummyUnknown::SetMode(FOLDER_ENUM_MODE)
+.rdata:0000000171236B48 ; const CZipTransfer::`vftable'{for `ITransferAdviseSink'}
+.rdata:0000000171236B48 ??_7CZipTransfer@@6BITransferAdviseSink@@@ dq offset ?QueryInterface@CZipTransfer@@W7EAAJAEBU_GUID@@PEAPEAX@Z
+.rdata:0000000171236B48                                         ; DATA XREF: CZipTransfer_CreateInstance+60↑o
+.rdata:0000000171236B48                                         ; CZipTransfer::~CZipTransfer(void)+13↑o
+.rdata:0000000171236B48                                         ; [thunk]:CZipTransfer::QueryInterface`adjustor{8}' (_GUID const &,void * *)
+.rdata:0000000171236B50                 dq offset ?AddRef@CZipTransfer@@W7EAAKXZ ; [thunk]:CZipTransfer::AddRef`adjustor{8}' (void)
+.rdata:0000000171236B58                 dq offset ?Release@CZipTransfer@@W7EAAKXZ ; [thunk]:CZipTransfer::Release`adjustor{8}' (void)
+.rdata:0000000171236B60                 dq offset ?UpdateProgress@CZipTransfer@@UEAAJ_K0HHHH@Z ; CZipTransfer::UpdateProgress(unsigned __int64,unsigned __int64,int,int,int,int)
+.rdata:0000000171236B68                 dq offset ?UpdateTransferState@CZipTransfer@@UEAAJK@Z ; CZipTransfer::UpdateTransferState(ulong)
+.rdata:0000000171236B70                 dq offset ?ConfirmOverwrite@CZipTransfer@@UEAAJPEAUIShellItem@@0PEBG@Z ; CZipTransfer::ConfirmOverwrite(IShellItem *,IShellItem *,ushort const *)
+.rdata:0000000171236B78                 dq offset ?ConfirmEncryptionLoss@CZipTransfer@@UEAAJPEAUIShellItem@@@Z ; CZipTransfer::ConfirmEncryptionLoss(IShellItem *)
+.rdata:0000000171236B80                 dq offset ?FileFailure@CZipTransfer@@UEAAJPEAUIShellItem@@PEBGJPEAGK@Z ; CZipTransfer::FileFailure(IShellItem *,ushort const *,long,ushort *,ulong)
+.rdata:0000000171236B88                 dq offset ?SubStreamFailure@CZipTransfer@@UEAAJPEAUIShellItem@@PEBGJ@Z ; CZipTransfer::SubStreamFailure(IShellItem *,ushort const *,long)
+.rdata:0000000171236B90                 dq offset ?PropertyFailure@CZipTransfer@@UEAAJPEAUIShellItem@@PEBU_tagpropertykey@@J@Z ; CZipTransfer::PropertyFailure(IShellItem *,_tagpropertykey const *,long)
+.rdata:0000000171236B98 ; const CZipTransfer::`vftable'{for `ITransferSource2'}
+.rdata:0000000171236B98 ??_7CZipTransfer@@6BITransferSource2@@@ dq offset ?QueryInterface@CZipTransfer@@UEAAJAEBU_GUID@@PEAPEAX@Z
+.rdata:0000000171236B98                                         ; DATA XREF: CZipTransfer_CreateInstance+4E↑o
+.rdata:0000000171236B98                                         ; CZipTransfer::~CZipTransfer(void)+6↑o
+.rdata:0000000171236B98                                         ; CZipTransfer::QueryInterface(_GUID const &,void * *)
+.rdata:0000000171236BA0                 dq offset ?AddRef@CDummyUnknown@@UEAAKXZ ; CDummyUnknown::AddRef(void)
+.rdata:0000000171236BA8                 dq offset ?Release@CZipTransfer@@UEAAKXZ ; CZipTransfer::Release(void)
+.rdata:0000000171236BB0                 dq offset ?Advise@CZipTransfer@@UEAAJPEAUITransferAdviseSink@@PEAK@Z ; CZipTransfer::Advise(ITransferAdviseSink *,ulong *)
+.rdata:0000000171236BB8                 dq offset ?Unadvise@CZipTransfer@@UEAAJK@Z ; CZipTransfer::Unadvise(ulong)
+.rdata:0000000171236BC0                 dq offset ?SetProperties@CZipTransfer@@UEAAJPEAUIPropertyChangeArray@@@Z ; CZipTransfer::SetProperties(IPropertyChangeArray *)
+.rdata:0000000171236BC8                 dq offset ?OpenItem@CZipTransfer@@UEAAJPEAUIShellItem@@KAEBU_GUID@@PEAPEAX@Z ; CZipTransfer::OpenItem(IShellItem *,ulong,_GUID const &,void * *)
+.rdata:0000000171236BD0                 dq offset ?MoveItem@CZipTransfer@@UEAAJPEAUIShellItem@@0PEBGKPEAPEAU2@@Z ; CZipTransfer::MoveItem(IShellItem *,IShellItem *,ushort const *,ulong,IShellItem * *)
+.rdata:0000000171236BD8                 dq offset ?RecycleItem@CZipTransfer@@UEAAJPEAUIShellItem@@0KPEAPEAU2@@Z ; CZipTransfer::RecycleItem(IShellItem *,IShellItem *,ulong,IShellItem * *)
+.rdata:0000000171236BE0                 dq offset ?RemoveItem@CZipTransfer@@UEAAJPEAUIShellItem@@K@Z ; CZipTransfer::RemoveItem(IShellItem *,ulong)
+.rdata:0000000171236BE8                 dq offset ?RenameItem@CZipTransfer@@UEAAJPEAUIShellItem@@PEBGKPEAPEAU2@@Z ; CZipTransfer::RenameItem(IShellItem *,ushort const *,ulong,IShellItem * *)
+.rdata:0000000171236BF0                 dq offset ?SetMode@CDummyUnknown@@UEAAJW4FOLDER_ENUM_MODE@@@Z ; CDummyUnknown::SetMode(FOLDER_ENUM_MODE)
+.rdata:0000000171236BF8                 dq offset ?ApplyPropertiesToItem@CZipTransfer@@UEAAJPEAUIShellItem@@PEAPEAU2@@Z ; CZipTransfer::ApplyPropertiesToItem(IShellItem *,IShellItem * *)
+.rdata:0000000171236C00                 dq offset ?GetDefaultDestinationName@CZipTransfer@@UEAAJPEAUIShellItem@@0PEAPEAG@Z ; CZipTransfer::GetDefaultDestinationName(IShellItem *,IShellItem *,ushort * *)
+.rdata:0000000171236C08                 dq offset ?ResetTimer@CLocalCopyDownloadSink@@UEAAJXZ ; CLocalCopyDownloadSink::ResetTimer(void)
+.rdata:0000000171236C10                 dq offset ?ResetTimer@CLocalCopyDownloadSink@@UEAAJXZ ; CLocalCopyDownloadSink::ResetTimer(void)
+.rdata:0000000171236C18                 dq offset ?IsCopySupported@CZipTransfer@@UEAAJPEAUIShellItem@@0PEAH@Z ; CZipTransfer::IsCopySupported(IShellItem *,IShellItem *,int *)
+.rdata:0000000171236C20                 dq offset ?CopyItem@CZipTransfer@@UEAAJPEAUIShellItem@@0PEBGKW4COPY_ITEM_FLAGS@@PEAPEAU2@@Z ; CZipTransfer::CopyItem(IShellItem *,IShellItem *,ushort const *,ulong,COPY_ITEM_FLAGS,IShellItem * *)
+.rdata:0000000171236C28                 dq offset ?LastCopyError@CZipTransfer@@UEAAJPEAW4LAST_COPYITEM_ERROR_TYPE@@@Z ; CZipTransfer::LastCopyError(LAST_COPYITEM_ERROR_TYPE *)
+     
+     
+     */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
      else RIID_TODO(IID_IContextMenu);
      // #TODO rightclick on empty space. This is needed for CTRL+V paste, we also want to implement the Refresh option properly 
      // https://github.com/cryptoAlgorithm/nt5src/blob/daad8a087a4e75422ec96b7911f1df4669989611/Source/XPSP1/NT/shell/shell32/defcm.cpp#L617
@@ -563,6 +655,7 @@ HRESULT PboFolder::CreateViewObject(HWND hwnd, const IID& riid, void** ppv)
 HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfInOut)
 {
     const PboPidl* qp = (const PboPidl*)apidl[0];
+    EXPECT_SINGLE_PIDL(qp);
 
     static constexpr Util::FlagSeperator<SFGAOF, 31> seperator({
         { SFGAO_CANCOPY, "SFGAO_CANCOPY"sv },
@@ -600,8 +693,8 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
 
 
 
-    auto getFlagsFor = [](const PboPidl* qp, SFGAOF mask) -> SFGAOF {
-        DebugLogger::TraceLog(std::format("{}, wantedFlags {}", Util::utf8_encode(qp->GetFilePath().wstring()), seperator.SeperateToString(mask)), std::source_location::current(), __FUNCTION__);
+    auto getFlagsFor = [this](const PboPidl* qp, SFGAOF mask) -> SFGAOF {
+        DebugLogger::TraceLog(std::format("{}, wantedFlags {}", Util::utf8_encode((pboFile->GetFolder()->fullPath / qp->GetFilePath()).wstring()), seperator.SeperateToString(mask)), std::source_location::current(), __FUNCTION__);
 
         //#TODO only return flags that were also requested initially. rgfInOut is pre-filled with the flags it wants to know about
         switch (qp->type)
@@ -610,7 +703,7 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
             return
                 SFGAO_BROWSABLE | SFGAO_HASSUBFOLDER | SFGAO_CANCOPY |
                 SFGAO_FOLDER | SFGAO_FILESYSANCESTOR | SFGAO_STORAGEANCESTOR
-                | SFGAO_DROPTARGET; // https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ishellfolder-getattributesof
+                | SFGAO_DROPTARGET | SFGAO_CANDELETE; // https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-ishellfolder-getattributesof
 
             //case 1:
             //    *rgfInOut &=
@@ -621,7 +714,7 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
         case PboPidlFileType::File:
             auto flag = SFGAO_CANCOPY | SFGAO_STREAM | SFGAO_CANRENAME | SFGAO_CANDELETE;
 
-            if (qp->GetFilePath().filename().wstring().starts_with(L"$DU"))
+            if (qp->GetFileName().filename().wstring().starts_with(L"$DU"))
                 flag |= SFGAO_GHOSTED | SFGAO_HIDDEN; // The specified items are shown as dimmed and unavailable to the user.
             return flag;
         }
@@ -671,6 +764,10 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
 
     else if (riid == IID_IExtractIconW)
     {
+
+        //#TODO zipfldr uses SHCreateFileExtractIconW
+
+
         ComRef<IDefaultExtractIconInit> pdxi;
         auto hr = SHCreateDefaultExtractIcon(IID_PPV_ARGS(&pdxi));
 
@@ -692,7 +789,7 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
             }
             else
             {
-                auto dest = qp->GetFilePath().filename();
+                auto dest = qp->GetFileName().filename();
 
                 const wchar_t* name = dest.c_str();
                 if (!name) return(E_FAIL);
@@ -778,7 +875,7 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
         }
         else
         {
-            auto dest = qp->GetFilePath().filename();
+            auto dest = qp->GetFileName().filename();
 
             const wchar_t* name = dest.c_str();
             if (!name) return(E_FAIL);
@@ -937,7 +1034,7 @@ HRESULT PboFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, SHGDNF uFlags, STRRET* p
 
     const PboPidl* qp = (const PboPidl*)pidl;
 
-    auto dest = qp->GetFilePath().filename();
+    auto dest = qp->GetFileName().filename();
 
     const wchar_t* name = dest.c_str();
     if (!name) return(E_FAIL);
@@ -945,7 +1042,7 @@ HRESULT PboFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, SHGDNF uFlags, STRRET* p
     if ((uFlags & (SHGDN_FORPARSING | SHGDN_INFOLDER)) != SHGDN_FORPARSING)
         return(stringToStrRet(name, pName));
 
-    auto fullPath = pboFile->GetPboDiskPath() / qp->GetFilePath().filename();
+    auto fullPath = pboFile->GetPboDiskPath() / pboFile->GetFolder()->fullPath / qp->GetFileName().filename();
 
     HRESULT hr = stringToStrRet(fullPath.wstring(), pName);
 
@@ -957,19 +1054,21 @@ HRESULT PboFolder::SetNameOf(HWND hwnd, LPCITEMIDLIST pidl, LPCOLESTR pszName, S
     CHECK_INIT();
 
     const PboPidl* qp = (const PboPidl*)pidl;
+    EXPECT_SINGLE_PIDL(qp);
 
-    DebugLogger::TraceLog(std::format("{}, newName {}, flags {}", qp->GetFilePath().string(), Util::utf8_encode(pszName), uFlags), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format("{}, newName {}, flags {}", (pboFile->GetFolder()->fullPath / qp->GetFilePath()).string(), Util::utf8_encode(pszName), uFlags), std::source_location::current(), __FUNCTION__);
 
     if (!qp->IsFile()) //#TODO, need to rename aaaaaall the files in that folder
         return E_NOTIMPL;
 
     // need to patch
     std::wstring_view newName(pszName);
-    auto newFilePath = qp->GetFilePath().parent_path() / newName;
+    auto newFilePath = pboFile->GetFolder()->fullPath / newName;
 
 
     auto pidlSize = PboPidl::GetPidlSizeForPath(newFilePath);
     PboPidl* newPidl = (PboPidl*)CoTaskMemAlloc(pidlSize + sizeof(USHORT));
+    //#TODO OOM check
     PboPidl::CreatePidlAt(newPidl, newFilePath, qp->type);
     // last cbSize is 0
     uint16_t* afterCB = (uint16_t*)(((uintptr_t)qp) + pidlSize);
@@ -988,7 +1087,7 @@ HRESULT PboFolder::SetNameOf(HWND hwnd, LPCITEMIDLIST pidl, LPCOLESTR pszName, S
             reader.readHeaders();
             patcher.ReadInputFile(&reader);
 
-            patcher.AddPatch<PatchRenameFile>(qp->GetFilePath(), newPidl->GetFilePath());
+            patcher.AddPatch<PatchRenameFile>(pboFile->GetFolder()->fullPath / qp->GetFilePath(), pboFile->GetFolder()->fullPath / newPidl->GetFilePath());
             patcher.ProcessPatches();
         }
 
@@ -1090,19 +1189,20 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
 
 
     const PboPidl* qp = (const PboPidl*)pidl;
+    EXPECT_SINGLE_PIDL(qp);
 
-    DebugLogger::TraceLog(std::format(L"file {}", qp->GetFilePath().wstring()), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format(L"file {}", (pboFile->GetFolder()->fullPath / qp->GetFilePath()).wstring()), std::source_location::current(), __FUNCTION__);
 
     if (pscid->fmtid == PKEY_ItemNameDisplay.fmtid &&
         pscid->pid == PKEY_ItemNameDisplay.pid)
     {
-        return(stringToVariant(qp->GetFilePath().filename().wstring(), pv));
+        return(stringToVariant(qp->GetFileName().filename().wstring(), pv));
     }
     else if (pscid->fmtid == PKEY_Size.fmtid && pscid->pid == PKEY_Size.pid)
     {
         if (!qp->IsFile()) return(E_FAIL);
 
-        auto file = pboFile->GetFileByPath(qp->GetFilePath());
+        auto file = pboFile->GetFileByPath(qp->GetFileName());
         if (!file)
             return E_FAIL;
 
@@ -1192,7 +1292,7 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
         // This is the file extension of the file based item, including the leading period. 
         if (!qp->IsFile()) return(E_FAIL);
 
-        return stringToVariant(Util::utf8_decode(qp->GetFilePath().extension().string()), pv);
+        return stringToVariant(Util::utf8_decode(qp->GetFileName().extension().string()), pv);
     }
     else if (pscid->fmtid == PKEY_LayoutPattern_ContentViewModeForBrowse.fmtid)
         return(E_INVALIDARG);
@@ -1288,7 +1388,7 @@ HRESULT PboFolder::GetDetailsOf(LPCITEMIDLIST pidl, UINT iColumn, SHELLDETAILS* 
     {
         if (!qp->IsFile()) return(E_FAIL);
 
-        auto file = pboFile->GetFileByPath(qp->GetFilePath());
+        auto file = pboFile->GetFileByPath(qp->GetFileName());
         if (!file)
             return E_FAIL;
         auto size = file->get().filesize;
@@ -1344,6 +1444,16 @@ HRESULT PboFolder::Initialize(LPCITEMIDLIST pidl)
 
     checkInit();
 
+    auto subPidl = pidl;
+    int count = 0;
+    while (subPidl = ILGetNext(subPidl)) {
+        //subPidl = (LPITEMIDLIST)((uintptr_t)subPidl + subPidl->mkid.cb);
+        auto test = (PboPidl*)subPidl;
+        if (PboPidl::IsValidPidl(&subPidl->mkid.cb))
+            Util::TryDebugBreak();
+        count++;
+
+    }
 
     return(S_OK);
 }
@@ -1356,21 +1466,21 @@ HRESULT PboFolder::GetCurFolder(LPITEMIDLIST* ppidl)
 
 HRESULT PboFolder::InitializeEx(IBindCtx* pbc, LPCITEMIDLIST pidlRoot, const PERSIST_FOLDER_TARGET_INFO* ppfti)
 {
-    //if (ppfti)
-    //{
-    //    auto subPidl = ppfti->pidlTargetFolder;
-    //
-    //    auto qp = (const PboPidl*)ILFindLastID(m_pidl);
-    //    int count = 0;
-    //    while (subPidl = ILGetNext(subPidl)) {
-    //        //subPidl = (LPITEMIDLIST)((uintptr_t)subPidl + subPidl->mkid.cb);
-    //        auto test = (PboPidl*)subPidl;
-    //        if (PboPidl::IsValidPidl(&subPidl->mkid.cb))
-    //            __debugbreak();
-    //        count++;
-    //
-    //    }
-    //}
+    if (ppfti)
+    {
+        auto subPidl = ppfti->pidlTargetFolder;
+    
+        auto qp = (const PboPidl*)ILFindLastID(m_pidl);
+        int count = 0;
+        while (subPidl = ILGetNext(subPidl)) {
+            //subPidl = (LPITEMIDLIST)((uintptr_t)subPidl + subPidl->mkid.cb);
+            auto test = (PboPidl*)subPidl;
+            if (PboPidl::IsValidPidl(&subPidl->mkid.cb))
+                Util::TryDebugBreak();
+            count++;
+    
+        }
+    }
 
 
 
@@ -2023,16 +2133,16 @@ bool PboFolder::checkInit()
 
     ITEMIDLIST* subPidl = m_pidl;
 
-    //auto qp = (const PboPidl*)ILFindLastID(m_pidl);
-    //int count = 0;
-    //while (subPidl = ILGetNext(subPidl)) {
-    //    //subPidl = (LPITEMIDLIST)((uintptr_t)subPidl + subPidl->mkid.cb);
-    //    auto test = (PboPidl*)subPidl;
-    //    if (PboPidl::IsValidPidl(&subPidl->mkid))
-    //        __debugbreak();
-    //    count++;
-    //
-    //}
+    auto qp = (const PboPidl*)ILFindLastID(m_pidl);
+    int count = 0;
+    while (subPidl = ILGetNext(subPidl)) {
+        //subPidl = (LPITEMIDLIST)((uintptr_t)subPidl + subPidl->mkid.cb);
+        auto test = (PboPidl*)subPidl;
+        if (PboPidl::IsValidPidl(&subPidl->mkid))
+            Util::TryDebugBreak();
+        count++;
+    
+    }
 
 
     //#TODO keep global directory of weak pointers to pbo files and share them
