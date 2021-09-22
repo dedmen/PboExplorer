@@ -76,6 +76,8 @@ public:
     void setBuffersize(size_t newSize) {
         buffer.resize(newSize);
     }
+
+    const PboEntry& GetEntryInfo() const { return file; }
 };
 
 class PboReader {

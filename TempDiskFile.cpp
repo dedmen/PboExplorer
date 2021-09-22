@@ -20,18 +20,10 @@ struct opt_path_hash {
 std::unordered_map<std::filesystem::path, std::weak_ptr<TempDiskFile>, opt_path_hash> TempFileDirectory;
 std::mutex TempFileDirectoryLock;
 
-uint64_t TempDiskFile::GetCurrentHash() {
-    Util::FNV1A_Hash result;
+uint64_t TempDiskFile::GetCurrentHash() const {
     std::ifstream inp(filePath, std::ifstream::binary | std::ifstream::in);
 
-    std::array<char, 4096> buf;
-    do {
-        inp.read(buf.data(), buf.size());
-        result.Add(reinterpret_cast<const uint8_t*>(buf.data()), inp.gcount());
-    } while (inp.gcount() > 0);
-
-    // This is cheating... FNV hash?
-    return result.currentValue;
+    return GetHashOf(inp);
 }
 
 uint64_t TempDiskFile::GetCurrentSize() const {
@@ -42,9 +34,21 @@ std::filesystem::file_time_type TempDiskFile::GetCurrentModtime() const {
     return std::filesystem::last_write_time(filePath);
 }
 
+uint64_t TempDiskFile::GetHashOf(std::istream& inp) {
+    Util::FNV1A_Hash result;
+    std::array<char, 4096> buf;
+    do {
+        inp.read(buf.data(), buf.size());
+        result.Add(reinterpret_cast<const uint8_t*>(buf.data()), inp.gcount());
+    } while (inp.gcount() > 0);
+
+    // This is cheating... FNV hash?
+    return result.currentValue;
+}
+
 
 TempDiskFile::TempDiskFile(const PboFile& pboRef, std::filesystem::path subfile) {
-    std::unique_lock lock(TempDiskFileCreationLock);
+    std::unique_lock lock(TempDiskFileCreationLock); //#TODO this should be a windows named mutex
     filePath = std::filesystem::temp_directory_path() / "PboExplorer" / pboRef.diskPath.filename() / subfile;
     pboPath = pboRef.diskPath;
     pboSubPath = subfile;
@@ -55,17 +59,13 @@ TempDiskFile::TempDiskFile(const PboFile& pboRef, std::filesystem::path subfile)
     catch (...) {
         //#TODO handle already exists properly
     }
+
     
 
     //#TODO properly handle existing file, this is bad. We should never do that
-    if (!std::filesystem::exists(filePath))
     {
-        std::ofstream outFile(filePath, std::ios::out | std::ios::binary);
-
-
         std::ifstream pboInputStream(pboRef.diskPath, std::ios::in | std::ios::binary);
         PboReader pboReader(pboInputStream);
-
 
         PboEntryBuffer fileBuffer(pboReader, *[&, filePath = subfile]()
         {
@@ -81,14 +81,35 @@ TempDiskFile::TempDiskFile(const PboFile& pboRef, std::filesystem::path subfile)
                 __debugbreak();
             return found;
         }());
-        std::istream sourceStream(&fileBuffer);
 
 
-        std::array<char, 4096> buf;
-        do {
-            sourceStream.read(buf.data(), buf.size());
-            outFile.write(buf.data(), sourceStream.gcount());
-        } while (sourceStream.gcount() > 0);
+        bool wantWrite = true;
+
+        std::istream sourceStream(&fileBuffer); // We need this for hash checking so we already open source here
+
+        if (std::filesystem::exists(filePath)) // handle already existing file, don't update if we don't need
+        {
+            wantWrite = false;
+            if (GetCurrentSize() != fileBuffer.GetEntryInfo().original_size) // size check is cheap
+                wantWrite = true;
+            else if (GetCurrentHash() != GetHashOf(sourceStream)) { // I rather read the file once than writing it needlessly, save SSD lifetime plox
+                wantWrite = true;
+                sourceStream.seekg(0);
+                sourceStream.clear(); // reset fail state
+                fileBuffer.seekpos(0, std::ios_base::out); // seek buffer back to start, oof this is more complicated than it should be really
+            }
+        }
+
+        if (wantWrite)
+        {
+            std::ofstream outFile(filePath, std::ios::out | std::ios::binary);
+
+            std::array<char, 4096> buf;
+            do {
+                sourceStream.read(buf.data(), buf.size());
+                outFile.write(buf.data(), sourceStream.gcount());
+            } while (sourceStream.gcount() > 0);
+        }
     }
     //else __debugbreak();
 

@@ -14,9 +14,10 @@ class TempDiskFile
 	std::filesystem::path pboSubPath;
 	std::filesystem::path pboPath;
 
-	uint64_t GetCurrentHash();
+	uint64_t GetCurrentHash() const;
 	uint64_t GetCurrentSize() const;
 	std::filesystem::file_time_type GetCurrentModtime() const;
+    static uint64_t GetHashOf(std::istream& stream);
 
 public:
 	TempDiskFile(const PboFile& pboRef, std::filesystem::path subfile);
