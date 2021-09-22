@@ -11,6 +11,9 @@ using namespace std::string_view_literals;
 int main(int argc, char* argv[]) {
 
 
+    //#TODO  https://docs.microsoft.com/en-us/windows/win32/api/restartmanager/nf-restartmanager-rmrestart
+
+
 	if (std::string_view(argv[1]) == "RegisterFileMove"sv) {
         //Util::WaitForDebuggerPrompt();
 

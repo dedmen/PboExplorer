@@ -286,7 +286,7 @@ void Updater::PostUpdateInstalled()
 
     auto oldVersionString = ReadWholeFile(UpdateTempDir / "OldVersion.txt");
     if (ParseUInt64(oldVersionString) == VERSIONNO) {
-        MessageBoxA(GetDesktopWindow(), "pboExplorer update WIP?", "PboExplorer", MB_OK | MB_ICONINFORMATION | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST);
+        //MessageBoxA(GetDesktopWindow(), "pboExplorer update WIP?", "PboExplorer", MB_OK | MB_ICONINFORMATION | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST);
 
         return; // Update is WIP but not actually installed yet
     }

@@ -2,6 +2,7 @@
 #define NOMINMAX
 #include <algorithm>
 #include <array>
+#include <filesystem>
 #include <string>
 #include <stdexcept>
 #include <unordered_map>
@@ -198,6 +199,13 @@ namespace Util
     std::string base64_encode(std::string_view s);
     std::string base64_decode(std::string_view s);
 
+    /// <summary>
+    /// Uses Restart Manager to retrieve which processes are holding a write lock on file
+    /// </summary>
+    /// <param name="file"></param>
+    /// <returns>List of process names (human readable and exe name)</returns>
+    std::vector<std::wstring> GetProcessesThatLockFile(std::filesystem::path file);
+
 };
 
-
+#define TRY_ASSERT(x) {if (!(x)) Util::TryDebugBreak();}
