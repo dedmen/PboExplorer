@@ -23,7 +23,7 @@ public:
 
 
     // Iterates through all subfiles/folders (if current object is a file, only runs that one file, if its a folder, iterates through all subfolders)
-    virtual void ForEachFileOrFolder(std::function<void(const IPboSub*)> func) const = 0;
+    virtual void ForEachFileOrFolder(std::function<void(const IPboSub*)> func, bool recursive = false) const = 0;
 };
 
 class PboSubFile;
@@ -70,7 +70,7 @@ public:
     uint32_t startOffset;
 
     // Inherited via IPboSub
-    void ForEachFileOrFolder(std::function<void(const IPboSub*)> func) const override { func(this); }
+    void ForEachFileOrFolder(std::function<void(const IPboSub*)> func, bool recursive = false) const override { func(this); }
 };
 
 class PboSubFolder final : public IPboSub, public IPboFolder, public std::enable_shared_from_this<PboSubFolder>
@@ -89,11 +89,16 @@ public:
     std::unique_ptr<PboPidl> GetPidlListFromPath(std::filesystem::path inputPath) const override;
 
     // Inherited via IPboSub
-    void ForEachFileOrFolder(std::function<void(const IPboSub*)> func) const override {
+    void ForEachFileOrFolder(std::function<void(const IPboSub*)> func, bool recursive = false) const override { //#TODO make this better, accept flags files,folders,recursive and return a range
         func(this);
 
-        for (auto& it : subfolders) 
-            func(it.get());
+        if (recursive)
+            for (auto& it : subfolders)
+                it->ForEachFileOrFolder(func, recursive);
+        else
+            for (auto& it : subfolders)
+                func(it.get());
+        
 
         for (auto& it : subfiles)
             func(&it);

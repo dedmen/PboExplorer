@@ -313,6 +313,13 @@ void PboFile::ReloadFrom(std::filesystem::path inputPath)
             folder->subfiles.end()
         );
 
+        folder->subfolders.erase(
+            std::ranges::remove_if(folder->subfolders, [&](const std::shared_ptr<PboSubFolder>& folder) {
+                return folder->subfiles.empty() && folder->subfolders.empty();
+                }).begin(),
+            folder->subfolders.end()
+        );
+
     };
 
     cleanupFolder(rootFolder);

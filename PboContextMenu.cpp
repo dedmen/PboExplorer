@@ -325,12 +325,19 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
                 EXPECT_SINGLE_PIDL(qp);
                 if (qp->IsFile())
                 {
-                    patcher.AddPatch<PatchDeleteFile>(m_folder->pboFile->GetFolder()->fullPath / qp->GetFilePath());
+                    patcher.AddPatch<PatchDeleteFile>(m_folder->pboFile->GetFolder()->fullPath / qp->GetFileName());
                 }
                 else
                 {
-                    //#TODO folder deletion
-                    Util::TryDebugBreak();
+                    auto subFolder = m_folder->pboFile->GetFolderByPath(qp->GetFileName());
+                    TRY_ASSERT(subFolder);
+                    if (!subFolder)
+                        continue;
+
+                    subFolder->ForEachFileOrFolder([&patcher](const IPboSub* sub) {
+                        if (auto file = dynamic_cast<const PboSubFile*>(sub))
+                            patcher.AddPatch<PatchDeleteFile>(file->fullPath);
+                    }, true);
                 }
             }
         }
