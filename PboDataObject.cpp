@@ -453,11 +453,6 @@ HRESULT PboDataObject::GetData(FORMATETC* pformatetc, STGMEDIUM* pmedium)
 
     auto type = ClipboardFormatHandler::GetTypeFromCF(pformatetc->cfFormat);
 
-    auto file = (PboPidl*)m_apidl[0].GetRef();
-    EXPECT_SINGLE_PIDL(file);
-    // folder is limited
-
-
     //#TODO
     /* "NotRecyclable"
     if ( v4 == g_cfNotRecyclable )
@@ -476,173 +471,182 @@ LABEL_15:
   }
     */
 
-    if (file->IsFolder()) { //#TODO clean this code up?
+    if (type == ClipboardFormatHandler::ClipboardFormatType::PreferredDropEffect)
+    {
+        HGLOBAL hMem = GlobalAlloc(
+            GMEM_MOVEABLE | GMEM_SHARE | GMEM_DISCARDABLE, sizeof(DWORD));
+        if (!hMem) return E_OUTOFMEMORY;
 
-        if (type == ClipboardFormatHandler::ClipboardFormatType::PreferredDropEffect)
-        {
-            HGLOBAL hMem = GlobalAlloc(
-                GMEM_MOVEABLE | GMEM_SHARE | GMEM_DISCARDABLE, sizeof(DWORD));
-            if (!hMem) return E_OUTOFMEMORY;
+        LPDWORD pdw = (LPDWORD)GlobalLock(hMem);
+        *pdw = DROPEFFECT_COPY;
+        GlobalUnlock(hMem);
 
-            LPDWORD pdw = (LPDWORD)GlobalLock(hMem);
-            *pdw = DROPEFFECT_COPY;
-            GlobalUnlock(hMem);
+        pmedium->tymed = TYMED_HGLOBAL;
+        pmedium->pUnkForRelease = nullptr;
+        pmedium->hGlobal = hMem;
 
-            pmedium->tymed = TYMED_HGLOBAL;
-            pmedium->pUnkForRelease = nullptr;
-            pmedium->hGlobal = hMem;
-
-            return S_OK;
-        }
-
-        if (type == ClipboardFormatHandler::ClipboardFormatType::FileGroupDescriptor) // Repro copy folder inside pbo
-        {
-            if (!(pformatetc->tymed & TYMED_HGLOBAL)) return DV_E_TYMED;
-
-            // all the files associated with this data object
-
-            //#TODO if m_cidl == 1, we only have a single file (for example drag&drop), we should only return that one file
-
-            FileGroupDescriptorHelper helper;
-
-            for (auto& it : m_apidl) {
-                auto file = (PboPidl*)it.GetRef();
-                EXPECT_SINGLE_PIDL(file);
-
-                FILEDESCRIPTOR fd;
-                wcsncpy(fd.cFileName, file->GetFileName().filename().c_str(), MAX_PATH);
-                fd.cFileName[MAX_PATH - 1] = 0;
-
-                if (file->IsFolder()) {
-                    fd.dwFlags = FD_ATTRIBUTES | FD_PROGRESSUI;
-                    fd.dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY;
-
-                    // all files in folder
-                    auto folder = rootFolder->GetRootFile()->GetFolderByPath(file->GetFilePath());
-                    auto folder2 = rootFolder->GetFolderByPath(file->GetFilePath());
-                    auto rootPath = (rootFolder->fullPath / file->GetFilePath()).parent_path();
-                    auto rootPath2 = file->GetFilePath().parent_path();
-
-                    folder->ForEachFileOrFolder([&helper, &rootPath](const IPboSub* entry) {
-
-                        if (auto file = dynamic_cast<const PboSubFile*>(entry)) {
-                            FILEDESCRIPTOR fd;
-
-                            auto name = file->fullPath.lexically_relative(rootPath);
-
-                            wcsncpy(fd.cFileName, name.c_str(), MAX_PATH);
-                            fd.cFileName[MAX_PATH - 1] = 0;
-
-                            fd.dwFlags = FD_ATTRIBUTES | FD_PROGRESSUI;
-                            fd.dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
-                            fd.dwFlags |= FD_FILESIZE;
-                            uint64_t size = file->dataSize;
-                            fd.nFileSizeLow = (DWORD)size;
-                            fd.nFileSizeHigh = (DWORD)(size >> 32);
-                           
-                            helper.AddFile(fd);
-                        } else if (auto folder = dynamic_cast<const PboSubFolder*>(entry)) {
-                            FILEDESCRIPTOR fd;
-
-                            auto name = folder->fullPath.lexically_relative(rootPath);
-
-                            wcsncpy(fd.cFileName, name.c_str(), MAX_PATH);
-                            fd.cFileName[MAX_PATH - 1] = 0;
-
-                            fd.dwFlags = FD_ATTRIBUTES | FD_PROGRESSUI;
-                            fd.dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY;
-
-                            helper.AddFile(fd);
-                        }
-                    });
-                } else {
-                    fd.dwFlags = FD_ATTRIBUTES | FD_PROGRESSUI;
-                    fd.dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
-
-                    auto subFile = rootFolder->GetFileByPath(file->GetFileName());
-
-                    if (subFile) {
-                        fd.dwFlags |= FD_FILESIZE;
-                        uint64_t size = subFile->get().dataSize;
-                        fd.nFileSizeLow = (DWORD)size;
-                        fd.nFileSizeHigh = (DWORD)(size >> 32);
-                    }
-                    helper.AddFile(fd);
-                }
-
-            }
-
-            pmedium->tymed = TYMED_HGLOBAL;
-            pmedium->pUnkForRelease = nullptr;
-            pmedium->hGlobal = helper.GenerateHMem();
-            if (!pmedium->hGlobal)
-                return E_OUTOFMEMORY;
-
-
-            return S_OK;
-        }
-
-        if (type == ClipboardFormatHandler::ClipboardFormatType::ShellIDList)
-        {
-            if (!(pformatetc->tymed & TYMED_HGLOBAL)) return DV_E_TYMED;
-
-            //#TODO I think the correct way to do this is to handle ITransferSource in PboFolder? zipfldr doesn't do it like this. it only has the folder in ShellIDList
-
-            // For folder, only the folder itself
-
-            ShellIDListHelper helper {};
-
-            helper.SetRoot(m_pidlRoot);
-
-            for (auto& it : m_apidl) {
-                auto file = (PboPidl*)it.GetRef();
-                EXPECT_SINGLE_PIDL(file);
-
-                if (file->IsFile()) {
-                    helper.AddFile(it);
-                } else {
-                    auto folder = rootFolder->GetRootFile()->GetFolderByPath(file->GetFilePath());//#TODO fix relative
-                    auto rootPath = rootFolder->fullPath / file->GetFilePath().parent_path(); 
-
-                    if (folder) {
-                        std::vector<char> buffer;
-                        
-                        folder->ForEachFileOrFolder([&helper, &rootPath, &buffer](const IPboSub* entry) {
-
-                            auto name = entry->fullPath; // .lexically_relative(rootPath);
-
-                            if (auto file = dynamic_cast<const PboSubFile*>(entry)) {   
-                                buffer.resize(PboPidl::GetPidlSizeForPath(name) + sizeof(ITEMIDLIST), 0);
-                                PboPidl::CreatePidlAt((PboPidl*)buffer.data(), name, PboPidlFileType::File);
-                                helper.AddFile((ITEMIDLIST*)buffer.data());
-                            }
-                            else if (auto folder = dynamic_cast<const PboSubFolder*>(entry)) {
-                                buffer.resize(PboPidl::GetPidlSizeForPath(name) + sizeof(ITEMIDLIST), 0);
-                                PboPidl::CreatePidlAt((PboPidl*)buffer.data(), name, PboPidlFileType::Folder);
-                                helper.AddFile((ITEMIDLIST*)buffer.data());
-                            }
-                        });
-                    }
-                }
-            }
-
-
-
-
-
-            pmedium->tymed = TYMED_HGLOBAL;
-            pmedium->pUnkForRelease = nullptr;
-            pmedium->hGlobal = helper.GenerateHMem();
-
-            if (!pmedium->hGlobal)
-                return E_OUTOFMEMORY;
-
-            return S_OK;
-        }
-
-        return DV_E_FORMATETC;
+        return S_OK;
     }
 
+    if (type == ClipboardFormatHandler::ClipboardFormatType::FileGroupDescriptor) // Repro copy folder inside pbo
+    {
+        if (!(pformatetc->tymed & TYMED_HGLOBAL)) return DV_E_TYMED;
+
+        // all the files associated with this data object
+        FileGroupDescriptorHelper helper;
+
+        for (auto& it : m_apidl) {
+            auto file = (PboPidl*)it.GetRef();
+            EXPECT_SINGLE_PIDL(file);
+
+            FILEDESCRIPTOR fd;
+            wcsncpy(fd.cFileName, file->GetFileName().filename().c_str(), MAX_PATH);
+            fd.cFileName[MAX_PATH - 1] = 0;
+
+            if (file->IsFolder()) {
+                fd.dwFlags = FD_ATTRIBUTES | FD_PROGRESSUI;
+                fd.dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY;
+
+                // all files in folder
+                auto folder = rootFolder->GetFolderByPath(file->GetFileName());
+                auto rootPath = rootFolder->fullPath;
+
+                folder->ForEachFileOrFolder([&helper, &rootPath](const IPboSub* entry) {
+
+                    if (auto file = dynamic_cast<const PboSubFile*>(entry)) {
+                        FILEDESCRIPTOR fd;
+
+                        auto name = file->fullPath.lexically_relative(rootPath);
+
+                        wcsncpy(fd.cFileName, name.c_str(), MAX_PATH);
+                        fd.cFileName[MAX_PATH - 1] = 0;
+
+                        fd.dwFlags = FD_ATTRIBUTES | FD_PROGRESSUI;
+                        fd.dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
+                        fd.dwFlags |= FD_FILESIZE;
+                        uint64_t size = file->dataSize;
+                        fd.nFileSizeLow = (DWORD)size;
+                        fd.nFileSizeHigh = (DWORD)(size >> 32);
+                       
+                        helper.AddFile(fd);
+                    } else if (auto folder = dynamic_cast<const PboSubFolder*>(entry)) {
+                        //FILEDESCRIPTOR fd;
+                        //
+                        //auto name = folder->fullPath.lexically_relative(rootPath);
+                        //
+                        //wcsncpy(fd.cFileName, name.c_str(), MAX_PATH);
+                        //fd.cFileName[MAX_PATH - 1] = 0;
+                        //
+                        //fd.dwFlags = FD_ATTRIBUTES | FD_PROGRESSUI;
+                        //fd.dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY;
+                        //
+                        //helper.AddFile(fd);
+                    }
+                }, true);
+            } else {
+                fd.dwFlags = FD_ATTRIBUTES | FD_PROGRESSUI;
+                fd.dwFileAttributes = FILE_ATTRIBUTE_NORMAL;
+
+                auto subFile = rootFolder->GetFileByPath(file->GetFileName());
+
+                if (subFile) {
+                    fd.dwFlags |= FD_FILESIZE;
+                    uint64_t size = subFile->get().dataSize;
+                    fd.nFileSizeLow = (DWORD)size;
+                    fd.nFileSizeHigh = (DWORD)(size >> 32);
+                }
+                helper.AddFile(fd);
+            }
+
+        }
+
+        pmedium->tymed = TYMED_HGLOBAL;
+        pmedium->pUnkForRelease = nullptr;
+        pmedium->hGlobal = helper.GenerateHMem();
+        if (!pmedium->hGlobal)
+            return E_OUTOFMEMORY;
+
+
+        return S_OK;
+    }
+
+    if (type == ClipboardFormatHandler::ClipboardFormatType::ShellIDList)
+    {
+        if (!(pformatetc->tymed & TYMED_HGLOBAL)) return DV_E_TYMED;
+
+        //#TODO I think the correct way to do this is to handle ITransferSource in PboFolder? zipfldr doesn't do it like this. it only has the folder in ShellIDList
+
+        // For folder, only the folder itself
+
+        ShellIDListHelper helper {};
+
+        helper.SetRoot(m_pidlRoot);
+
+        for (auto& it : m_apidl) {
+            auto file = (PboPidl*)it.GetRef();
+            EXPECT_SINGLE_PIDL(file);
+
+            if (file->IsFile()) {
+                helper.AddFile(it);
+            } else {
+                auto folder = rootFolder->GetRootFile()->GetFolderByPath(file->GetFilePath());//#TODO fix relative
+                auto rootPath = rootFolder->fullPath / file->GetFilePath().parent_path(); 
+
+                if (folder) {
+                    std::vector<char> buffer;
+
+                    //#TODO this is not recursive
+                    folder->ForEachFileOrFolder([&helper, &rootPath, &buffer](const IPboSub* entry) {
+
+                        auto name = entry->fullPath.lexically_relative(rootPath);
+
+                        auto endType = PboPidlFileType::File;
+
+                        if (auto file = dynamic_cast<const PboSubFile*>(entry)) {
+                            endType = PboPidlFileType::File;
+                        }
+                        else if (auto folder = dynamic_cast<const PboSubFolder*>(entry)) {
+                            return; // skip folders
+                            endType = PboPidlFileType::Folder;
+                        }
+
+                        // for each file add a fully qualified pidl
+
+                        auto pidlSize = std::accumulate(name.begin(), name.end(), 0, [](uint32_t sz, const std::filesystem::path& element) { return sz + PboPidl::GetPidlSizeForPath(element); }) + 2;
+
+                        buffer.resize(pidlSize, 0);
+
+                        PboPidl* nextPidl = reinterpret_cast<PboPidl*>(buffer.data());
+
+                        for (auto& it : name) {
+                            nextPidl = PboPidl::CreatePidlAt(nextPidl, it, PboPidlFileType::Folder);
+                        }
+
+                        // null terminator
+                        nextPidl->cb = 0;
+                        // set correct type of last element, we know that all before the last must be folders
+                        reinterpret_cast<PboPidl*>(ILFindLastID(reinterpret_cast<LPITEMIDLIST>(buffer.data())))->type = endType;
+                        helper.AddFile((ITEMIDLIST*)buffer.data());
+
+
+
+                    }, true);
+                }
+            }
+        }
+
+        pmedium->tymed = TYMED_HGLOBAL;
+        pmedium->pUnkForRelease = nullptr;
+        pmedium->hGlobal = helper.GenerateHMem();
+
+        if (!pmedium->hGlobal)
+            return E_OUTOFMEMORY;
+
+        return S_OK;
+    }
+
+
+    /*
     if (type == ClipboardFormatHandler::ClipboardFormatType::PreferredDropEffect)
     {
         HGLOBAL hMem = GlobalAlloc(
@@ -731,7 +735,7 @@ LABEL_15:
 
         return(S_OK);
     }
-
+    */
     if (type == ClipboardFormatHandler::ClipboardFormatType::FileContents)
     {
         if (!(pformatetc->tymed & TYMED_ISTREAM)) return(DV_E_TYMED);
@@ -746,6 +750,8 @@ LABEL_15:
 
         auto file = (PboPidl*)m_apidl[pformatetc->lindex].GetRef();
         EXPECT_SINGLE_PIDL(file);
+        if (!file->IsFile())
+            return DV_E_FORMATETC;
 
         pmedium->tymed = TYMED_ISTREAM;
         pmedium->pUnkForRelease = nullptr;
@@ -754,6 +760,7 @@ LABEL_15:
         return S_OK;
     }
 
+    /*
     if (type == ClipboardFormatHandler::ClipboardFormatType::ShellIDList)
     {
         if (!(pformatetc->tymed & TYMED_HGLOBAL)) return(DV_E_TYMED);
@@ -796,7 +803,7 @@ LABEL_15:
 
         return(S_OK);
     }
-
+    */
     if (type == ClipboardFormatHandler::ClipboardFormatType::OleClipboardPersistOnFlush)
     {
         if (!(pformatetc->tymed & TYMED_HGLOBAL)) return(DV_E_TYMED);
@@ -869,6 +876,13 @@ LABEL_15:
     
         pmedium->tymed = TYMED_HGLOBAL;
 
+        //#TODO support multiple selected files
+        auto file = (PboPidl*)m_apidl[0].GetRef();
+
+        //#TODO if this is a folder, should we copy out the whole folder??
+        if (!file->IsFile())
+            return DV_E_FORMATETC;
+
         if (!hdrop_tempfile || hdrop_tempfile->GetPboSubPath() != (rootFolder->fullPath / file->GetFilePath()))
             hdrop_tempfile = TempDiskFile::GetFile(*pboFile->GetRootFile(), rootFolder->fullPath / file->GetFileName());
 
@@ -897,6 +911,8 @@ LABEL_15:
     if (type == ClipboardFormatHandler::ClipboardFormatType::FileName && pformatetc->tymed & TYMED_HGLOBAL) {
 
         pmedium->tymed = TYMED_HGLOBAL;
+
+        //#TODO support multiple selected files
         auto file = (PboPidl*)m_apidl[0].GetRef();
         EXPECT_SINGLE_PIDL(file);
 

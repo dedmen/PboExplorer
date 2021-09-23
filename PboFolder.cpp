@@ -373,8 +373,7 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
         IsEqualIID(riid, IID_IShellFolder2)) // open subfolder
     {
 
-        auto subPidl = reinterpret_cast<const PboPidl*>(pidl);
-        EXPECT_SINGLE_PIDL(subPidl); //#TODO should support multi-level?
+        auto subPidl = reinterpret_cast<const PboPidl*>(pidl); // can be multi-level pidl
 
         if (subPidl->IsFile()) // cannot enter file as if its a folder
             return(E_FAIL);
@@ -565,7 +564,7 @@ HRESULT PboFolder::CreateViewObject(HWND hwnd, const IID& riid, void** ppv)
   else RIID_TODO(IID_ITransferDestination); // https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-itransferdestination
   //#TODO we want the above ^, ITransferAdviseSink::ConfirmOverwrite, ITransferAdviseSink::UpdateProgress
   // but we probably don't want to offer that here? We kinda only want to offer this if a drop action is running
-     else RIID_TODO(IID_ITransferSource); // #TODO
+     else RIID_TODO(IID_ITransferSource); // #TODO https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nn-shobjidl_core-itransfersource needed for folder copy
 
 
      //#TODO do this, zipfldr has IShellView, IDropTarget, IContextMenu, ITransferSource, ITransferHelper. I have the first 3, the other two zip has combined
