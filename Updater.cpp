@@ -16,6 +16,9 @@
 
 #include "Util.hpp"
 
+import Encoding;
+import FileUtil;
+
 static std::vector<std::string_view> SplitString(std::string_view s, char delim)
 {
 
@@ -46,37 +49,6 @@ static std::optional<uint64_t> ParseUInt64(std::string_view input)
     return {};
 }
 
-uint64_t GetFileHash(std::filesystem::path file)
-{
-    if (!std::filesystem::exists(file))
-        return 0;
-
-    Util::FNV1A_Hash result;
-    std::ifstream inp(file, std::ifstream::binary | std::ifstream::in);
-
-    std::array<char, 4096> buf;
-    do {
-        inp.read(buf.data(), buf.size());
-        result.Add(reinterpret_cast<const uint8_t*>(buf.data()), inp.gcount());
-    } while (inp.gcount() > 0);
-
-    return result.currentValue;
-}
-
-std::string ReadWholeFile(std::filesystem::path file)
-{
-    if (!std::filesystem::exists(file))
-        return {};
-
-    std::string result;
-    result.resize(std::filesystem::file_size(file));
-
-    std::ifstream inp(file, std::ifstream::binary | std::ifstream::in);
-    inp.read(result.data(), result.size());
-    result.resize(inp.gcount());
-
-    return result;
-}
 
 
 #include <Winerror.h>
@@ -175,7 +147,7 @@ std::optional<Updater::AvailableUpdateInfo> Updater::IsUpdateAvailable()
 
 bool Updater::DownloadFile(std::string URL, std::filesystem::path targetFile)
 {
-    auto URLW = Util::utf8_decode(URL);
+    auto URLW = UTF8::Decode(URL);
     auto filenameW = targetFile.wstring();
     auto hres = URLDownloadToFileW(nullptr, URLW.c_str(), filenameW.c_str(), 0, nullptr);
    
@@ -255,7 +227,7 @@ bool Updater::RegisterUpdateInstallOnReboot()
         auto targetFile = hasUpdateHelper ? (UpdateTempDir / "PboExplorerUpdateHelper.exe") : (PboExplorerDir / "PboExplorerUpdateHelper.exe");
 
         auto fileNameW = targetFile.lexically_normal().wstring();
-        auto commandLine = std::format(L"RegisterFileMove {}", Util::utf8_decode(Util::base64_encode(Util::utf8_encode(PboExplorerDir.lexically_normal().wstring()))));
+        auto commandLine = std::format(L"RegisterFileMove {}", UTF8::Decode(Base64::Encode(UTF8::Encode(PboExplorerDir.lexically_normal().wstring()))));
 
         return ShellExecuteW(
             GetDesktopWindow(),

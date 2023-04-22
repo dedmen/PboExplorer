@@ -16,6 +16,9 @@
     <Filter Include="Source Files\lib">
       <UniqueIdentifier>{049e9ced-08af-4b7f-8ec5-8cef26cb6977}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\util">
+      <UniqueIdentifier>{4782eff1-ec63-4d7e-8cfd-65dcf50413d3}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -39,9 +42,6 @@
     <ClInclude Include="PboFileStream.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ComRef.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Util.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -52,9 +52,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PboPatcher.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="TempDiskFile.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FileWatcher.hpp">
@@ -131,9 +128,6 @@
     <ClCompile Include="FileWatcher.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="DebugLogger.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="ClipboardFormatHandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -153,6 +147,36 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="UpdateHelperExe.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="util\Registry.ixx">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\Sentry.ixx">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\DebugLogger.ixx">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\Encoding.ixx">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\FileUtil.ixx">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\Hashing.ixx">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\Version.ixx">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\ComRef.ixx">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="TempDiskFile.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FileWatcher.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

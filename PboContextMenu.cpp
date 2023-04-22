@@ -6,7 +6,7 @@
 #include "FileWatcher.hpp"
 #include "PboFolder.hpp"
 #include "PboPidl.hpp"
-#include "TempDiskFile.hpp"
+import TempDiskFile;
 #include "Util.hpp"
 
 #ifndef SEE_MASK_NOASYNC

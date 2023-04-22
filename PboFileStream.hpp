@@ -4,11 +4,12 @@
 #include <ShlObj.h>
 #include <Windows.h>
 
-#include "ComRef.hpp"
+import ComRef;
 #include "PboFolder.hpp"
 #include "PboPatcher.hpp"
-#include "TempDiskFile.hpp"
+
 class PboFile;
+class TempDiskFile;
 
 class PboFileStream :
     GlobalRefCounted,

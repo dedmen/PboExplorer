@@ -1,7 +1,7 @@
 #pragma once
 #define NOMINMAX
 #include <shlobj.h>
-#include "ComRef.hpp"
+import ComRef;
 #include <memory>
 #include "PboFileDirectory.hpp"
 

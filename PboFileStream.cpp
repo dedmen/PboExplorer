@@ -7,6 +7,8 @@
 #include "lib/ArmaPboLib/src/pbo.hpp"
 #include "DebugLogger.hpp"
 
+import Encoding;
+import TempDiskFile;
 
 PboFileStream::PboFileStream(std::shared_ptr<PboFile> pboFile, std::filesystem::path filePath) :
     pboFile(pboFile),
@@ -20,7 +22,7 @@ PboFileStream::PboFileStream(std::shared_ptr<PboFile> pboFile, std::filesystem::
 	    auto& pboFiles = pboReader.getFiles();
 	    const auto found = std::find_if(pboFiles.begin(), pboFiles.end(), [&](const PboEntry& entry)
 	    {
-		    return Util::utf8_decode(entry.name) == filePath;
+		    return UTF8::Decode(entry.name) == filePath;
 	    });
 
         

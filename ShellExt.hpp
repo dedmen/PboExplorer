@@ -6,7 +6,7 @@
 #include <ShlObj.h>
 #include <Windows.h>
 
-#include "ComRef.hpp"
+import ComRef;
 #include "guid.hpp"
 #include "ContextMenu.hpp"
 

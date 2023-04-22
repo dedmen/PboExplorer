@@ -7,10 +7,7 @@
 #include <stdexcept>
 #include <unordered_map>
 
-#include <Windows.h> //#TODO move utf en/decode into util.cpp and remove the windows.h
-
-#define VERSIONNO 202107081553ull
-
+import Version;
 
 using namespace std::string_view_literals;
 
@@ -28,27 +25,6 @@ constexpr CharSeq<Cs...> operator"" _cs() {
 
 namespace Util
 {
-
-    // Convert a wide Unicode string to an UTF8 string
-    inline std::string utf8_encode(std::wstring_view wstr)
-    {
-        if (wstr.empty()) return std::string();
-        int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), nullptr, 0, nullptr, nullptr);
-        std::string strTo(size_needed, 0);
-        WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &strTo[0], size_needed, nullptr, nullptr);
-        return strTo;
-    }
-
-    // Convert an UTF8 string to a wide Unicode String
-    inline std::wstring utf8_decode(std::string_view str)
-    {
-        if (str.empty()) return std::wstring();
-        int size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), nullptr, 0);
-        std::wstring wstrTo(size_needed, 0);
-        MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), &wstrTo[0], size_needed);
-        return wstrTo;
-    }
-
     inline std::string random_string(size_t length)
     {
         auto randchar = []() -> char
@@ -65,13 +41,10 @@ namespace Util
         return str;
     }
 
-    inline void TryDebugBreak() {
-        if (IsDebuggerPresent())
-            __debugbreak();
-    }
+    void TryDebugBreak();
 
-    extern void WaitForDebuggerSilent();
-    extern void WaitForDebuggerPrompt();
+    void WaitForDebuggerSilent();
+    void WaitForDebuggerPrompt(std::string_view message = {}, bool canIgnore = false);
 
 
     inline auto splitArgs (std::wstring_view cmdLine) {
@@ -176,28 +149,6 @@ namespace Util
     template<typename T>
     using unordered_map_stringkey = std::unordered_map<std::string, T, string_hash, MyEqual >;
 
-
-    class FNV1A_Hash {
-    public:
-        uint64_t currentValue = 0xcbf29ce484222325;
-
-        static uint64_t Add(uint64_t& hashValue, const uint8_t* data, size_t dataLength) {
-            const uint64_t fnvPrime = 0x00000100000001b3;
-            auto dataEnd = data + dataLength;
-
-            for (; data < dataEnd; data++)
-                hashValue = (hashValue ^ *data) * fnvPrime;
-
-            return hashValue;
-        }
-
-        void Add(const uint8_t* data, size_t dataLength) {
-            Add(currentValue, data, dataLength);
-        }
-    };
-
-    std::string base64_encode(std::string_view s);
-    std::string base64_decode(std::string_view s);
 
     /// <summary>
     /// Uses Restart Manager to retrieve which processes are holding a write lock on file

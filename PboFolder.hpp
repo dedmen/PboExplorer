@@ -4,9 +4,9 @@
 #include <Windows.h>
 #include <filesystem>
 
-#include "ComRef.hpp"
+import ComRef;
 #include "PboPidl.hpp"
-#include "TempDiskFile.hpp"
+class TempDiskFile;
 
 #include "PboFileDirectory.hpp"
 

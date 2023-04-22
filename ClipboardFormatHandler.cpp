@@ -7,6 +7,8 @@
 #include "Util.hpp"
 #include "GlobalCache.hpp"
 
+import Encoding;
+
 static constexpr Util::FlagSeperator<tagTYMED, 7> TymedSeperator({
       { TYMED_HGLOBAL, "TYMED_HGLOBAL"sv },
       { TYMED_FILE, "TYMED_FILE"sv },
@@ -33,7 +35,7 @@ void ClipboardFormatHandler::ReadFromFast(IDataObject* dataObject)
             GetClipboardFormatNameW(format.cfFormat, buffer, 127);
 
 
-            DebugLogger::TraceLog(std::format("formatName {}, format {}, tymed {}", Util::utf8_encode(buffer), format.cfFormat, TymedSeperator.SeperateToString((tagTYMED)format.tymed)), std::source_location::current(), __FUNCTION__);
+            DebugLogger::TraceLog(std::format("formatName {}, format {}, tymed {}", UTF8::Encode(buffer), format.cfFormat, TymedSeperator.SeperateToString((tagTYMED)format.tymed)), std::source_location::current(), __FUNCTION__);
 
             ClipboardFormatType type;
 
@@ -42,7 +44,7 @@ void ClipboardFormatHandler::ReadFromFast(IDataObject* dataObject)
                 default: {
                     auto type = GetTypeFromCF(format.cfFormat);
                     if (!type) {
-                        DebugLogger::TraceLog(std::format("Unkown format formatName {}, format {}, tymed {}", Util::utf8_encode(buffer), format.cfFormat, TymedSeperator.SeperateToString((tagTYMED)format.tymed)), std::source_location::current(), __FUNCTION__);
+                        DebugLogger::TraceLog(std::format("Unkown format formatName {}, format {}, tymed {}", UTF8::Encode(buffer), format.cfFormat, TymedSeperator.SeperateToString((tagTYMED)format.tymed)), std::source_location::current(), __FUNCTION__);
                         continue; // unknown type we don't care about?
                     }
                     else
@@ -92,7 +94,7 @@ void ClipboardFormatHandler::LogFormats(IDataObject* dataObject)
             wchar_t buffer[128];
             GetClipboardFormatNameW(format.cfFormat, buffer, 127);
 
-            DebugLogger::TraceLog(std::format("formatName {}, format {}, tymed {}", Util::utf8_encode(buffer), format.cfFormat, TymedSeperator.SeperateToString((tagTYMED)format.tymed)), std::source_location::current(), __FUNCTION__);
+            DebugLogger::TraceLog(std::format("formatName {}, format {}, tymed {}", UTF8::Encode(buffer), format.cfFormat, TymedSeperator.SeperateToString((tagTYMED)format.tymed)), std::source_location::current(), __FUNCTION__);
         }
 
         result->Release();

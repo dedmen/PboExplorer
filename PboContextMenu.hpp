@@ -4,7 +4,7 @@
 #include <vector>
 #include <Windows.h>
 
-#include "ComRef.hpp"
+import ComRef;
 
 class PboFolder;
 

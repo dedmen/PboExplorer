@@ -16,7 +16,7 @@
 // https://www.codeproject.com/Articles/11674/The-Mini-Shell-Extension-Framework-Part-III#ishellfolder_interface
 // https://github.com/vbaderks/msf/blob/4e91fcc409d196f8ddc350a467f484daf40fc0e1/include/msf/shell_folder_impl.h#L1146
 
-
+import Encoding;
 
 
 ShellExt::ShellExt()
@@ -254,7 +254,7 @@ BOOL OnInitDialog(HWND hwnd, LPARAM lParam)
 	buffer.reserve(1024);
 
 	for (auto& it : file->properties) {
-		buffer.append(Util::utf8_decode(std::format("{}={}\r\n", it.first, it.second)));
+		buffer.append(UTF8::Decode(std::format("{}={}\r\n", it.first, it.second)));
 	}
 	buffer.pop_back();
 	buffer.pop_back();
@@ -296,7 +296,7 @@ BOOL OnApply(HWND hwnd, PSHNOTIFY* phdr)
 		auto propName = line.substr(0, sep);
 		auto propValue = line.substr(sep + 1);
 
-		newProperties.emplace_back(Util::utf8_encode(propName), Util::utf8_encode(propValue));
+		newProperties.emplace_back(UTF8::Encode(propName), UTF8::Encode(propValue));
 	}
 
 	// patch	

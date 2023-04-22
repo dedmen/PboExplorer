@@ -8,6 +8,8 @@
 
 #include <windows.h>
 
+import Encoding;
+
 const std::filesystem::path& PboSubFolder::GetPboDiskPath() const
 {
     return GetRootFile()->diskPath;
@@ -23,7 +25,7 @@ std::shared_ptr<PboFile> PboSubFolder::GetRootFile() const
     auto lockedRoot = rootFile.lock();
 
     if (!lockedRoot) { // should never happen
-        Util::WaitForDebuggerPrompt();
+        Util::WaitForDebuggerPrompt("PboSubFolder, locked root is null");
         Util::TryDebugBreak();
     }
 
@@ -169,7 +171,7 @@ void PboFile::ReadFrom(std::filesystem::path inputPath)
     {
         if (it.name.starts_with("$DU")) // ignore dummy spacer files
             continue;
-        std::filesystem::path filePath(Util::utf8_decode(it.name));
+        std::filesystem::path filePath(UTF8::Decode(it.name));
         segments.clear();
 
         for (auto& it : filePath)
@@ -236,9 +238,9 @@ void PboFile::ReloadFrom(std::filesystem::path inputPath)
     {
         if (it.name.starts_with("$DU")) // ignore dummy spacer files
             continue;
-        existingFiles.emplace(Util::utf8_decode(it.name));
+        existingFiles.emplace(UTF8::Decode(it.name));
 
-        std::filesystem::path filePath(Util::utf8_decode(it.name));
+        std::filesystem::path filePath(UTF8::Decode(it.name));
         segments.clear();
 
         for (auto& it : filePath)
@@ -389,7 +391,7 @@ std::unique_ptr<PboPidl> PboFile::GetPidlListFromPath(std::filesystem::path inpu
 
 PboSubFolderActiveRef::PboSubFolderActiveRef(std::shared_ptr<PboSubFolder> subFolder) : folder(subFolder), rootFile(subFolder->GetRootFile()) {
     if (!rootFile) { // should never happen
-        Util::WaitForDebuggerPrompt();
+        Util::WaitForDebuggerPrompt("PboSubFolderActiveRef without rootfile");
         Util::TryDebugBreak();
     }
 }

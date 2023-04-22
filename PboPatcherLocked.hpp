@@ -35,7 +35,7 @@ public:
                 // if this list is empty, windows tells us no process has the file locked, maybe we just had very bad timing?
                 // we could just try to reopen and see if it works, but this is so unlikely to ever happen so I'll just spare myself the time
 
-                uint32_t textNumberOfChars = std::accumulate(lockingProcesses.begin(), lockingProcesses.end(), 0, [](uint32_t sz, const std::wstring& str) { return sz + str.length() + 1; });
+                size_t textNumberOfChars = std::accumulate(lockingProcesses.begin(), lockingProcesses.end(), 0ull, [](size_t sz, const std::wstring& str) { return sz + str.length() + 1; });
 
                 textNumberOfChars += pboFile->diskPath.native().length();
                 textNumberOfChars += std::wstring_view(L"PboExplorer cannot open the target file for patching: \nIt is blocked by the following processes:\n").length();

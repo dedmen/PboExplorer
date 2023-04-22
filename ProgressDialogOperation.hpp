@@ -4,7 +4,7 @@
 
 #include <Unknwnbase.h>
 
-#include "ComRef.hpp"
+import ComRef;
 struct IProgressDialog;
 
 class ProgressDialogOperation : public RefCounted<ProgressDialogOperation>

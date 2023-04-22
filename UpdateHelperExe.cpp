@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
 	if (std::string_view(argv[1]) == "RegisterFileMove"sv) {
         //Util::WaitForDebuggerPrompt();
 
-        std::filesystem::path PboExplorerDir(Util::utf8_decode(Util::base64_decode(std::string_view(argv[2]))));
+        std::filesystem::path PboExplorerDir(UTF8::Decode(Util::base64_decode(std::string_view(argv[2]))));
 
         wchar_t appPath[MAX_PATH];
         SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, NULL, SHGFP_TYPE_CURRENT, appPath);

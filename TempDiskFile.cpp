@@ -1,14 +1,30 @@
-#include "TempDiskFile.hpp"
+
+import TempDiskFile;
+
+//#include "TempDiskFile.hpp"
+//#define NOMINMAX
+//#include <mutex>
+//#include <unordered_map>
+//#include <fstream>
+//#include <Shlobj.h>
+//#include "PboPatcherLocked.hpp"
+//
+//#include "Util.hpp"
+//#include "DebugLogger.hpp"
+//#include "FileWatcher.hpp"
+
 #define NOMINMAX
-#include <mutex>
-#include <unordered_map>
-#include <fstream>
 #include <Shlobj.h>
+
+#include "PboFileDirectory.hpp"
+#include "PboFileStream.hpp"
 #include "PboPatcherLocked.hpp"
 
-#include "Util.hpp"
-#include "DebugLogger.hpp"
-#include "FileWatcher.hpp"
+import DebugLogger;
+import FileWatcher;
+
+import Encoding;
+import Hashing;
 
 std::mutex TempDiskFileCreationLock;
 struct opt_path_hash {
@@ -35,7 +51,7 @@ std::filesystem::file_time_type TempDiskFile::GetCurrentModtime() const {
 }
 
 uint64_t TempDiskFile::GetHashOf(std::istream& inp) {
-    Util::FNV1A_Hash result;
+    FNV1A_Hash result;
     std::array<char, 4096> buf;
     do {
         inp.read(buf.data(), buf.size());
@@ -60,7 +76,7 @@ TempDiskFile::TempDiskFile(const PboFile& pboRef, std::filesystem::path subfile)
         //#TODO handle already exists properly
     }
 
-    
+
 
     //#TODO properly handle existing file, this is bad. We should never do that
     {
@@ -68,19 +84,19 @@ TempDiskFile::TempDiskFile(const PboFile& pboRef, std::filesystem::path subfile)
         PboReader pboReader(pboInputStream);
 
         PboEntryBuffer fileBuffer(pboReader, *[&, filePath = subfile]()
-        {
-            pboReader.readHeaders();
+            {
+                pboReader.readHeaders();
 
-            auto& pboFiles = pboReader.getFiles();
-            const auto found = std::ranges::find_if(pboFiles, [&](const PboEntry& entry)
-                {
-                    return Util::utf8_decode(entry.name) == filePath;
-                });
+                auto& pboFiles = pboReader.getFiles();
+                const auto found = std::ranges::find_if(pboFiles, [&](const PboEntry& entry)
+                    {
+                        return UTF8::Decode(entry.name) == filePath;
+                    });
 
-            if (found == pboFiles.end())
-                __debugbreak();
-            return found;
-        }());
+                if (found == pboFiles.end())
+                    __debugbreak();
+                return found;
+            }());
 
 
         bool wantWrite = true;
@@ -136,7 +152,7 @@ TempDiskFile::~TempDiskFile() {
 
     bool filesLeft = std::ranges::any_of(std::filesystem::recursive_directory_iterator(tempDir), [](const std::filesystem::directory_entry& p) {
         return p.is_regular_file();
-    });
+        });
 
     if (!filesLeft)
         std::filesystem::remove_all(tempDir);
@@ -153,7 +169,7 @@ bool TempDiskFile::WasModified() {
         GetCurrentSize() != creationFileSize ||
         GetCurrentModtime() != creationTime ||
         GetCurrentHash() != creationHash
-    ;
+        ;
 }
 
 std::mutex DiskWriterLock;

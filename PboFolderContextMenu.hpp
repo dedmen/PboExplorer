@@ -4,7 +4,7 @@
 #include <ShlObj.h>
 #include <vector>
 
-#include "ComRef.hpp"
+import ComRef;
 
 class PboFolder;
 

@@ -20,8 +20,9 @@ const GUID IID_IAsyncOperation =
 #include "ClipboardFormatHandler.hpp"
 #include <numeric>
 #include "guid.hpp"
-#include "TempDiskFile.hpp"
+import TempDiskFile;
 
+import Encoding;
 
 HRESULT QLoadFromStream(IStream* pStm, LPITEMIDLIST* pidl)
 {
@@ -449,7 +450,7 @@ HRESULT PboDataObject::GetData(FORMATETC* pformatetc, STGMEDIUM* pmedium)
     GetClipboardFormatNameW(pformatetc->cfFormat, buffer, 127);
 
 
-    //DebugLogger::TraceLog(std::format("formatName {}, format {}", Util::utf8_encode(buffer), pformatetc->cfFormat), std::source_location::current(), __FUNCTION__);
+    //DebugLogger::TraceLog(std::format("formatName {}, format {}", UTF8::Encode(buffer), pformatetc->cfFormat), std::source_location::current(), __FUNCTION__);
 
     auto type = ClipboardFormatHandler::GetTypeFromCF(pformatetc->cfFormat);
 
@@ -500,7 +501,7 @@ LABEL_15:
             EXPECT_SINGLE_PIDL(file);
 
             FILEDESCRIPTOR fd;
-            wcsncpy(fd.cFileName, file->GetFileName().filename().c_str(), MAX_PATH);
+            wcsncpy_s(fd.cFileName, file->GetFileName().filename().c_str(), MAX_PATH);
             fd.cFileName[MAX_PATH - 1] = 0;
 
             if (file->IsFolder()) {
@@ -518,7 +519,7 @@ LABEL_15:
 
                         auto name = file->fullPath.lexically_relative(rootPath);
 
-                        wcsncpy(fd.cFileName, name.c_str(), MAX_PATH);
+                        wcsncpy_s(fd.cFileName, name.c_str(), MAX_PATH);
                         fd.cFileName[MAX_PATH - 1] = 0;
 
                         fd.dwFlags = FD_ATTRIBUTES | FD_PROGRESSUI;
@@ -934,7 +935,7 @@ LABEL_15:
 
 
     //#TODO not a trace, this is a warn
-    //DebugLogger::TraceLog(std::format("formatName {}, format {}, UNHANDLED", Util::utf8_encode(buffer), pformatetc->cfFormat), std::source_location::current(), __FUNCTION__);
+    //DebugLogger::TraceLog(std::format("formatName {}, format {}, UNHANDLED", UTF8::Encode(buffer), pformatetc->cfFormat), std::source_location::current(), __FUNCTION__);
 
 
     return DV_E_FORMATETC;
@@ -950,7 +951,7 @@ HRESULT PboDataObject::GetDataHere(FORMATETC* pformatetc, STGMEDIUM* pmedium)
 
 
 
-    DebugLogger::TraceLog(std::format("formatName {}, format {}", Util::utf8_encode(buffer), pformatetc->cfFormat), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format("formatName {}, format {}", UTF8::Encode(buffer), pformatetc->cfFormat), std::source_location::current(), __FUNCTION__);
     
     auto type = ClipboardFormatHandler::GetTypeFromCF(pformatetc->cfFormat);
     
@@ -969,7 +970,7 @@ HRESULT PboDataObject::GetDataHere(FORMATETC* pformatetc, STGMEDIUM* pmedium)
     }
 
     //#TODO not a trace, this is a warn
-    DebugLogger::TraceLog(std::format("formatName {}, format {}, UNHANDLED", Util::utf8_encode(buffer), pformatetc->cfFormat), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format("formatName {}, format {}, UNHANDLED", UTF8::Encode(buffer), pformatetc->cfFormat), std::source_location::current(), __FUNCTION__);
 
 
     //return(DV_E_FORMATETC);
@@ -983,7 +984,7 @@ HRESULT PboDataObject::QueryGetData(FORMATETC* pformatetc)
     GetClipboardFormatNameW(pformatetc->cfFormat, buffer, 127);
 
 
-    //DebugLogger::TraceLog(std::format("formatName {}, format {}", Util::utf8_encode(buffer), pformatetc->cfFormat), std::source_location::current(), __FUNCTION__);
+    //DebugLogger::TraceLog(std::format("formatName {}, format {}", UTF8::Encode(buffer), pformatetc->cfFormat), std::source_location::current(), __FUNCTION__);
 
 
     auto type = ClipboardFormatHandler::GetTypeFromCF(pformatetc->cfFormat);
@@ -1015,7 +1016,7 @@ HRESULT PboDataObject::QueryGetData(FORMATETC* pformatetc)
         )
         return S_OK;
 
-    //DebugLogger::TraceLog(std::format("formatName {}, format {} NOT AVAIL", Util::utf8_encode(buffer), pformatetc->cfFormat), std::source_location::current(), __FUNCTION__);
+    //DebugLogger::TraceLog(std::format("formatName {}, format {} NOT AVAIL", UTF8::Encode(buffer), pformatetc->cfFormat), std::source_location::current(), __FUNCTION__);
 
 
     return DV_E_FORMATETC;
@@ -1032,7 +1033,7 @@ HRESULT PboDataObject::SetData(FORMATETC* tf, STGMEDIUM* med, BOOL b)
     GetClipboardFormatNameW(tf->cfFormat, buffer, 127);
 
 
-    DebugLogger::TraceLog(std::format("formatName {}, format {}", Util::utf8_encode(buffer), tf->cfFormat), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format("formatName {}, format {}", UTF8::Encode(buffer), tf->cfFormat), std::source_location::current(), __FUNCTION__);
 
 
 

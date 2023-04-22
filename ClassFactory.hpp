@@ -3,7 +3,7 @@
 #include <windows.h>
 #include <shlobj.h>
 
-#include "ComRef.hpp"
+import ComRef;
 #include "PboFolder.hpp"
 #include "PboDataObject.hpp"
 #include "ShellExt.hpp"

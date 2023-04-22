@@ -3,6 +3,8 @@
 #include <fstream>
 #include <future>
 
+import TempDiskFile;
+
 void FileWatcher::Run() {
     auto tempPath = std::filesystem::temp_directory_path() / "PboExplorer";
 

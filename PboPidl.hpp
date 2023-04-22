@@ -1,4 +1,6 @@
 #pragma once
+#include <filesystem>
+
 enum class PboPidlFileType
 {
 	Folder,
@@ -63,7 +65,7 @@ public:
     /// </summary>
     std::filesystem::path GetFileName() const {
         auto pathLen = cb - sizeof(PboPidl);
-        return std::filesystem::path((wchar_t*)filePath);
+        return { std::wstring_view((const wchar_t*)filePath) };
     }
 
     bool IsValidPidl() const {

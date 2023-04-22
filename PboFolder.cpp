@@ -29,7 +29,7 @@
 #include "PboFolderContextMenu.hpp"
 #include "PboPatcherLocked.hpp"
 
-
+import Encoding;
 
 #define CHECK_INIT() \
   if( !checkInit() ) return( E_FAIL )
@@ -402,7 +402,7 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
     else if (IsEqualIID(riid, IID_IStream))
     {
 
-        Util::WaitForDebuggerPrompt();
+        Util::WaitForDebuggerPrompt("PboFolder IStream bind");
 
         CoTaskMemRefS<ITEMIDLIST> pidld = ILClone(pidl);
         ILRemoveLastID(pidld);
@@ -693,7 +693,7 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
 
 
     auto getFlagsFor = [this](const PboPidl* qp, SFGAOF mask) -> SFGAOF {
-        DebugLogger::TraceLog(std::format("{}, wantedFlags {}", Util::utf8_encode((pboFile->GetFolder()->fullPath / qp->GetFilePath()).wstring()), seperator.SeperateToString(mask)), std::source_location::current(), __FUNCTION__);
+        DebugLogger::TraceLog(std::format("{}, wantedFlags {}", UTF8::Encode((pboFile->GetFolder()->fullPath / qp->GetFilePath()).wstring()), seperator.SeperateToString(mask)), std::source_location::current(), __FUNCTION__);
 
         //#TODO only return flags that were also requested initially. rgfInOut is pre-filled with the flags it wants to know about
         switch (qp->type)
@@ -1055,7 +1055,7 @@ HRESULT PboFolder::SetNameOf(HWND hwnd, LPCITEMIDLIST pidl, LPCOLESTR pszName, S
     const PboPidl* qp = (const PboPidl*)pidl;
     EXPECT_SINGLE_PIDL(qp);
 
-    DebugLogger::TraceLog(std::format("{}, newName {}, flags {}", (pboFile->GetFolder()->fullPath / qp->GetFilePath()).string(), Util::utf8_encode(pszName), uFlags), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format("{}, newName {}, flags {}", (pboFile->GetFolder()->fullPath / qp->GetFilePath()).string(), UTF8::Encode(pszName), uFlags), std::source_location::current(), __FUNCTION__);
 
     if (!qp->IsFile()) //#TODO, need to rename aaaaaall the files in that folder
         return E_NOTIMPL;
@@ -1291,7 +1291,7 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
         // This is the file extension of the file based item, including the leading period. 
         if (!qp->IsFile()) return(E_FAIL);
 
-        return stringToVariant(Util::utf8_decode(qp->GetFileName().extension().string()), pv);
+        return stringToVariant(UTF8::Decode(qp->GetFileName().extension().string()), pv);
     }
     else if (pscid->fmtid == PKEY_LayoutPattern_ContentViewModeForBrowse.fmtid)
         return(E_INVALIDARG);

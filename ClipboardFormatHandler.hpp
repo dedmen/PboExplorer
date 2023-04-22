@@ -7,7 +7,7 @@
 #include <filesystem>
 
 #include <shtypes.h>
-#include "ComRef.hpp"
+import ComRef;
 
 
 struct IDataObject;

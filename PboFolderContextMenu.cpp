@@ -4,7 +4,7 @@
 #include "FileWatcher.hpp"
 #include "PboFolder.hpp"
 #include "PboPidl.hpp"
-#include "TempDiskFile.hpp"
+import TempDiskFile;
 #include "Util.hpp"
 
 #include "DebugLogger.hpp"
