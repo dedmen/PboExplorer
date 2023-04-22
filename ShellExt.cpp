@@ -558,7 +558,7 @@ HRESULT MikeroExtractPboToSubfolders(const std::vector<std::filesystem::path>& f
 	bool allGood = true;
 
 	for (auto& it : files) {
-		auto params = std::format(files.size() > 1 ? L"-P \"{}\"": L"\"{}\"", it.native()); // silent mode if unpacking several
+		auto params = std::format(L"{}\"{}\"", files.size() > 1 ? L"-P " : L"", it.native()); // silent mode if unpacking several
 		sei.lpParameters = params.c_str();
 		auto workDir = it.parent_path().native();
 		sei.lpDirectory = workDir.c_str();

@@ -83,7 +83,7 @@ FileWatcher::~FileWatcher() {
     std::filesystem::remove(std::filesystem::temp_directory_path() / "PboExplorer" / std::format(L"h{}", GetCurrentProcessId()));
     shouldRun = false;
     if (thread.joinable())
-        thread.join();
+        thread.join(); //#TODO triggered _Throw_Cpp_error(_RESOURCE_DEADLOCK_WOULD_OCCUR); on DLL unload after setting shouldRun to false via debugger. Somehow returning from thread triggered dll unload. It was probably kept running while a unload request
 }
 
 void FileWatcher::Startup() {

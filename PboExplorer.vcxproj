@@ -298,7 +298,7 @@
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>O:\dev\pbofolder\PboExplorer\lib\sentry\build\Debug;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\client\Debug;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\third_party\mini_chromium\Debug;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\util\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)lib\sentry\build\Debug;$(ProjectDir)lib\sentry\build\crashpad_build\client\Debug;$(ProjectDir)lib\sentry\build\crashpad_build\third_party\mini_chromium\Debug;$(ProjectDir)lib\sentry\build\crashpad_build\util\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugExe|x64'">
@@ -370,7 +370,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>PboExplorer.def</ModuleDefinitionFile>
-      <AdditionalLibraryDirectories>O:\dev\pbofolder\PboExplorer\lib\sentry\build\RelWithDebInfo;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\client\RelWithDebInfo;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\third_party\mini_chromium\RelWithDebInfo;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\util\RelWithDebInfo</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)lib\sentry\build\RelWithDebInfo;$(ProjectDir)lib\sentry\build\crashpad_build\client\RelWithDebInfo;$(ProjectDir)lib\sentry\build\crashpad_build\third_party\mini_chromium\RelWithDebInfo;$(ProjectDir)lib\sentry\build\crashpad_build\util\RelWithDebInfo</AdditionalLibraryDirectories>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>

@@ -61,7 +61,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     {
 	case DLL_PROCESS_ATTACH: {
 		g_hInst = hModule;
-
+	// https://docs.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-disablethreadlibrarycalls
 		wchar_t szModule[MAX_PATH];
 		GetModuleFileNameW(nullptr, szModule, ARRAYSIZE(szModule));
 		// don't load FileWatcher in regsvr
@@ -72,6 +72,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     case DLL_THREAD_DETACH:
 		break;
     case DLL_PROCESS_DETACH:
+#if _DEBUG
+		Util::WaitForDebuggerPrompt();
+#endif
 #ifdef ENABLE_SENTRY
 		sentry_close();
 #endif
@@ -278,7 +281,9 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppReturn)
 
 			wchar_t appPath[MAX_PATH];
 			SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, NULL, SHGFP_TYPE_CURRENT, appPath);
-
+			//#TODO get proper path
+			//	https ://www.ibm.com/support/pages/large-dmp-files-example-cusersappdatalocalcrashdumpsccrexe12345dmp-filling-client-device-typically-citrix-server-hard-drive-triggered-microsoft-windows-wer-user-mode-dumps
+			//maybe enable it in register/unregister
 			std::error_code ec;
 			auto crashDir = std::filesystem::path(appPath) / "CrashDumps";
 			for (auto& p : std::filesystem::directory_iterator(crashDir, ec)) {
@@ -384,7 +389,7 @@ public:
 
 
 	HRESULT DoCreate(const RegistryContext& context) {
-		std::wstring fullPath = std::format(subKeyFormat, context.pboExplorerCLSID, context.modulePath);
+		std::wstring fullPath = std::vformat(subKeyFormat, std::make_wformat_args(context.pboExplorerCLSID, context.modulePath));
 
 		HKEY hKey;
 		DWORD dwDisp;
@@ -407,12 +412,12 @@ public:
 			if (isDirectory) return S_OK;
 
 
-			std::wstring fullValueName = std::format(valueNameFormat, context.pboExplorerCLSID, context.modulePath);
+			std::wstring fullValueName = std::vformat(valueNameFormat, std::make_wformat_args(context.pboExplorerCLSID, context.modulePath));
 
 			std::visit([&](auto&& arg) {
 				using T = std::decay_t<decltype(arg)>;
 				if constexpr (std::is_same_v<T, std::wstring>) {
-					std::wstring fullData = std::format(arg, context.pboExplorerCLSID, context.modulePath);
+					std::wstring fullData = std::vformat(arg, std::make_wformat_args(context.pboExplorerCLSID, context.modulePath));
 
 					lResult = RegSetValueExW(hKey,
 						fullValueName.empty() ? nullptr : fullValueName.c_str(),
@@ -430,7 +435,7 @@ public:
 						(DWORD)sizeof(DWORD));
 				}
 				else
-					static_assert(always_false_v<T>, "non-exhaustive visitor!");
+					static_assert(sizeof(T) < 0, "non-exhaustive visitor!");
 				}, data);
 
 			RegCloseKey(hKey);
@@ -447,11 +452,11 @@ public:
 
 		// if we own this directory, delete its whole tree
 		if (isDirectory) {
-			std::wstring fullPath = std::format(subKeyFormat, context.pboExplorerCLSID, context.modulePath);
+			std::wstring fullPath = std::vformat(subKeyFormat, std::make_wformat_args(context.pboExplorerCLSID, context.modulePath));
 			return RegDeleteTreeW(rootKey, fullPath.c_str());
 		} else {
 			// delete single key
-			std::wstring fullPath = std::format(subKeyFormat, context.pboExplorerCLSID, context.modulePath);
+			std::wstring fullPath = std::vformat(subKeyFormat, std::make_wformat_args(context.pboExplorerCLSID, context.modulePath));
 			return RegDeleteKeyW(rootKey, fullPath.c_str());
 		}
 	}
