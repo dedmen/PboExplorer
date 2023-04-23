@@ -159,20 +159,22 @@ enum
 };
 
 #define CONTEXT_TEXT_SIZE 32
-static wchar_t contextText[CONTEXT_QTY][CONTEXT_TEXT_SIZE] = { L"",L"Open With",L"" };
+static wchar_t contextText[CONTEXT_QTY][CONTEXT_TEXT_SIZE] = { L"Open",L"Open With",L"Copy", L"Delete"};
 
 static const wchar_t* getContextText(int idx)
 {
     do
     {
         if (contextText[0][0]) break;
-
+        // Preload some (localized) tags we grab from elsewhere
         HMODULE mod = GetModuleHandle(L"shell32.dll");
 
         LoadString(mod, 8496, contextText[CONTEXT_OPEN], CONTEXT_TEXT_SIZE);
 
         //LoadString(mod, 5377, contextText[CONTEXT_OPEN_WITH], CONTEXT_TEXT_SIZE);
 
+        // Grab from some menu?
+        //#TODO grab more, look up in shell32 what is at that resource and what other texts we can grab
         HMENU menu = LoadMenu(mod, MAKEINTRESOURCE(210));
         if (!menu) break;
         MENUITEMINFO mii;
@@ -199,6 +201,7 @@ HRESULT PboContextMenu::QueryContextMenu(
 
     //#TODO query filetype contextmenu and use them?
     // add notepad++ manually?
+    // This seems to be how to create a normal context menu? https://github.com/imwuzhh/repo1/blob/58f52ee3b7501c65683591909c095d48f11ae68e/vdrivense/ShFrwk/ContextMenu.cpp#L63
 
     if (m_apidl.size() == 1)
     {
@@ -586,6 +589,12 @@ HRESULT PboContextMenu::GetCommandString(
     case CONTEXT_COPY:
         wcsncpy_s((LPWSTR)pszName, cchMax, L"copy", cchMax);
         return(S_OK);
+
+    case CONTEXT_DELETE:
+        wcsncpy_s((LPWSTR)pszName, cchMax, L"delete", cchMax);
+        return(S_OK);
+
+    default: Util::TryDebugBreak();
     }
 
     //return m_DefCtxMenu->GetCommandString(idCmd, uFlags, nullptr, pszName, cchMax);
