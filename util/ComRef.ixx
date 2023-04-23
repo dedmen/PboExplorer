@@ -2,6 +2,7 @@ module;
 #include <Windows.h>
 
 export module ComRef;
+
 import <atomic>;
 import <source_location>;
 import <unordered_set>;
@@ -353,7 +354,7 @@ public:
 
 std::atomic_uint32_t g_DllRefCount;
 
-#define GREF_Debug 0
+#define GREF_Debug 1
 
 
 //import Hashing;
@@ -380,7 +381,8 @@ std::atomic_uint32_t g_DllRefCount;
 //}
 
 class GlobalRefCounted;
-std::unordered_set<GlobalRefCounted*> DllRefCountList;
+//this is so ugly, because I cannot import <memory> for unique_ptr, for some reason visual studio just implodes
+constinit std::unordered_set<GlobalRefCounted*>* DllRefCountList = nullptr;
 
 export class GlobalRefCounted {
 public:
@@ -389,12 +391,12 @@ public:
 
     GlobalRefCounted(std::source_location location = std::source_location::current()) : MyLocation(location) {
         ++g_DllRefCount;
-        cant do this, the list may not be initialized yet before we run this
-        DllRefCountList.insert(this);
+        if (!DllRefCountList) DllRefCountList = new std::unordered_set<GlobalRefCounted*>();
+        DllRefCountList->insert(this);
     }
     virtual ~GlobalRefCounted() {
         --g_DllRefCount;
-        DllRefCountList.erase(this);
+        DllRefCountList->erase(this);
     }
 #else
 
