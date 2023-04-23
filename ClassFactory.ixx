@@ -25,8 +25,8 @@ public:
 	ClassFactory()
 	{
 	}
-	virtual ~ClassFactory()
-	{
+
+    ~ClassFactory() override {
 	}
 
 	//IUnknown methods
@@ -103,7 +103,7 @@ public:
 		return hResult;
 	}
 
-	virtual  HRESULT STDMETHODCALLTYPE LockServer(BOOL fLock) {
+    HRESULT STDMETHODCALLTYPE LockServer(BOOL fLock) override {
 		return E_NOTIMPL;
 	}
 };

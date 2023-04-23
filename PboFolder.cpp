@@ -191,17 +191,17 @@ class DirectoryEnumIDList :
 {
 public:
     DirectoryEnumIDList(PboFolder& owner, std::shared_ptr<PboSubFolder>, DWORD flags);
-    ~DirectoryEnumIDList();
+    ~DirectoryEnumIDList() override;
 
     // IUnknown
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override;
 
     // IEnumIDList
     HRESULT STDMETHODCALLTYPE Next(
-        ULONG celt, LPITEMIDLIST* rgelt, ULONG* pceltFetched);
-    HRESULT STDMETHODCALLTYPE Skip(DWORD celt);
-    HRESULT STDMETHODCALLTYPE Reset(void);
-    HRESULT STDMETHODCALLTYPE Clone(IEnumIDList** ppenum);
+        ULONG celt, LPITEMIDLIST* rgelt, ULONG* pceltFetched) override;
+    HRESULT STDMETHODCALLTYPE Skip(DWORD celt) override;
+    HRESULT STDMETHODCALLTYPE Reset(void) override;
+    HRESULT STDMETHODCALLTYPE Clone(IEnumIDList** ppenum) override;
 
 private:
 
@@ -1555,6 +1555,7 @@ HRESULT PboFolder::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lParam)
     case SFVM_DEFVIEWMODE:
         *(FOLDERVIEWMODE*)lParam = FVM_DETAILS;
         return(S_OK);
+        //#TODO custom status bar handling so we can display size of all selected elements? https://learn.microsoft.com/en-us/windows/win32/shell/sfvm-updatestatusbar
     }
 
     return(E_NOTIMPL);
@@ -1653,7 +1654,7 @@ HRESULT PboFolder::DragEnter(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt
     }
 
 
-
+    //#TODO somehow this also runs when not dragging anything, why?
 
     ClipboardFormatHandler handler;
     handler.ReadFromFast(pDataObj);
@@ -2026,7 +2027,7 @@ HRESULT PboFolder::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWO
 
 
     auto operation = new ProgressDialogOperation(pboFile->GetPboDiskPath(), L"", lastHwnd);
-    this->AddRef();
+    this->AddRef(); //#TODO pass comref into lambda instead, theres also a leak below
     pDataObj->AddRef();
     operation->DoOperation([this, pDataObj, filePaths](const ProgressDialogOperation& op) {
 
@@ -2189,14 +2190,9 @@ bool PboFolder::checkInit()
     SHGetPathFromIDList(m_pidl, path);
 
 
-    OutputDebugStringW(L"PboFolder::checkInit");
-    OutputDebugStringW(path);
-    OutputDebugStringA("\n");
-
-
     ITEMIDLIST* subPidl = m_pidl;
 
-    auto qp = (const PboPidl*)ILFindLastID(m_pidl);
+    auto qp = reinterpret_cast<const PboPidl*>(ILFindLastID(m_pidl));
     int count = 0;
     while (subPidl = ILGetNext(subPidl)) {
         //subPidl = (LPITEMIDLIST)((uintptr_t)subPidl + subPidl->mkid.cb);

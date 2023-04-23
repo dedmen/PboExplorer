@@ -17,19 +17,19 @@ class PboFolderContextMenu :
 public:
     PboFolderContextMenu(PboFolder* folder, HWND hwnd); // ,LPCITEMIDLIST pidlRoot, UINT cidl, LPCITEMIDLIST* apidl
 
-    ~PboFolderContextMenu();
+    ~PboFolderContextMenu() override;
 
     // IUnknown
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override;
 
     // IContextMenu
     HRESULT STDMETHODCALLTYPE QueryContextMenu(
         HMENU hmenu, UINT indexMenu, UINT idCmdFirst,
-        UINT idCmdLast, UINT uFlags);
-    HRESULT STDMETHODCALLTYPE InvokeCommand(LPCMINVOKECOMMANDINFO pici);
+        UINT idCmdLast, UINT uFlags) override;
+    HRESULT STDMETHODCALLTYPE InvokeCommand(LPCMINVOKECOMMANDINFO pici) override;
     HRESULT STDMETHODCALLTYPE GetCommandString(
         UINT_PTR idCmd, UINT uFlags, UINT* pwReserved,
-        LPSTR pszName, UINT cchMax);
+        LPSTR pszName, UINT cchMax) override;
 
 private:
     ComRef<PboFolder> m_folder;

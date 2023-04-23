@@ -1120,16 +1120,16 @@ public:
 
 
     // IUnknown
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override;
 
     // IEnumFORMATETC
     HRESULT STDMETHODCALLTYPE Next(
-        ULONG celt, FORMATETC* rgelt, ULONG* pceltFetched);
-    HRESULT STDMETHODCALLTYPE Skip(DWORD celt);
-    HRESULT STDMETHODCALLTYPE Reset(void);
-    HRESULT STDMETHODCALLTYPE Clone(IEnumFORMATETC** ppenum);
+        ULONG celt, FORMATETC* rgelt, ULONG* pceltFetched) override;
+    HRESULT STDMETHODCALLTYPE Skip(DWORD celt) override;
+    HRESULT STDMETHODCALLTYPE Reset(void) override;
+    HRESULT STDMETHODCALLTYPE Clone(IEnumFORMATETC** ppenum) override;
 
-    ~FormatEnumerator(){}
+    ~FormatEnumerator() override {}
 };
 
 

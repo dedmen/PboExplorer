@@ -23,34 +23,34 @@ public:
 
 
     // IUnknown
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) override;
 
     // IDataObject
     HRESULT STDMETHODCALLTYPE GetData(
-        FORMATETC* pformatetc, STGMEDIUM* pmedium);
+        FORMATETC* pformatetc, STGMEDIUM* pmedium) override;
     HRESULT STDMETHODCALLTYPE GetDataHere(
-        FORMATETC* pformatetc, STGMEDIUM* pmedium);
-    HRESULT STDMETHODCALLTYPE QueryGetData(FORMATETC* pformatetc);
+        FORMATETC* pformatetc, STGMEDIUM* pmedium) override;
+    HRESULT STDMETHODCALLTYPE QueryGetData(FORMATETC* pformatetc) override;
     HRESULT STDMETHODCALLTYPE GetCanonicalFormatEtc(
-        FORMATETC* pformatetcIn, FORMATETC* pformatetcOut);
+        FORMATETC* pformatetcIn, FORMATETC* pformatetcOut) override;
     HRESULT STDMETHODCALLTYPE SetData(
-        FORMATETC* pformatetc, STGMEDIUM* pmedium, BOOL fRelease);
+        FORMATETC* pformatetc, STGMEDIUM* pmedium, BOOL fRelease) override;
     HRESULT STDMETHODCALLTYPE EnumFormatEtc(
-        DWORD dwDirection, IEnumFORMATETC** ppenumFormatEtc);
+        DWORD dwDirection, IEnumFORMATETC** ppenumFormatEtc) override;
     HRESULT STDMETHODCALLTYPE DAdvise(
         FORMATETC* pformatetc, DWORD advf, IAdviseSink* pAdvSink,
-        DWORD* pdwConnection);
-    HRESULT STDMETHODCALLTYPE DUnadvise(DWORD dwConnection);
-    HRESULT STDMETHODCALLTYPE EnumDAdvise(IEnumSTATDATA** ppenumAdvise);
+        DWORD* pdwConnection) override;
+    HRESULT STDMETHODCALLTYPE DUnadvise(DWORD dwConnection) override;
+    HRESULT STDMETHODCALLTYPE EnumDAdvise(IEnumSTATDATA** ppenumAdvise) override;
 
     // IPersist
-    HRESULT STDMETHODCALLTYPE GetClassID(CLSID* pClassID);
+    HRESULT STDMETHODCALLTYPE GetClassID(CLSID* pClassID) override;
 
     // IPersistStream
-    HRESULT STDMETHODCALLTYPE IsDirty(void);
-    HRESULT STDMETHODCALLTYPE Load(IStream* pStm);
-    HRESULT STDMETHODCALLTYPE Save(IStream* pStm, BOOL fClearDirty);
-    HRESULT STDMETHODCALLTYPE GetSizeMax(ULARGE_INTEGER* pcbSize);
+    HRESULT STDMETHODCALLTYPE IsDirty(void) override;
+    HRESULT STDMETHODCALLTYPE Load(IStream* pStm) override;
+    HRESULT STDMETHODCALLTYPE Save(IStream* pStm, BOOL fClearDirty) override;
+    HRESULT STDMETHODCALLTYPE GetSizeMax(ULARGE_INTEGER* pcbSize) override;
 
     // IAsyncOperation
     HRESULT STDMETHODCALLTYPE SetAsyncMode(BOOL fDoOpAsync);

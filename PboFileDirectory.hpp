@@ -120,10 +120,10 @@ public:
 
 
     // Inherited via IPboFolder
-    virtual const std::filesystem::path& GetPboDiskPath() const override;
-    virtual std::shared_ptr<PboSubFolder> GetFolder() const override;
+    const std::filesystem::path& GetPboDiskPath() const override;
+    std::shared_ptr<PboSubFolder> GetFolder() const override;
 
-    virtual std::shared_ptr<PboFile> GetRootFile() const override;
+    std::shared_ptr<PboFile> GetRootFile() const override;
     std::optional<std::reference_wrapper<const PboSubFile>> GetFileByPath(std::filesystem::path inputPath) const override;
     std::shared_ptr<PboSubFolder> GetFolderByPath(std::filesystem::path inputPath) const override;
     std::unique_ptr<PboPidl> GetPidlListFromPath(std::filesystem::path inputPath) const override;
