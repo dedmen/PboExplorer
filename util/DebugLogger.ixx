@@ -1,4 +1,5 @@
 module;
+#include <filesystem>
 #include <guiddef.h>
 
 #include <Windows.h>
@@ -641,11 +642,15 @@ static GUIDLookup<LookupInfoStorageT> guidLookupTable{
 #pragma pop_macro("DEFINE_GUID")
 };
 
+std::string GetDebugLogName() {
+    char fname[512];
+    GetModuleFileNameA(nullptr, fname, 511);
 
+    return std::filesystem::path(fname).filename().string();
+}
 
-std::ofstream logFile = std::ofstream("P:\\testlog.log", std::ofstream::app | std::ofstream::out);
-std::ofstream logFileBad = std::ofstream("P:\\testlogBad.log", std::ofstream::app | std::ofstream::out);
-
+std::ofstream logFile = std::ofstream(std::format("P:\\PboEx_{}.log", GetDebugLogName()), std::ofstream::app | std::ofstream::out);
+std::ofstream logFileBad = std::ofstream(std::format("P:\\PboEx_{}_Bad.log", GetDebugLogName()), std::ofstream::app | std::ofstream::out);
 
 void DebugLogger::OnQueryInterfaceEntry(const GUID& riid, const std::source_location location, const char* funcName)
 {
