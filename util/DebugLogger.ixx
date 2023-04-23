@@ -92,7 +92,10 @@ namespace std {
 }
 
 
-static std::unordered_map<GUID, LookupInfoStorageT> guidLookupTable{
+
+import GUIDLookup;
+
+static GUIDLookup<LookupInfoStorageT> guidLookupTable{
 
 #pragma push_macro("DEFINE_GUID")
 #undef DEFINE_GUID
@@ -756,7 +759,7 @@ LookupInfoT DebugLogger::GetGUIDName(const GUID& guid)
         // Every entry must be in lookup table, because we return stringview
         auto inserted = guidLookupTable.insert({ guid, { guidName, DebugInterestLevel::Interested } }); // we are very interested in unknown GUIDs
 
-        return inserted.first->second;
+        return inserted->second;
     }
 }
 

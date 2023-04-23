@@ -1176,46 +1176,37 @@ static HRESULT stringToVariant(std::wstring_view str, VARIANT* pv)
     return(pv->bstrVal ? S_OK : E_OUTOFMEMORY);
 }
 
-class GUIDNameLookup {
-    std::vector<std::pair<GUID, std::string_view>> lookupList;
-public:
-    constexpr GUIDNameLookup(std::initializer_list<std::pair<GUID, std::string_view>> init) : lookupList(init) {
-        
-    }
-    //#TODO binary search, more modular, lookup template type by GUID. We can reuse for debug logger it uses unordered map for lookup
-    // Could also use it in GetDetailsEx to look up a functor which will be called to process the request
-    std::string_view GetName(const GUID& guid) {
-        const auto found = std::find_if(lookupList.begin(), lookupList.end(), [&guid](const std::pair<GUID, std::string_view>& it) {
-            return  it.first == guid;
-        });
-        if (found == lookupList.end())
-            return {};
-        return found->second;
-    }
-};
+import GUIDLookup;
 
-GUIDNameLookup DetailTypesLookup(
+
+std::strong_ordering operator <=> (const PROPERTYKEY& a, const PROPERTYKEY& b) noexcept {
+    if (const auto c = a.fmtid <=> b.fmtid; c != 0) return c;
+    return a.pid <=> b.pid;
+}
+
+BaseGUIDLookup<PROPERTYKEY,std::string_view> DetailTypesLookup(
 {
-    { PKEY_ItemNameDisplay.fmtid, "PKEY_ItemNameDisplay" },
-    { PKEY_Size.fmtid, "PKEY_Size" },
-    { FMTID_WebView, "FMTID_WebView" },
+    { PKEY_ItemNameDisplay, "PKEY_ItemNameDisplay" },
+    { PKEY_Size, "PKEY_Size" },
+    { {FMTID_WebView, PID_DISPLAY_PROPERTIES}, "FMTID_WebView Prop" },
+    { {FMTID_WebView, PID_INTROTEXT}, "FMTID_WebView Intro" },
     //{FMTID_PropList, "FMTID_PropList"},
-    { PKEY_ItemFolderPathDisplay.fmtid, "PKEY_ItemFolderPathDisplay" },
-    { PKEY_PropList_ContentViewModeForBrowse.fmtid, "PKEY_PropList_ContentViewModeForBrowse"},
-    { PKEY_DescriptionID.fmtid, "PKEY_DescriptionID" },
-    { PKEY_FullText.fmtid, "PKEY_FullText" },
-    { PKEY_FileExtension.fmtid, "PKEY_FileExtension" },
-    { PKEY_LayoutPattern_ContentViewModeForBrowse.fmtid, "PKEY_LayoutPattern_ContentViewModeForBrowse" },
-    { PKEY_ApplicationName.fmtid, "PKEY_ApplicationName" },
-    { PKEY_DateAccessed.fmtid, "PKEY_DateAccessed" },
-    { PKEY_ParsingBindContext.fmtid, "PKEY_ParsingBindContext" },
-    { PKEY_StatusBarSelectedItemCount.fmtid, "PKEY_StatusBarSelectedItemCount" }
+    { PKEY_ItemFolderPathDisplay, "PKEY_ItemFolderPathDisplay" },
+    { PKEY_PropList_ContentViewModeForBrowse, "PKEY_PropList_ContentViewModeForBrowse"},
+    { PKEY_DescriptionID, "PKEY_DescriptionID" },
+    { PKEY_FullText, "PKEY_FullText" },
+    { PKEY_FileExtension, "PKEY_FileExtension" },
+    { PKEY_LayoutPattern_ContentViewModeForBrowse, "PKEY_LayoutPattern_ContentViewModeForBrowse" },
+    { PKEY_ApplicationName, "PKEY_ApplicationName" },
+    { PKEY_DateAccessed, "PKEY_DateAccessed" },
+    { PKEY_ParsingBindContext, "PKEY_ParsingBindContext" },
+    { PKEY_StatusBarSelectedItemCount, "PKEY_StatusBarSelectedItemCount" }
 });
 
 HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VARIANT* pv)
 {
     ProfilingScope pScope;
-    pScope.SetValue(DetailTypesLookup.GetName(pscid->fmtid));
+    pScope.SetValue(DetailTypesLookup.GetName(*pscid));
     CHECK_INIT();
 
     wchar_t path[MAX_PATH];
@@ -1228,7 +1219,7 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
     const PboPidl* qp = (const PboPidl*)pidl;
     EXPECT_SINGLE_PIDL(qp);
 
-    DebugLogger::TraceLog(std::format("file {} Detail {}", (pboFile->GetFolder()->fullPath / qp->GetFilePath()).string(), DetailTypesLookup.GetName(pscid->fmtid)), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format("file {} Detail {}", (pboFile->GetFolder()->fullPath / qp->GetFilePath()).string(), DetailTypesLookup.GetName(*pscid)), std::source_location::current(), __FUNCTION__);
 
     if (pscid->fmtid == PKEY_ItemNameDisplay.fmtid &&
         pscid->pid == PKEY_ItemNameDisplay.pid)

@@ -191,6 +191,9 @@
     <ClCompile Include="ClassFactory.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GUIDLookup.ixx">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc">

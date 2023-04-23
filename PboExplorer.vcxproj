@@ -440,6 +440,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="FileWatcher.ixx" />
+    <ClCompile Include="GUIDLookup.ixx" />
     <ClCompile Include="lib\ArmaPboLib\lib\sha1.c" />
     <ClCompile Include="lib\ArmaPboLib\src\pbo.cpp" />
     <ClCompile Include="PboContextMenu.cpp">
