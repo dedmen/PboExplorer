@@ -9,6 +9,7 @@
 
 import Encoding;
 import TempDiskFile;
+import Tracy;
 
 PboFileStream::PboFileStream(std::shared_ptr<PboFile> pboFile, std::filesystem::path filePath) :
     pboFile(pboFile),
@@ -17,6 +18,7 @@ PboFileStream::PboFileStream(std::shared_ptr<PboFile> pboFile, std::filesystem::
 	pboReader(pboInputStream),
     fileBuffer(pboReader, *[this, filePath]()
     {
+            ProfilingScope pScope;
 	    pboReader.readHeaders();
 
 	    auto& pboFiles = pboReader.getFiles();
@@ -47,6 +49,8 @@ PboFileStream::~PboFileStream()
 // IUnknown
 HRESULT PboFileStream::QueryInterface(REFIID riid, void** ppvObject)
 {
+    ProfilingScope pScope;
+    pScope.SetValue(DebugLogger::GetGUIDName(riid).first);
     DebugLogger_OnQueryInterfaceEntry(riid);
     if (IsEqualIID(riid, IID_IStream))
         *ppvObject = (IStream*)this;
@@ -67,6 +71,7 @@ HRESULT PboFileStream::QueryInterface(REFIID riid, void** ppvObject)
 // IStream
 HRESULT PboFileStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
 {
+    ProfilingScope pScope;
     ULONG didRead = 0;
 
     if (tempFile) {
@@ -96,6 +101,7 @@ HRESULT PboFileStream::Read(void* pv, ULONG cb, ULONG* pcbRead)
 
 HRESULT PboFileStream::Write(const void* pv, ULONG cb, ULONG* pcbWritten)
 {
+    ProfilingScope pScope;
     // https://docs.microsoft.com/en-us/windows/win32/api/objidl/nf-objidl-isequentialstream-write
     TransformToWritable();
 
@@ -121,6 +127,7 @@ HRESULT PboFileStream::Write(const void* pv, ULONG cb, ULONG* pcbWritten)
 HRESULT PboFileStream::Seek(
     LARGE_INTEGER dlibMove, DWORD dwOrigin, ULARGE_INTEGER* plibNewPosition)
 {
+    ProfilingScope pScope;
     switch (dwOrigin)
     {
     default:
@@ -146,7 +153,7 @@ HRESULT PboFileStream::SetSize(ULARGE_INTEGER newSize)
 
 HRESULT PboFileStream::CopyTo(IStream* dstStream, ULARGE_INTEGER bytesToCopy, ULARGE_INTEGER* nBytesRead, ULARGE_INTEGER* nBytesWritten)
 {
-
+    ProfilingScope pScope;
     size_t sizeLeft = bytesToCopy.QuadPart;
 
     std::array<char, 4096> buf;
@@ -175,6 +182,7 @@ HRESULT PboFileStream::CopyTo(IStream* dstStream, ULARGE_INTEGER bytesToCopy, UL
 
 HRESULT PboFileStream::Commit(DWORD)
 {
+    ProfilingScope pScope;
     //https://docs.microsoft.com/en-us/windows/win32/api/wtypes/ne-wtypes-stgc
     // write to pbo file
 
@@ -210,6 +218,7 @@ HRESULT PboFileStream::UnlockRegion(
 }
 HRESULT PboFileStream::Stat(STATSTG* pstatstg, DWORD grfStatFlag)
 {
+    ProfilingScope pScope;
     ZeroMemory(pstatstg, sizeof(STATSTG));
 
     pstatstg->cbSize.QuadPart = fileSize;
@@ -235,7 +244,9 @@ HRESULT PboFileStream::Clone(IStream**)
     return(E_NOTIMPL);
 }
 
-void PboFileStream::TransformToWritable() {
+void PboFileStream::TransformToWritable()
+{
+    ProfilingScope pScope;
     if (tempFile)
         return;
 

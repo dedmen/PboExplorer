@@ -106,6 +106,7 @@ export namespace Sentry {
 			//sentry_options_set_database_path(options, "O:\\sentry");
 
 			sentry_options_set_require_user_consent(options, 1);
+			//sentry_options_set_on_crash();//#TODO can  catch crashes and show message and debugger attachment time in debug mode
 
 			sentry_set_level(SENTRY_LEVEL_DEBUG);
 

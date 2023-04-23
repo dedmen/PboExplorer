@@ -22,6 +22,7 @@ import TempDiskFile;
 #endif
 #include "PboPatcherLocked.hpp"
 
+import Tracy;
 
 static bool copyIStreamToFile(IStream* is, std::filesystem::path& fileName, INT64 size = 0, FILETIME* ft = nullptr)
 {
@@ -107,7 +108,7 @@ static bool copyIStreamToFile(IStream* is, std::filesystem::path& fileName, INT6
 
 PboContextMenu::PboContextMenu(PboFolder* folder, HWND hwnd, LPCITEMIDLIST pidlRoot, UINT cidl, LPCITEMIDLIST* apidl)
 {
-    
+    ProfilingScope pScope;
     m_folder = folder;
     m_hwnd = hwnd;
     m_pidlRoot = ILClone(pidlRoot);
@@ -128,6 +129,8 @@ PboContextMenu::~PboContextMenu()
 // IUnknown
 HRESULT PboContextMenu::QueryInterface(REFIID riid, void** ppvObject)
 {
+    ProfilingScope pScope;
+    pScope.SetValue(DebugLogger::GetGUIDName(riid).first);
     DebugLogger_OnQueryInterfaceEntry(riid);
 
     if (COMJoiner::QueryInterfaceJoiner(riid, ppvObject)) {
@@ -188,6 +191,7 @@ static const wchar_t* getContextText(int idx)
 HRESULT PboContextMenu::QueryContextMenu(
     HMENU hmenu, UINT indexMenu, UINT idCmdFirst, UINT idCmdLast, UINT uFlags)
 {
+    ProfilingScope pScope;
     //return m_DefCtxMenu->QueryContextMenu(hmenu, indexMenu, idCmdFirst, idCmdLast, uFlags);
 
 
@@ -252,6 +256,7 @@ HRESULT PboContextMenu::QueryContextMenu(
 
 HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
 {
+    ProfilingScope pScope;
     // https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-icontextmenu-invokecommand
     //#TODO Check the cbSize member of pici to determine which structure (CMINVOKECOMMANDINFO or CMINVOKECOMMANDINFOEX) was passed in. 
 
@@ -562,6 +567,7 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
 
     return(S_OK);
 }
+
 HRESULT PboContextMenu::GetCommandString(
     UINT_PTR idCmd, UINT uFlags, UINT*, LPSTR pszName, UINT cchMax)
 {

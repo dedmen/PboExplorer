@@ -22,6 +22,8 @@ import TempDiskFile;
 #define CMIC_MASK_SHIFT_DOWN 0x10000000
 #endif
 
+import Tracy;
+
 PboFolderContextMenu::PboFolderContextMenu(PboFolder* folder, HWND hwnd) //, LPCITEMIDLIST pidlRoot, UINT cidl, LPCITEMIDLIST* apidl
 {
     m_folder = folder;
@@ -40,6 +42,8 @@ PboFolderContextMenu::~PboFolderContextMenu()
 // IUnknown
 HRESULT PboFolderContextMenu::QueryInterface(REFIID riid, void** ppvObject)
 {
+    ProfilingScope pScope;
+    pScope.SetValue(DebugLogger::GetGUIDName(riid).first);
     DebugLogger_OnQueryInterfaceEntry(riid);
 
     if (COMJoiner::QueryInterfaceJoiner(riid, ppvObject)) {
@@ -108,6 +112,7 @@ HRESULT PboFolderContextMenu::QueryContextMenu(
 
 HRESULT PboFolderContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
 {
+    ProfilingScope pScope;
     // https://docs.microsoft.com/en-us/windows/win32/api/shobjidl_core/nf-shobjidl_core-icontextmenu-invokecommand
     //#TODO Check the cbSize member of pici to determine which structure (CMINVOKECOMMANDINFO or CMINVOKECOMMANDINFOEX) was passed in. 
 

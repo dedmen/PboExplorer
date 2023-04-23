@@ -23,6 +23,7 @@ const GUID IID_IAsyncOperation =
 import TempDiskFile;
 
 import Encoding;
+import Tracy;
 
 HRESULT QLoadFromStream(IStream* pStm, LPITEMIDLIST* pidl)
 {
@@ -74,6 +75,7 @@ PboDataObject::PboDataObject(void)
 PboDataObject::PboDataObject(std::shared_ptr<PboSubFolder> rootfolder, PboFolder* mainFolder, LPCITEMIDLIST pidl,
     UINT cidl, LPCITEMIDLIST* apidl)
 {
+    ProfilingScope pScope;
     //m_dir = dir;
     m_asyncMode = true; // OS_MIN_VISTA;
     m_inAsyncOperation = FALSE;
@@ -253,6 +255,8 @@ void PboDataObject::addFilesToLists(Dir* dir, const wchar_t* offset)
 // IUnknown
 HRESULT PboDataObject::QueryInterface(REFIID riid, void** ppvObject)
 {
+    ProfilingScope pScope;
+    pScope.SetValue(DebugLogger::GetGUIDName(riid).first);
     DebugLogger_OnQueryInterfaceEntry(riid);
 #if _DEBUG
     static const GUID IID_IApplicationFrame = //{143715D9-A015-40EA-B695-D5CC267E36EE}
@@ -316,7 +320,7 @@ HRESULT PboDataObject::QueryInterface(REFIID riid, void** ppvObject)
     //else if (IsEqualIID(riid, (GUID{ 0x4C1E39E1, 0xE3E3, 0x4296, 0xAA, 0x86, 0xEC, 0x93, 0x8D, 0x89, 0x6E, 0x92 }))) { DebugLogger_OnQueryInterfaceExitUnhandled(riid); *ppvObject = nullptr; return(E_NOINTERFACE); }
     //else if (IsEqualIID(riid, (GUID{ 0x1C733A30, 0x2A1C, 0x11CE, 0xAD, 0xE5, 0x00, 0xAA, 0x00, 0x44, 0x77, 0x3D }))) { DebugLogger_OnQueryInterfaceExitUnhandled(riid); *ppvObject = nullptr; return(E_NOINTERFACE); }
 
-
+    // 3CEE8CC1-1ADB-327F-9B97-7A9C8089BFB3 IID_IDataObject 
 
     //#TODO riid = {IID_IDataObjectAsyncCapability}
 
@@ -446,6 +450,7 @@ public:
 // IDataObject
 HRESULT PboDataObject::GetData(FORMATETC* pformatetc, STGMEDIUM* pmedium)
 {
+    ProfilingScope pScope;
     wchar_t buffer[128];
     GetClipboardFormatNameW(pformatetc->cfFormat, buffer, 127);
 
@@ -943,6 +948,7 @@ LABEL_15:
 
 HRESULT PboDataObject::GetDataHere(FORMATETC* pformatetc, STGMEDIUM* pmedium)
 {
+    ProfilingScope pScope;
     wchar_t buffer[128];
     GetClipboardFormatNameW(pformatetc->cfFormat, buffer, 127);
 
@@ -979,7 +985,7 @@ HRESULT PboDataObject::GetDataHere(FORMATETC* pformatetc, STGMEDIUM* pmedium)
 
 HRESULT PboDataObject::QueryGetData(FORMATETC* pformatetc)
 {
-
+    ProfilingScope pScope;
     wchar_t buffer[128];
     GetClipboardFormatNameW(pformatetc->cfFormat, buffer, 127);
 
@@ -1029,6 +1035,7 @@ HRESULT PboDataObject::GetCanonicalFormatEtc(FORMATETC*, FORMATETC*)
 
 HRESULT PboDataObject::SetData(FORMATETC* tf, STGMEDIUM* med, BOOL b)
 {
+    ProfilingScope pScope;
     wchar_t buffer[128];
     GetClipboardFormatNameW(tf->cfFormat, buffer, 127);
 
@@ -1100,9 +1107,6 @@ HRESULT PboDataObject::SetData(FORMATETC* tf, STGMEDIUM* med, BOOL b)
     return S_OK;
 }
 
-
-
-
 class FormatEnumerator : GlobalRefCounted, public RefCountedCOM<FormatEnumerator, IEnumFORMATETC> {
 
 public:
@@ -1132,6 +1136,8 @@ public:
 // IUnknown
 HRESULT FormatEnumerator::QueryInterface(REFIID riid, void** ppvObject)
 {
+    ProfilingScope pScope;
+    pScope.SetValue(DebugLogger::GetGUIDName(riid).first);
     DebugLogger_OnQueryInterfaceEntry(riid);
     if (COMJoiner::QueryInterfaceJoiner(riid, ppvObject)) {
         AddRef();
@@ -1263,6 +1269,7 @@ HRESULT PboDataObject::IsDirty(void)
 
 HRESULT PboDataObject::Load(IStream* pStm)
 {
+    ProfilingScope pScope;
     HRESULT hr;
     if (FAILED(hr = QLoadFromStream(pStm, &m_pidlRoot)))
         return(hr);
@@ -1329,6 +1336,7 @@ HRESULT PboDataObject::Load(IStream* pStm)
  
 HRESULT PboDataObject::Save(IStream* pStm, BOOL)
 {
+    ProfilingScope pScope;
     HRESULT hr;
     if (FAILED(hr = QSaveToStream(pStm, m_pidlRoot)))
         return(hr);

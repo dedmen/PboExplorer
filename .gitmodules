@@ -1,3 +1,6 @@
 [submodule "lib/sentry"]
 	path = lib/sentry
 	url = https://github.com/getsentry/sentry-native.git
+[submodule "lib/tracy"]
+	path = lib/tracy
+	url = https://github.com/wolfpld/tracy.git

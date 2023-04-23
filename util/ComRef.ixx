@@ -353,7 +353,7 @@ public:
 
 std::atomic_uint32_t g_DllRefCount;
 
-#define GREF_Debug 1
+#define GREF_Debug 0
 
 
 //import Hashing;
@@ -389,6 +389,7 @@ public:
 
     GlobalRefCounted(std::source_location location = std::source_location::current()) : MyLocation(location) {
         ++g_DllRefCount;
+        cant do this, the list may not be initialized yet before we run this
         DllRefCountList.insert(this);
     }
     virtual ~GlobalRefCounted() {

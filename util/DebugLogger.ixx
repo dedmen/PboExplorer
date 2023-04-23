@@ -33,7 +33,7 @@ export enum class DebugInterestLevel {
     Interested
 };
 
-export using LookupInfoT = std::pair<std::string, DebugInterestLevel>;
+export using LookupInfoT = std::pair<std::string_view, DebugInterestLevel>;
 
 
 export class DebugLogger
@@ -48,16 +48,13 @@ public:
     static void WarnLog(const std::string& message, const std::source_location location, const char* funcName);
 
     static bool IsIIDUninteresting(const GUID& riid);
-
-private:
-
     static LookupInfoT GetGUIDName(const GUID& guid);
 };
 
 
+using LookupInfoStorageT = std::pair<std::string, DebugInterestLevel>;
 
-
-static std::pair<GUID, LookupInfoT> LookupFromText(const char* name, const wchar_t* guid, DebugInterestLevel level = DebugInterestLevel::Normal) {
+static std::pair<GUID, LookupInfoStorageT> LookupFromText(const char* name, const wchar_t* guid, DebugInterestLevel level = DebugInterestLevel::Normal) {
     GUID res;
 
     CLSIDFromString(guid, &res);
@@ -69,7 +66,7 @@ concept IsIUnknown = std::is_base_of_v<IUnknown, T>;
 
 
 template<IsIUnknown T>
-constexpr std::pair<GUID, LookupInfoT> LookupFromType(DebugInterestLevel level = DebugInterestLevel::Normal) {
+constexpr std::pair<GUID, LookupInfoStorageT> LookupFromType(DebugInterestLevel level = DebugInterestLevel::Normal) {
 
     std::string_view name(typeid(T).name());
 
@@ -94,7 +91,8 @@ namespace std {
     };
 }
 
-static std::unordered_map<GUID, LookupInfoT> guidLookupTable{
+
+static std::unordered_map<GUID, LookupInfoStorageT> guidLookupTable{
 
 #pragma push_macro("DEFINE_GUID")
 #undef DEFINE_GUID
@@ -632,13 +630,18 @@ static std::unordered_map<GUID, LookupInfoT> guidLookupTable{
         LookupFromType<IInspectable>(DebugInterestLevel::NotInterested),
         LookupFromType<IQueryAssociations>(),
 
+        LookupFromText("IID_IDataObject", L"{3CEE8CC1-1ADB-327F-9B97-7A9C8089BFB3}"), // https://microsoft.public.platformsdk.shell.narkive.com/t6GVO0vR/sendmail-in-xp
+
+
+        // general ref https://gist.github.com/invokethreatguy/b2482f4204d2e71dcb5f9a081ccf7baf
+
 #pragma pop_macro("DEFINE_GUID")
 };
 
 
 
-std::ofstream logFile = std::ofstream("O:\\testlog.log", std::ofstream::app | std::ofstream::out);
-std::ofstream logFileBad = std::ofstream("O:\\testlogBad.log", std::ofstream::app | std::ofstream::out);
+std::ofstream logFile = std::ofstream("P:\\testlog.log", std::ofstream::app | std::ofstream::out);
+std::ofstream logFileBad = std::ofstream("P:\\testlogBad.log", std::ofstream::app | std::ofstream::out);
 
 
 void DebugLogger::OnQueryInterfaceEntry(const GUID& riid, const std::source_location location, const char* funcName)
@@ -689,6 +692,7 @@ void DebugLogger::OnQueryInterfaceExitUnhandled(const GUID& riid, const std::sou
     }
 }
 
+//#TODO take string view
 void DebugLogger::TraceLog(const std::string& message, const std::source_location location, const char* funcName)
 {
     auto prnt = std::format("[{:%T}] T [{}] - {}\n", std::chrono::system_clock::now(), funcName, message);
@@ -749,7 +753,10 @@ LookupInfoT DebugLogger::GetGUIDName(const GUID& guid)
         auto guidName = UTF8::Encode(guidString);
         ::CoTaskMemFree(guidString);
 
-        return LookupInfoT{ guidName, DebugInterestLevel::Interested }; // we are very interested in unknown GUIDs
+        // Every entry must be in lookup table, because we return stringview
+        auto inserted = guidLookupTable.insert({ guid, { guidName, DebugInterestLevel::Interested } }); // we are very interested in unknown GUIDs
+
+        return inserted.first->second;
     }
 }
 

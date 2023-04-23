@@ -17,6 +17,7 @@
 // https://github.com/vbaderks/msf/blob/4e91fcc409d196f8ddc350a467f484daf40fc0e1/include/msf/shell_folder_impl.h#L1146
 
 import Encoding;
+import Tracy;
 
 
 ShellExt::ShellExt()
@@ -32,6 +33,8 @@ ShellExt::~ShellExt()
 
 STDMETHODIMP ShellExt::QueryInterface(REFIID riid, LPVOID* ppReturn)
 {
+	ProfilingScope pScope;
+	pScope.SetValue(DebugLogger::GetGUIDName(riid).first);
 	DebugLogger_OnQueryInterfaceEntry(riid);
 	*ppReturn = nullptr;
 
@@ -71,6 +74,7 @@ STDMETHODIMP ShellExt::QueryInterface(REFIID riid, LPVOID* ppReturn)
 STDMETHODIMP ShellExt::Initialize(
 	LPCITEMIDLIST pidlFolder, LPDATAOBJECT pDataObj, HKEY hProgID)
 {
+	ProfilingScope pScope;
 	FORMATETC fmt = { CF_HDROP, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
 	STGMEDIUM stg = { TYMED_HGLOBAL };
 	HDROP     hDrop;
@@ -122,6 +126,7 @@ STDMETHODIMP ShellExt::QueryContextMenu(
 	HMENU hmenu, UINT uMenuIndex, UINT uidFirstCmd,
 	UINT uidLastCmd, UINT uFlags)
 {
+	ProfilingScope pScope;
 	// If the flags include CMF_DEFAULTONLY then we shouldn't do anything.
 	if (uFlags & CMF_DEFAULTONLY)
 		return MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, 0);
@@ -143,6 +148,7 @@ STDMETHODIMP ShellExt::QueryContextMenu(
 STDMETHODIMP ShellExt::GetCommandString(
 	UINT_PTR idCmd, UINT uFlags, UINT* pwReserved, LPSTR pszName, UINT cchMax)
 {
+	ProfilingScope pScope;
 	//USES_CONVERSION;
 
 	// Check idCmd, it must be 0 since we have only one menu item.
@@ -206,6 +212,7 @@ STDMETHODIMP ShellExt::GetCommandString(
 
 STDMETHODIMP ShellExt::InvokeCommand(LPCMINVOKECOMMANDINFO pCmdInfo)
 {
+	ProfilingScope pScope;
 	LPCMINVOKECOMMANDINFOEX test = (LPCMINVOKECOMMANDINFOEX)pCmdInfo;
 
 	// If lpVerb really points to a string, ignore this function call and bail out.
@@ -241,6 +248,7 @@ std::unordered_map<HWND, PropSheePageInfo> openPropSheets;
 
 BOOL OnInitDialog(HWND hwnd, LPARAM lParam)
 {
+	ProfilingScope pScope;
 	PROPSHEETPAGE* ppsp = (PROPSHEETPAGE*)lParam;
 	auto pboFile = * ((std::filesystem::path*)ppsp->lParam);
 	delete ((std::filesystem::path*)ppsp->lParam);
@@ -267,6 +275,7 @@ BOOL OnInitDialog(HWND hwnd, LPARAM lParam)
 
 BOOL OnApply(HWND hwnd, PSHNOTIFY* phdr)
 {
+	ProfilingScope pScope;
 	std::wstring buffer;
 	buffer.resize(2048);
 
@@ -380,8 +389,9 @@ UINT CALLBACK PropPageCallbackProc(HWND hwnd, UINT uMsg, LPPROPSHEETPAGE ppsp)
 
 extern HINSTANCE   g_hInst;
 
-HRESULT ShellExt::AddPages(LPFNADDPROPSHEETPAGE lpfnAddPageProc, LPARAM lParam) {
-
+HRESULT ShellExt::AddPages(LPFNADDPROPSHEETPAGE lpfnAddPageProc, LPARAM lParam)
+{
+	ProfilingScope pScope;
 	PROPSHEETPAGE psp{};
 	psp.dwSize = sizeof(PROPSHEETPAGE);
 	psp.dwFlags = PSP_USETITLE | PSP_USECALLBACK; // PSP_USEICONID | PSP_USEREFPARENT | 
@@ -418,6 +428,7 @@ HRESULT ShellExt::AddPages(LPFNADDPROPSHEETPAGE lpfnAddPageProc, LPARAM lParam) 
 
 std::vector<ContextMenuItem> ShellExt::QueryContextMenuFromCache()
 {
+	ProfilingScope pScope;
 	bool isFolders = std::ranges::all_of(selectedFiles, [](const std::filesystem::path path) -> bool {
 		return std::filesystem::is_directory(path);
 	});
@@ -671,7 +682,7 @@ HRESULT SignPbos(const std::vector<std::filesystem::path>& files) {
 
 std::vector<ContextMenuItem> ShellExt::CreateContextMenu_SingleFolder()
 {
-
+	ProfilingScope pScope;
 	// Pack with makePbo
 	// Pack with pboProject
 	// Pack with fileBank
@@ -927,6 +938,7 @@ std::vector<ContextMenuItem> ShellExt::CreateContextMenu_MultiFolder()
 
 std::vector<ContextMenuItem> ShellExt::CreateContextMenu_SinglePbo()
 {
+	ProfilingScope pScope;
 	//#TODO sign with bisign, need multiple toplevel items
 
 	ContextMenuItem rootItem{ L"Unpack with..", L"unpackWithAny", [](const std::vector<std::filesystem::path>& files) { 
@@ -1005,6 +1017,7 @@ std::vector<ContextMenuItem> ShellExt::CreateContextMenu_SinglePbo()
 
 std::vector<ContextMenuItem> ShellExt::CreateContextMenu_MultiPbo()
 {
+	ProfilingScope pScope;
 	//#TODO sign with bisign, need multiple toplevel items
 
 

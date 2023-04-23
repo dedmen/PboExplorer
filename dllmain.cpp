@@ -26,6 +26,7 @@
 
 import Registry;
 import Sentry;
+import Tracy;
 
 // data
 HINSTANCE   g_hInst;
@@ -74,6 +75,7 @@ STDAPI DllCanUnloadNow(VOID)
 /*---------------------------------------------------------------*/
 STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppReturn)
 {
+	ProfilingScope pScope;
 	//Util::WaitForDebuggerPrompt();
 #if ENABLE_SENTRY
 	Sentry::Init(g_hInst);

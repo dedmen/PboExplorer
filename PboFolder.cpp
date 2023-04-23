@@ -30,6 +30,7 @@
 #include "PboPatcherLocked.hpp"
 
 import Encoding;
+import Tracy;
 
 #define CHECK_INIT() \
   if( !checkInit() ) return( E_FAIL )
@@ -47,6 +48,8 @@ PboFolder::~PboFolder()
 
 HRESULT PboFolder::QueryInterface(const IID& riid, void** ppvObject)
 {
+    ProfilingScope pScope;
+    pScope.SetValue(DebugLogger::GetGUIDName(riid).first);
 
     //#TODO https://docs.microsoft.com/en-us/windows/win32/api/shlwapi/nf-shlwapi-qisearch
 
@@ -110,9 +113,9 @@ HRESULT PboFolder::QueryInterface(const IID& riid, void** ppvObject)
     return(S_OK);
 }
 
-HRESULT PboFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayName, ULONG* pchEaten, LPITEMIDLIST* ppidl,
-    ULONG* pdwAttributes)
+HRESULT PboFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayName, ULONG* pchEaten, LPITEMIDLIST* ppidl, ULONG* pdwAttributes)
 {
+    ProfilingScope pScope;
     CHECK_INIT();
 
     std::wstring_view path(pszDisplayName);
@@ -180,10 +183,6 @@ HRESULT PboFolder::ParseDisplayName(HWND hwnd, LPBC pbc, LPOLESTR pszDisplayName
     if (pchEaten) *pchEaten = eaten;
     return(S_OK);
 }
-
-
-
-
 
 
 class DirectoryEnumIDList :
@@ -335,16 +334,6 @@ HRESULT DirectoryEnumIDList::Clone(IEnumIDList** ppenum)
     return S_OK;
 }
 
-
-
-
-
-
-
-
-
-
-
 HRESULT PboFolder::EnumObjects(HWND hwnd, DWORD grfFlags, IEnumIDList** ppenumIDList)
 {
     CHECK_INIT();
@@ -357,6 +346,8 @@ HRESULT PboFolder::EnumObjects(HWND hwnd, DWORD grfFlags, IEnumIDList** ppenumID
 
 HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID& riid, void** ppv)
 {
+    ProfilingScope pScope;
+    pScope.SetValue(DebugLogger::GetGUIDName(riid).first);
     DebugLogger_OnQueryInterfaceEntry(riid);
     CHECK_INIT();
 
@@ -508,6 +499,8 @@ HRESULT PboFolder::CompareIDs(LPARAM lParam, LPCITEMIDLIST pidl1, LPCITEMIDLIST 
 
 HRESULT PboFolder::CreateViewObject(HWND hwnd, const IID& riid, void** ppv)
 {
+    ProfilingScope pScope;
+    pScope.SetValue(DebugLogger::GetGUIDName(riid).first);
     DebugLogger_OnQueryInterfaceEntry(riid);
     *ppv = nullptr;
 
@@ -653,6 +646,7 @@ HRESULT PboFolder::CreateViewObject(HWND hwnd, const IID& riid, void** ppv)
 
 HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfInOut)
 {
+    ProfilingScope pScope;
     const PboPidl* qp = (const PboPidl*)apidl[0];
     EXPECT_SINGLE_PIDL(qp);
 
@@ -717,6 +711,8 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
                 flag |= SFGAO_GHOSTED | SFGAO_HIDDEN; // The specified items are shown as dimmed and unavailable to the user.
             return flag;
         }
+
+        Util::WaitForDebuggerPrompt();
     };
 
     for (size_t i = 0; i < cidl; i++)
@@ -733,6 +729,8 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
 HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl, const IID& riid, UINT* rgfReserved,
     void** ppv)
 {
+    ProfilingScope pScope;
+    pScope.SetValue(DebugLogger::GetGUIDName(riid).first);
     DebugLogger_OnQueryInterfaceEntry(riid);
     // https://github.com/microsoft/Windows-classic-samples/blob/master/Samples/Win7Samples/winui/shell/shellextensibility/explorerdataprovider/ExplorerDataProvider.cpp#L673
 
@@ -1029,6 +1027,7 @@ static HRESULT stringToStrRet(std::wstring_view str, STRRET* sr)
 
 HRESULT PboFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, SHGDNF uFlags, STRRET* pName)
 {
+    ProfilingScope pScope;
     CHECK_INIT();
 
     const PboPidl* qp = (const PboPidl*)pidl;
@@ -1050,6 +1049,7 @@ HRESULT PboFolder::GetDisplayNameOf(LPCITEMIDLIST pidl, SHGDNF uFlags, STRRET* p
 
 HRESULT PboFolder::SetNameOf(HWND hwnd, LPCITEMIDLIST pidl, LPCOLESTR pszName, SHGDNF uFlags, LPITEMIDLIST* ppidlOut)
 {
+    ProfilingScope pScope;
     CHECK_INIT();
 
     const PboPidl* qp = (const PboPidl*)pidl;
@@ -1176,8 +1176,46 @@ static HRESULT stringToVariant(std::wstring_view str, VARIANT* pv)
     return(pv->bstrVal ? S_OK : E_OUTOFMEMORY);
 }
 
+class GUIDNameLookup {
+    std::vector<std::pair<GUID, std::string_view>> lookupList;
+public:
+    constexpr GUIDNameLookup(std::initializer_list<std::pair<GUID, std::string_view>> init) : lookupList(init) {
+        
+    }
+    //#TODO binary search, more modular, lookup template type by GUID. We can reuse for debug logger it uses unordered map for lookup
+    // Could also use it in GetDetailsEx to look up a functor which will be called to process the request
+    std::string_view GetName(const GUID& guid) {
+        const auto found = std::find_if(lookupList.begin(), lookupList.end(), [&guid](const std::pair<GUID, std::string_view>& it) {
+            return  it.first == guid;
+        });
+        if (found == lookupList.end())
+            return {};
+        return found->second;
+    }
+};
+
+GUIDNameLookup DetailTypesLookup(
+{
+    { PKEY_ItemNameDisplay.fmtid, "PKEY_ItemNameDisplay" },
+    { PKEY_Size.fmtid, "PKEY_Size" },
+    { FMTID_WebView, "FMTID_WebView" },
+    //{FMTID_PropList, "FMTID_PropList"},
+    { PKEY_ItemFolderPathDisplay.fmtid, "PKEY_ItemFolderPathDisplay" },
+    { PKEY_PropList_ContentViewModeForBrowse.fmtid, "PKEY_PropList_ContentViewModeForBrowse"},
+    { PKEY_DescriptionID.fmtid, "PKEY_DescriptionID" },
+    { PKEY_FullText.fmtid, "PKEY_FullText" },
+    { PKEY_FileExtension.fmtid, "PKEY_FileExtension" },
+    { PKEY_LayoutPattern_ContentViewModeForBrowse.fmtid, "PKEY_LayoutPattern_ContentViewModeForBrowse" },
+    { PKEY_ApplicationName.fmtid, "PKEY_ApplicationName" },
+    { PKEY_DateAccessed.fmtid, "PKEY_DateAccessed" },
+    { PKEY_ParsingBindContext.fmtid, "PKEY_ParsingBindContext" },
+    { PKEY_StatusBarSelectedItemCount.fmtid, "PKEY_StatusBarSelectedItemCount" }
+});
+
 HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VARIANT* pv)
 {
+    ProfilingScope pScope;
+    pScope.SetValue(DetailTypesLookup.GetName(pscid->fmtid));
     CHECK_INIT();
 
     wchar_t path[MAX_PATH];
@@ -1190,7 +1228,7 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
     const PboPidl* qp = (const PboPidl*)pidl;
     EXPECT_SINGLE_PIDL(qp);
 
-    DebugLogger::TraceLog(std::format(L"file {}", (pboFile->GetFolder()->fullPath / qp->GetFilePath()).wstring()), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format("file {} Detail {}", (pboFile->GetFolder()->fullPath / qp->GetFilePath()).string(), DetailTypesLookup.GetName(pscid->fmtid)), std::source_location::current(), __FUNCTION__);
 
     if (pscid->fmtid == PKEY_ItemNameDisplay.fmtid &&
         pscid->pid == PKEY_ItemNameDisplay.pid)
@@ -1304,6 +1342,21 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
     else if (pscid->fmtid == PKEY_StatusBarSelectedItemCount.fmtid) // need to respect pid if you wanna use this
         return(E_INVALIDARG);
 
+    // https://github.com/google/google-drive-shell-extension/blob/master/DriveFusion/PropertyHelper.cpp#L105
+    // https://github.com/mvaneerde/blog/blob/d1c51904bf2403beacfc46282a31bc4f817bd55f/shellproperty/shellproperty/properties.cpp#L157
+    // https://matthewvaneerde.wordpress.com/2013/09/24/shellproperty-exe-v2-read-all-properties-on-a-file-set-properties-of-certain-non-vt_lpwstr-types/
+
+    // https://github.com/imharrywu/blog/blob/e8f188db5906b3fe234b45f3022485d75d59b351/win32/flickrdrive/ShFrwk/NseFileItem.cpp#L225
+
+    // Tar folder shell extension
+    //Ref https://www.viksoe.dk/code/tarfolder.htm
+    // https://github.com/imwuzhh/repo1/blob/master/vdrivense/ShFrwk/NseFileItem.cpp
+    //#TODO look at this https://github.com/imwuzhh/repo1/blob/master/vdrivense/ShFrwk/IdentityName.cpp#L20
+    // uses disk file monitoring, to merge a file back into archive. Using plain CopyItem to solve it seems better than doing a manual pbo write
+
+    // https://github.com/hughbe/windows-sdk-headers/blob/e8e9d4d50769ded01a2df905c6bf4355eb3fa8b5/Include/8.0/um/propkey.h#L5190 info on prop contents
+
+    // https://github.com/search?q=PKEY_DescriptionID+language%3AC%2B%2B&type=code&l=C%2B%2B
 
     return(E_INVALIDARG);
 }
@@ -1367,6 +1420,7 @@ static HRESULT getColumnTitle(int idx, SHELLDETAILS* psd)
 
 HRESULT PboFolder::GetDetailsOf(LPCITEMIDLIST pidl, UINT iColumn, SHELLDETAILS* psd)
 {
+    ProfilingScope pScope;
     if (!pidl)
     {
         if (iColumn > 1) return(E_INVALIDARG);
@@ -1435,6 +1489,7 @@ HRESULT PboFolder::GetClassID(CLSID* pClassID)
 
 HRESULT PboFolder::Initialize(LPCITEMIDLIST pidl)
 {
+    ProfilingScope pScope;
     if (m_pidl)
         return(HRESULT_FROM_WIN32(ERROR_ALREADY_INITIALIZED));
 
@@ -1465,6 +1520,7 @@ HRESULT PboFolder::GetCurFolder(LPITEMIDLIST* ppidl)
 
 HRESULT PboFolder::InitializeEx(IBindCtx* pbc, LPCITEMIDLIST pidlRoot, const PERSIST_FOLDER_TARGET_INFO* ppfti)
 {
+    ProfilingScope pScope;
     if (ppfti)
     {
         auto subPidl = ppfti->pidlTargetFolder;
@@ -1508,6 +1564,12 @@ HRESULT PboFolder::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 HRESULT PboFolder::GetThumbnailHandler(LPCITEMIDLIST pidlChild, IBindCtx* pbc, const IID& riid, void** ppv)
 {
+    ProfilingScope pScope;
+
+    //SHCreateFileExtractIcon()
+    //#TODO just do this?? https://github.com/imwuzhh/repo1/blob/58f52ee3b7501c65683591909c095d48f11ae68e/vdrivense/ShFrwk/NseFileItem.cpp#L96//#
+    //#TODO learn more from that
+
     ComRef<IQueryAssociations> qa;
     HRESULT hr = GetUIObjectOf(nullptr, 1, &pidlChild, IID_IQueryAssociations, nullptr, qa.AsQueryInterfaceTarget());
     if (FAILED(hr)) return(hr);
@@ -1581,6 +1643,7 @@ HRESULT PboFolder::GetThumbnailHandler(LPCITEMIDLIST pidlChild, IBindCtx* pbc, c
 
 HRESULT PboFolder::DragEnter(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
 {
+    ProfilingScope pScope;
     if (!pdwEffect)
         return E_INVALIDARG;
 
@@ -1759,7 +1822,7 @@ public:
 
 HRESULT PboFolder::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
 {
-
+    ProfilingScope pScope;
     ClipboardFormatHandler handler;
     handler.ReadFromFast(pDataObj);
 
@@ -2056,6 +2119,7 @@ HRESULT PboFolder::Drop(IDataObject* pDataObj, DWORD grfKeyState, POINTL pt, DWO
 
 HRESULT __stdcall PboFolder::BindToHandler(IBindCtx* pbc, REFGUID bhid, REFIID riid, void** ppv)
 {
+    ProfilingScope pScope;
     BHID_SFObject;
     BHID_SFUIObject;
     BHID_SFViewObject;
@@ -2118,6 +2182,7 @@ HRESULT __stdcall PboFolder::Compare(IShellItem* psi, SICHINTF hint, int* piOrde
 
 bool PboFolder::checkInit()
 {
+    ProfilingScope pScope;
     if (pboFile) return(true);
     if (!m_pidl) return(false);
 

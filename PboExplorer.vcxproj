@@ -281,7 +281,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>ENABLE_SENTRY;ARMA_PBO_LIB_WRITE;ARMA_PBO_LIB_SHA1;_DEBUG;PBOEXPLORER_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ENABLE_SENTRY;ARMA_PBO_LIB_WRITE;ARMA_PBO_LIB_SHA1;_DEBUG;PBOEXPLORER_EXPORTS;_WINDOWS;_USRDLL;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -289,6 +289,7 @@
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalIncludeDirectories>lib/sentry/external/crashpad/third_party/mini_chromium/mini_chromium/;lib/sentry/external/crashpad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -425,6 +426,7 @@
     <ClInclude Include="Util.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ClassFactory.ixx" />
     <ClCompile Include="ClipboardFormatHandler.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
     </ClCompile>
@@ -488,6 +490,8 @@
     <ClCompile Include="util\Hashing.ixx" />
     <ClCompile Include="util\Registry.ixx" />
     <ClCompile Include="util\Sentry.ixx" />
+    <ClCompile Include="util\Tracy.cpp" />
+    <ClCompile Include="util\Tracy.ixx" />
     <ClCompile Include="util\Version.ixx" />
   </ItemGroup>
   <ItemGroup>

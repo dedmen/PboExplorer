@@ -19,6 +19,9 @@
     <Filter Include="Source Files\util">
       <UniqueIdentifier>{4782eff1-ec63-4d7e-8cfd-65dcf50413d3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\lib\tracy">
+      <UniqueIdentifier>{ac196439-ffcc-4151-882f-3553242806d2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -177,6 +180,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="FileWatcher.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="util\Tracy.ixx">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="util\Tracy.cpp">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="ClassFactory.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

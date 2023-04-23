@@ -8,14 +8,15 @@ enum class PboPidlFileType
 };
 
 //#TODO total size needs to be 4B aligned
+#pragma pack(push,1)
 struct PboPidl
 {
-#pragma pack(push,1)
+
     uint16_t cb;
 private:
     // used as a sanity check, cb + packMask always == 0xBEEF
     uint16_t packMask;
-#pragma pack(pop)
+
 public:
     PboPidlFileType type;
     //int idx;
@@ -101,3 +102,7 @@ public:
     }
 
 };
+
+#pragma pack(pop)
+
+//static_assert(sizeof(PboPidl) % 4 == 0, "must be 4b aligned");

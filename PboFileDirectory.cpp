@@ -9,6 +9,7 @@
 #include <windows.h>
 
 import Encoding;
+import Tracy;
 
 const std::filesystem::path& PboSubFolder::GetPboDiskPath() const
 {
@@ -34,6 +35,7 @@ std::shared_ptr<PboFile> PboSubFolder::GetRootFile() const
 
 std::optional<std::reference_wrapper<const PboSubFile>> PboSubFolder::GetFileByPath(std::filesystem::path inputPath) const
 {
+    ProfilingScope pScope;
     auto relPath = inputPath;  //#TODO cleanup
 
     auto elementCount = std::distance(relPath.begin(), relPath.end());
@@ -72,6 +74,7 @@ std::optional<std::reference_wrapper<const PboSubFile>> PboSubFolder::GetFileByP
 
 std::shared_ptr<PboSubFolder> PboSubFolder::GetFolderByPath(std::filesystem::path inputPath) const
 {
+    ProfilingScope pScope;
     std::shared_ptr<PboSubFolder> curFolder = std::const_pointer_cast<PboSubFolder>(shared_from_this());
 
     // get proper root directory in case we are a subfolder inside a pbo
@@ -94,6 +97,7 @@ std::shared_ptr<PboSubFolder> PboSubFolder::GetFolderByPath(std::filesystem::pat
 
 std::unique_ptr<PboPidl> PboSubFolder::GetPidlListFromPath(std::filesystem::path inputPath) const //#TODO take path by const ref, we are copying here
 {
+    ProfilingScope pScope;
     struct TempPidl {
         PboPidlFileType type;
         std::filesystem::path fileName;
@@ -161,6 +165,7 @@ PboFile::PboFile()
 
 void PboFile::ReadFrom(std::filesystem::path inputPath)
 {
+    ProfilingScope pScope;
     diskPath = inputPath;
     std::ifstream readStream(inputPath, std::ios::in | std::ios::binary);
 
@@ -220,6 +225,7 @@ void PboFile::ReadFrom(std::filesystem::path inputPath)
 
 void PboFile::ReloadFrom(std::filesystem::path inputPath)
 {
+    ProfilingScope pScope;
     if (inputPath != diskPath)
         Util::TryDebugBreak();
 
@@ -347,6 +353,7 @@ std::shared_ptr<PboFile> PboFile::GetRootFile() const
 //#TODO We need to make PboFile's re-scan if their origin pbo was repacked by FileWatcher
 std::optional<std::reference_wrapper<const PboSubFile>> PboFile::GetFileByPath(std::filesystem::path inputPath) const
 {
+    ProfilingScope pScope;
     std::shared_ptr<PboSubFolder> curFolder = rootFolder;
 
     // get proper root directory in case we are a subfolder inside a pbo
@@ -398,6 +405,7 @@ PboSubFolderActiveRef::PboSubFolderActiveRef(std::shared_ptr<PboSubFolder> subFo
 
 std::shared_ptr<PboFile> PboFileDirectory::GetPboFile(std::filesystem::path path)
 {
+    ProfilingScope pScope;
     std::unique_lock lck(openLock);
     auto found = openFiles.find(path.lexically_normal().wstring());
 
