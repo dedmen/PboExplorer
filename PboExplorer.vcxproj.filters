@@ -194,6 +194,9 @@
     <ClCompile Include="GUIDLookup.ixx">
       <Filter>Source Files\util</Filter>
     </ClCompile>
+    <ClCompile Include="PropertyKeyLookup.ixx">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Resource.rc">

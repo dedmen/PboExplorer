@@ -35,6 +35,14 @@ public:
             return a.first < b.first;
         });
     }
+
+    constexpr BaseGUIDLookup(const BaseGUIDLookup& baseList, std::initializer_list<EntryT> init) : lookupList(baseList.lookupList) {
+        lookupList.append_range(init);
+        std::sort(lookupList.begin(), lookupList.end(), [](const EntryT& a, const EntryT& b) {
+            return a.first < b.first;
+        });
+    }
+
     //#TODO binary search, more modular, lookup template type by GUID. We can reuse for debug logger it uses unordered map for lookup
     // Could also use it in GetDetailsEx to look up a functor which will be called to process the request
     std::string_view GetName(const GUIDT& guid) {

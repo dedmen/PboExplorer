@@ -1177,14 +1177,12 @@ static HRESULT stringToVariant(std::wstring_view str, VARIANT* pv)
 }
 
 import GUIDLookup;
+import PropertyKeyLookup;
 
 
-std::strong_ordering operator <=> (const PROPERTYKEY& a, const PROPERTYKEY& b) noexcept {
-    if (const auto c = a.fmtid <=> b.fmtid; c != 0) return c;
-    return a.pid <=> b.pid;
-}
 
-BaseGUIDLookup<PROPERTYKEY,std::string_view> DetailTypesLookup(
+
+BaseGUIDLookup<PROPERTYKEY,std::string_view> DetailTypesLookup(PropertyKeyLookupMap,
 {
     { PKEY_ItemNameDisplay, "PKEY_ItemNameDisplay" },
     { PKEY_Size, "PKEY_Size" },
@@ -1193,6 +1191,7 @@ BaseGUIDLookup<PROPERTYKEY,std::string_view> DetailTypesLookup(
     //{FMTID_PropList, "FMTID_PropList"},
     { PKEY_ItemFolderPathDisplay, "PKEY_ItemFolderPathDisplay" },
     { PKEY_PropList_ContentViewModeForBrowse, "PKEY_PropList_ContentViewModeForBrowse"},
+    { PKEY_PropList_PreviewDetails, "PKEY_PropList_PreviewDetails"},
     { PKEY_DescriptionID, "PKEY_DescriptionID" },
     { PKEY_FullText, "PKEY_FullText" },
     { PKEY_FileExtension, "PKEY_FileExtension" },
@@ -1221,12 +1220,11 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
 
     DebugLogger::TraceLog(std::format("file {} Detail {}", (pboFile->GetFolder()->fullPath / qp->GetFilePath()).string(), DetailTypesLookup.GetName(*pscid)), std::source_location::current(), __FUNCTION__);
 
-    if (pscid->fmtid == PKEY_ItemNameDisplay.fmtid &&
-        pscid->pid == PKEY_ItemNameDisplay.pid)
+    if (*pscid == PKEY_ItemNameDisplay)
     {
         return(stringToVariant(qp->GetFileName().filename().wstring(), pv));
     }
-    else if (pscid->fmtid == PKEY_Size.fmtid && pscid->pid == PKEY_Size.pid)
+    else if (*pscid == PKEY_Size)
     {
         if (!qp->IsFile()) return(E_FAIL);
 
@@ -1310,28 +1308,38 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
     // C9944A21-A406-48FE-8225-AEC7E24C211B
     // contentviewmodeforbrowse
 
-    else if (pscid->fmtid == PKEY_PropList_ContentViewModeForBrowse.fmtid && pscid->pid == PKEY_PropList_ContentViewModeForBrowse.pid)
+    else if (*pscid == PKEY_PropList_ContentViewModeForBrowse)
         return(E_INVALIDARG);
-    else if (pscid->fmtid == PKEY_DescriptionID.fmtid)
+    else if (*pscid == PKEY_DescriptionID)
         return(E_INVALIDARG);
-    else if (pscid->fmtid == PKEY_FullText.fmtid)
+    else if (*pscid == PKEY_FullText)
         return(E_INVALIDARG);
-    else if (pscid->fmtid == PKEY_FileExtension.fmtid) {
+    else if (*pscid == PKEY_FileExtension) {
         // This is the file extension of the file based item, including the leading period. 
         if (!qp->IsFile()) return(E_FAIL);
 
         return stringToVariant(UTF8::Decode(qp->GetFileName().extension().string()), pv);
     }
-    else if (pscid->fmtid == PKEY_LayoutPattern_ContentViewModeForBrowse.fmtid)
+    else if (*pscid == PKEY_LayoutPattern_ContentViewModeForBrowse)
         return(E_INVALIDARG);
-    else if (pscid->fmtid == PKEY_ApplicationName.fmtid)
+    else if (*pscid == PKEY_ApplicationName)
         return(E_INVALIDARG);
-    else if (pscid->fmtid == PKEY_DateAccessed.fmtid)
+    else if (*pscid == PKEY_DateAccessed)
         return(E_INVALIDARG);
-    else if (pscid->fmtid == PKEY_ParsingBindContext.fmtid)
+    else if (*pscid == PKEY_ParsingBindContext)
         return(E_INVALIDARG);
-    else if (pscid->fmtid == PKEY_StatusBarSelectedItemCount.fmtid) // need to respect pid if you wanna use this
+    else if (*pscid == PKEY_StatusBarSelectedItemCount) // need to respect pid if you wanna use this
         return(E_INVALIDARG);
+    else if (*pscid == PKEY_PropList_InfoTip)
+        return stringToVariant(UTF8::Decode("lol funni"), pv);
+    else if (*pscid == PKEY_Comment)
+        return stringToVariant(UTF8::Decode("lol funni comment"), pv);
+    else if (*pscid == PKEY_PropList_PreviewTitle)
+        return stringToVariant(UTF8::Decode("lol funni preview title"), pv);
+    else if (*pscid == PKEY_PropList_PreviewDetails)
+        return stringToVariant(UTF8::Decode("lol funni preview details"), pv);
+
+    DebugLogger::TraceLog(std::format("Unimplemented prop file {} Detail {}", (pboFile->GetFolder()->fullPath / qp->GetFilePath()).string(), DetailTypesLookup.GetName(*pscid)), std::source_location::current(), __FUNCTION__);
 
     // https://github.com/google/google-drive-shell-extension/blob/master/DriveFusion/PropertyHelper.cpp#L105
     // https://github.com/mvaneerde/blog/blob/d1c51904bf2403beacfc46282a31bc4f817bd55f/shellproperty/shellproperty/properties.cpp#L157
@@ -1341,7 +1349,7 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
 
     // Tar folder shell extension
     //Ref https://www.viksoe.dk/code/tarfolder.htm
-    // https://github.com/imwuzhh/repo1/blob/master/vdrivense/ShFrwk/NseFileItem.cpp
+    // 
     //#TODO look at this https://github.com/imwuzhh/repo1/blob/master/vdrivense/ShFrwk/IdentityName.cpp#L20
     // uses disk file monitoring, to merge a file back into archive. Using plain CopyItem to solve it seems better than doing a manual pbo write
 

@@ -467,6 +467,7 @@
     <ClCompile Include="ProgressDialogOperation.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="PropertyKeyLookup.ixx" />
     <ClCompile Include="TempDiskFile.ixx" />
     <ClCompile Include="UpdateHelperExe.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">false</ExcludedFromBuild>
