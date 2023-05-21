@@ -8,7 +8,7 @@
 
 import ComRef;
 #include "guid.hpp"
-#include "ContextMenu.hpp"
+import ContextMenu;
 
 class ShellExt :
 	GlobalRefCounted,

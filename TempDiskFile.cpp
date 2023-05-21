@@ -18,10 +18,10 @@ import TempDiskFile;
 
 #include "PboFileDirectory.hpp"
 #include "PboFileStream.hpp"
-#include "PboPatcherLocked.hpp"
 
 import DebugLogger;
 import FileWatcher;
+import PboPatcherLocked;
 
 import Encoding;
 import Hashing;

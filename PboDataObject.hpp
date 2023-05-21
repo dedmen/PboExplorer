@@ -1,8 +1,10 @@
 #pragma once
 #define NOMINMAX
 #include <shlobj.h>
+
+import <memory>;
 import ComRef;
-#include <memory>
+
 #include "PboFileDirectory.hpp"
 
 class PboFolder;

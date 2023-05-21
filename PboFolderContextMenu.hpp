@@ -2,7 +2,7 @@
 
 #define NOMINMAX
 #include <ShlObj.h>
-#include <vector>
+import <vector>;
 
 import ComRef;
 

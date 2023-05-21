@@ -2,11 +2,9 @@
 
 #include "resource.h"
 #include "DebugLogger.hpp"
-#include "GlobalCache.hpp"
 
 #include <fstream> // Addon builder reading config file
 #include "PboFileDirectory.hpp"
-#include "PboPatcherLocked.hpp"
 
 // CreatePropertySheetPageW
 #pragma comment( lib, "Comctl32" )
@@ -16,8 +14,14 @@
 // https://www.codeproject.com/Articles/11674/The-Mini-Shell-Extension-Framework-Part-III#ishellfolder_interface
 // https://github.com/vbaderks/msf/blob/4e91fcc409d196f8ddc350a467f484daf40fc0e1/include/msf/shell_folder_impl.h#L1146
 
+import <span>;
 import Encoding;
 import Tracy;
+import Registry;
+import GlobalCache;
+import ThirdPartyTools;
+import PboPatcher;
+import PboPatcherLocked;
 
 
 ShellExt::ShellExt()
@@ -457,82 +461,6 @@ std::vector<ContextMenuItem> ShellExt::QueryContextMenuFromCache()
 	return {};
 }
 
-std::filesystem::path ReadRegistryFilePathKey(HKEY hkey, std::wstring path, std::wstring key) {
-
-	HKEY hKey;
-	auto lRes = RegOpenKeyExW(hkey, path.data(), 0, KEY_READ, &hKey);
-	if (!SUCCEEDED(lRes))
-		return {};
-
-	WCHAR szBuffer[MAX_PATH];
-	DWORD dwBufferSize = sizeof(szBuffer);
-	DWORD type = 0;
-	lRes = RegQueryValueExW(hKey, key.data(), 0, &type, (LPBYTE)szBuffer, &dwBufferSize);
-	if (!SUCCEEDED(lRes))
-		return {};
-
-	if (type == REG_SZ && std::filesystem::exists(szBuffer))
-		return szBuffer;
-	if (type == REG_EXPAND_SZ) {
-		WCHAR szBufferEx[512];
-		ExpandEnvironmentStringsW(szBuffer, szBufferEx, sizeof(szBufferEx));
-		if (std::filesystem::exists(szBufferEx))
-			return szBufferEx;
-	}
-
-	return {};
-}
-
-std::filesystem::path GetA3ToolsPath() {
-	auto path = ReadRegistryFilePathKey(HKEY_CURRENT_USER, L"SOFTWARE\\Bohemia Interactive\\Arma 3 Tools", L"path");
-
-	if (!path.empty())
-		return path;
-
-	// Check some random paths of known Arma tools to see if we can find it that way
-	for (auto& it : {
-			L"SOFTWARE\\Bohemia Interactive\\CfgConvert",
-			L"SOFTWARE\\Bohemia Interactive\\Binarize",
-			L"SOFTWARE\\Bohemia Interactive\\BankRev",
-			L"SOFTWARE\\Bohemia Interactive\\DSUtils",
-			L"SOFTWARE\\Bohemia Interactive\\ImageToPAA",
-			L"SOFTWARE\\Bohemia Interactive\\Publisher",
-			L"SOFTWARE\\Bohemia Interactive\\TerrainBuilder"
-		}) {
-		path = ReadRegistryFilePathKey(HKEY_CURRENT_USER, it, L"path");
-
-		if (!path.empty())
-			return path.parent_path();
-	}
-
-	// fail
-	return {};
-}
-
-std::filesystem::path GetMikeroToolsPath() {
-	auto path = ReadRegistryFilePathKey(HKEY_CURRENT_USER, L"SOFTWARE\\Mikero\\DePbo", L"path");
-
-	if (!path.empty())
-		return path;
-
-	// Check some other paths to see if we can find it that way
-	for (auto& it : {
-			L"SOFTWARE\\Mikero\\DeOgg",
-			L"SOFTWARE\\Mikero\\DeRap",
-			L"SOFTWARE\\Mikero\\ExtractPbo",
-			L"SOFTWARE\\Mikero\\makePbo",
-			L"SOFTWARE\\Mikero\\Rapify"
-		}) {
-		path = ReadRegistryFilePathKey(HKEY_CURRENT_USER, it, L"path");
-
-		if (!path.empty())
-			return path.parent_path();
-	}
-
-	// fail
-	return {};
-}
-
 #pragma region ContextMenuTools
 
 HRESULT MikeroExtractPboToSubfolders(const std::vector<std::filesystem::path>& files) {
@@ -941,76 +869,56 @@ std::vector<ContextMenuItem> ShellExt::CreateContextMenu_SinglePbo()
 	ProfilingScope pScope;
 	//#TODO sign with bisign, need multiple toplevel items
 
-	ContextMenuItem rootItem{ L"Unpack with..", L"unpackWithAny", [](const std::vector<std::filesystem::path>& files) { 
-		// prefer mikero if available
-
-		auto MikeroToolsPath = GCache.GetFromCache("MikeroToolsPath", GetMikeroToolsPath);
-		if (!MikeroToolsPath.empty() && std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPboDos.exe")) {
-			return MikeroExtractPboToSubfolders(files);
-		}
-		else 
-		{
-			auto a3ToolsPath = GCache.GetFromCache("A3ToolsPath", GetA3ToolsPath);
-			if (!a3ToolsPath.empty() && std::filesystem::exists(a3ToolsPath / "BankRev" / "BankRev.exe")) {
-				return BankRevExtractPboToSubfolders(files);
-			}
-		}
-
-		return E_FAIL;
-	}};
-
-	auto a3ToolsPath = GCache.GetFromCache("A3ToolsPath", GetA3ToolsPath);
-	if (!a3ToolsPath.empty()) {
-
-		if (std::filesystem::exists(a3ToolsPath / "BankRev" / "BankRev.exe"))
-			rootItem.AddChild({ L"..BankRev", L"unpackWithBankRev", [a3ToolsPath](const std::vector<std::filesystem::path>& files) {
-
-
-				/*
-				Bankrev [-f|-folder destiantion] [-t|-time] PBO_file [PBO_file_2 ...]
-					  or -d|-diff PBO_file1 PBO_file2 (compare two PBOs)
-					  or -l|-log PBO_file (write to stdout list of files in archive)
-					  or -lf|-logFull PBO_file (write to stdout list of files in archive, path with prefix)
-					  or -p|-properties PBO_file (write out PBO properties)
-					  or -hash PBO_file (write out hash of PBO)
-					  or -statistics PBO_file (write the statistics of files lengths)
-					  or -prefix (the output folder will be set according to the PBO prefix)
-					  or -t|-time (keep file time from archive)
-				*/
-
-
-				SHELLEXECUTEINFO sei;
-				ZeroMemory(&sei, sizeof(sei));
-				sei.cbSize = (DWORD)sizeof(sei);
-				sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
-				auto path = (a3ToolsPath / "BankRev" / "BankRev.exe").native();
-				sei.lpFile = path.c_str();
-				//#TODO can specify multiple files here and reuse exact same code for multipbo
-				auto params = std::format(L"-t \"{}\"", files.front().native());
-				sei.lpParameters = params.c_str();
-				auto workDir = files.front().parent_path().native();
-				sei.lpDirectory = workDir.c_str();
-				//sei.hwnd = hwnd; //#TODO get HWND
-				sei.nShow = SW_SHOWNORMAL;
-
-				return ShellExecuteEx(&sei) ? S_OK : E_UNEXPECTED;
-			} });
-	}
-
-	auto MikeroToolsPath = GCache.GetFromCache("MikeroToolsPath", GetMikeroToolsPath);
-	if (!MikeroToolsPath.empty()) {
-		if (std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPboDos.exe"))
-			rootItem.AddChild({ L"..ExtractPbo", L"unpackWithExtractPbo", MikeroExtractPboToSubfolders });
-	}
-
 	std::vector<ContextMenuItem> result;
 
-	if (rootItem.HasChildren())	// only if we have actual unpack options //#TODO remove when adding native unpack
-		result.emplace_back(std::move(rootItem));
 
-	if (!a3ToolsPath.empty() && std::filesystem::exists(a3ToolsPath / "DSSignFile" / "DSSignFile.exe")) {
-		result.emplace_back(L"Sign PBOs", L"signPbo", SignPbos);
+	// Unpack
+	{
+		//#TODO automatic handling for multiples. Either "Unpack with X" or "Unpack with.." with submenu if GetToolsByCategory returns multiple
+
+		ContextMenuItem rootItem{ L"Unpack with..", L"unpackWithAny", [](const std::vector<std::filesystem::path>& files) {
+			// prefer mikero if available
+
+			auto MikeroToolsPath = GCache.GetFromCache("MikeroToolsPath", GetMikeroToolsPath);
+			if (!MikeroToolsPath.empty() && std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPboDos.exe")) {
+				return MikeroExtractPboToSubfolders(files);
+			}
+			else
+			{
+				auto a3ToolsPath = GCache.GetFromCache("A3ToolsPath", GetA3ToolsPath);
+				if (!a3ToolsPath.empty() && std::filesystem::exists(a3ToolsPath / "BankRev" / "BankRev.exe")) {
+					return BankRevExtractPboToSubfolders(files);
+				}
+			}
+
+			return E_FAIL;
+		} };
+
+		auto unpackTools = GetToolsByCategory(ToolCategory::PboUnpack);
+		for (auto& it : unpackTools) {
+
+			rootItem.AddChild({ UTF8::Decode(std::format("..{}", it->GetDisplayName())), UTF8::Decode(std::format("unpackWith{}", it->GetDisplayName())), [it](const std::vector<std::filesystem::path>& files) {
+				return it->Execute(files, {true});
+			} });
+		}
+
+		if (rootItem.HasChildren())	// only if we have actual unpack options //#TODO remove when adding native unpack
+			result.emplace_back(std::move(rootItem));
 	}
+	
+	// Sign PBO
+	{
+		//#TODO handle multiple tools, currently wew only have one tho
+
+		auto signTools = GetToolsByCategory(ToolCategory::PboSign);
+		for (auto& it : signTools) {
+			result.emplace_back(L"Sign PBOs", L"signPbo", [it](const std::vector<std::filesystem::path>& files) {
+				return it->Execute(files, {});
+				}
+			);
+		}
+	}
+
 
 	return result;
 }
@@ -1135,6 +1043,10 @@ std::vector<ContextMenuItem> ShellExt::CreateContextMenu_MultiPbo()
 	auto unpackHereWithAny = [unpackExtractPboHere, unpackBankRevHere](const std::vector<std::filesystem::path>& files) {
 		// prefer mikero if available
 
+		//#TODO convert to using ThirdPartyTools.
+		// Priority will be order by returned thing, which is order that I define them in
+
+
 		auto MikeroToolsPath = GCache.GetFromCache("MikeroToolsPath", GetMikeroToolsPath);
 		if (!MikeroToolsPath.empty() && std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPboDos.exe")) {
 			return unpackExtractPboHere(files);
@@ -1151,43 +1063,68 @@ std::vector<ContextMenuItem> ShellExt::CreateContextMenu_MultiPbo()
 	};
 
 
-
-	ContextMenuItem rootItem{ L"Unpack..", L"unpackAny", unpackSubfolderWithAny};
-
-
-	//  Unpack...
-	//  	Unpack Here with
-	//  		Bankrev...
-	//  	Unpack to *\ with
-	//  		Bankrev...
-
-	ContextMenuItem unpackHereRoot{ L"Here with..", L"unpackHereWithAny", unpackHereWithAny };
-	ContextMenuItem unpackSubfolderRoot{ L"to *\\ with..", L"unpackSubfolderWithAny", unpackSubfolderWithAny };
-
-
-
-	if (!a3ToolsPath.empty() && std::filesystem::exists(a3ToolsPath / "BankRev" / "BankRev.exe")) {
-		unpackHereRoot.AddChild({ L"..BankRev", L"unpackHereWithBankRev",  unpackBankRevHere });
-		unpackSubfolderRoot.AddChild({ L"..BankRev", L"unpackSubfolderWithBankRev", unpackBankRevSubfolder });
-	}
-
-	if (!MikeroToolsPath.empty() && std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPboDos.exe")) {
-		unpackHereRoot.AddChild({ L"..ExtractPbo", L"unpackHereWithExtractPbo",  unpackExtractPboHere });
-		unpackSubfolderRoot.AddChild({ L"..ExtractPbo", L"unpackSubfolderWithExtractPbo",  unpackExtractPboSubfolder });
-	}
-
-	if (unpackHereRoot.HasChildren())
-		rootItem.AddChild(unpackHereRoot);
-	if (unpackSubfolderRoot.HasChildren())
-		rootItem.AddChild(unpackSubfolderRoot);
-
 	std::vector<ContextMenuItem> result;
 
-	if (rootItem.HasChildren())	// only if we have actual unpack options //#TODO remove when adding native unpack
-		result.emplace_back(std::move(rootItem));
 
-	if (!a3ToolsPath.empty() && std::filesystem::exists(a3ToolsPath / "DSSignFile" / "DSSignFile.exe")) {
-		result.emplace_back(L"Sign PBOs", L"signPbo", SignPbos);
+	// Unpack
+	{
+		ContextMenuItem rootItem{ L"Unpack..", L"unpackAny", unpackSubfolderWithAny };
+
+
+		//  Unpack...
+		//  	Unpack Here with
+		//  		Bankrev...
+		//  	Unpack to *\ with
+		//  		Bankrev...
+
+		ContextMenuItem unpackHereRoot{ L"Here with..", L"unpackHereWithAny", unpackHereWithAny };
+		ContextMenuItem unpackSubfolderRoot{ L"to *\\ with..", L"unpackSubfolderWithAny", unpackSubfolderWithAny };
+
+
+		auto unpackTools = GetToolsByCategory(ToolCategory::PboUnpack | ToolCategory::SupportsMultiple);
+		for (auto& it : unpackTools) {
+
+			unpackHereRoot.AddChild({ UTF8::Decode(std::format("..{}", it->GetDisplayName())), UTF8::Decode(std::format("unpackWith{}", it->GetDisplayName())), [it](const std::vector<std::filesystem::path>& files) {
+				return it->Execute(files, {false});
+			} });
+
+
+			unpackSubfolderRoot.AddChild({ UTF8::Decode(std::format("..{}", it->GetDisplayName())), UTF8::Decode(std::format("unpackSubfolderWith{}", it->GetDisplayName())), [it](const std::vector<std::filesystem::path>& files) {
+				return it->Execute(files, {true}); // Subfolder
+			} });
+		}
+
+		//if (!a3ToolsPath.empty() && std::filesystem::exists(a3ToolsPath / "BankRev" / "BankRev.exe")) {
+		//	unpackHereRoot.AddChild({ L"..BankRev", L"unpackHereWithBankRev",  unpackBankRevHere });
+		//	unpackSubfolderRoot.AddChild({ L"..BankRev", L"unpackSubfolderWithBankRev", unpackBankRevSubfolder });
+		//}
+
+		//if (!MikeroToolsPath.empty() && std::filesystem::exists(MikeroToolsPath / "bin" / "ExtractPboDos.exe")) {
+		//	unpackHereRoot.AddChild({ L"..ExtractPbo", L"unpackHereWithExtractPbo",  unpackExtractPboHere });
+		//	unpackSubfolderRoot.AddChild({ L"..ExtractPbo", L"unpackSubfolderWithExtractPbo",  unpackExtractPboSubfolder });
+		//}
+
+		if (unpackHereRoot.HasChildren())
+			rootItem.AddChild(unpackHereRoot);
+		if (unpackSubfolderRoot.HasChildren())
+			rootItem.AddChild(unpackSubfolderRoot);
+
+		if (rootItem.HasChildren())	// only if we have actual unpack options //#TODO remove when adding native unpack
+			result.emplace_back(std::move(rootItem));
+	}
+
+
+	// Sign PBO
+	{
+		//#TODO handle multiple tools, currently wew only have one tho
+
+		auto signTools = GetToolsByCategory(ToolCategory::PboSign | ToolCategory::SupportsMultiple);
+		for (auto& it : signTools) {
+			result.emplace_back(L"Sign PBOs", L"signPbo", [it](const std::vector<std::filesystem::path>& files) {
+				return it->Execute(files, {});
+				}
+			);
+		}
 	}
 
 	return result;

@@ -1,15 +1,17 @@
 #include "PboFileDirectory.hpp"
 #include "Util.hpp"
-#include "PboPatcher.hpp"
 
-#include <functional>
-#include <numeric>
-#include <unordered_set>
+import <fstream>;
+import <functional>;
+import <numeric>;
+import <unordered_set>;
 
 #include <windows.h>
 
 import Encoding;
 import Tracy;
+import PboPatcher;
+import PboLib;
 
 const std::filesystem::path& PboSubFolder::GetPboDiskPath() const
 {

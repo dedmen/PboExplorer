@@ -54,9 +54,6 @@
     <ClInclude Include="PboPidl.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PboPatcher.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="FileWatcher.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -66,25 +63,10 @@
     <ClInclude Include="DebugLogger.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ClipboardFormatHandler.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GlobalCache.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ProgressDialogOperation.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="PboFileDirectory.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PboPatcherLocked.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="PboFolderContextMenu.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ContextMenu.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Updater.hpp">
@@ -113,9 +95,6 @@
     <ClCompile Include="PboDataObject.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="PboPatcher.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="lib\ArmaPboLib\lib\sha1.c">
       <Filter>Source Files\lib</Filter>
     </ClCompile>
@@ -131,19 +110,10 @@
     <ClCompile Include="FileWatcher.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ClipboardFormatHandler.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ProgressDialogOperation.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="PboFileDirectory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="PboFolderContextMenu.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ContextMenu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Updater.cpp">
@@ -196,6 +166,30 @@
     </ClCompile>
     <ClCompile Include="PropertyKeyLookup.ixx">
       <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="ThirdPartyTools.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="util\GlobalCache.ixx">
+      <Filter>Source Files\util</Filter>
+    </ClCompile>
+    <ClCompile Include="ClipboardFormatHandler.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ProgressDialogOperation.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ContextMenu.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PboPatcher.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PboPatcherLocked.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PboLib.ixx">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

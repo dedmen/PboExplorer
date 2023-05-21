@@ -1,18 +1,20 @@
 ﻿#include "PboFolder.hpp"
 
-#include <codecvt>
+
 #include <Shlwapi.h>
 #pragma comment( lib, "Shlwapi" )
 
 #include <propkey.h>
 
-#include <functional>
-#include <mutex>
+import <fstream>;
+#include <codecvt>
 #include <ranges>
-#include <utility>
-#include <unordered_set>
-#include <numeric>
-#include <string_view>
+import <functional>;
+import <mutex>;
+import <utility>;
+import <unordered_set>;
+import <numeric>;
+import <string_view>;
 
 #include "PboContextMenu.hpp"
 #include "PboDataObject.hpp"
@@ -22,15 +24,16 @@
 #include "Util.hpp"
 
 #include "DebugLogger.hpp"
-#include "ClipboardFormatHandler.hpp"
 
-#include "ProgressDialogOperation.hpp"
 #include "guid.hpp"
 #include "PboFolderContextMenu.hpp"
-#include "PboPatcherLocked.hpp"
 
 import Encoding;
 import Tracy;
+import ProgressDialogOperation;
+import ClipboardFormatHandler;
+import PboPatcherLocked;
+import PboPatcher;
 
 #define CHECK_INIT() \
   if( !checkInit() ) return( E_FAIL )

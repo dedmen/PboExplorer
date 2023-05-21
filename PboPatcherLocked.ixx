@@ -1,27 +1,33 @@
-#pragma once
+module;
 
-#include <format>
-#include <numeric>
-
-#include "PboPatcher.hpp"
 #include "PboFileDirectory.hpp"
 #include "Util.hpp"
+#include <Windows.h>
 
+
+export module PboPatcherLocked;
+
+import <fstream>;
+import <format>;
+import <numeric>;
+import PboPatcher;
+
+export
 class PboPatcherLocked {
-	std::shared_ptr<PboFile> pboFile;
-	PboPatcher patcher;
+    std::shared_ptr<PboFile> pboFile;
+    PboPatcher patcher;
     std::ifstream readStream;
     std::optional<PboReader> reader;
     // Do nothing in destructor, don't process, don't patch
     bool patchingBlocked = false;
 public:
 
-	PboPatcherLocked(std::shared_ptr<PboFile> file) : pboFile(file) {
+    PboPatcherLocked(std::shared_ptr<PboFile> file) : pboFile(file) {
         GPboFileDirectory.AcquireGlobalPatchLock();
 
         // try out if output file is writable.
 
-   
+
         bool retry = false;
         do {
             retry = false;
@@ -57,13 +63,14 @@ public:
                 const auto result = MessageBoxW(GetDesktopWindow(), message.data(), L"PboExplorer", MB_RETRYCANCEL | MB_ICONWARNING | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST);
 
                 retry = result == IDRETRY;
-            } else {
+            }
+            else {
                 patchingBlocked = false; // is gud now
             }
 
             outputStream.close();
         } while (retry);
-        
+
 
         if (patchingBlocked)
             return; // Don't read in and prepare patcher
@@ -73,7 +80,7 @@ public:
 
         reader->readHeaders();
         patcher.ReadInputFile(&reader.value());
-	}
+    }
 
     ~PboPatcherLocked() {
 

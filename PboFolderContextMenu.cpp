@@ -8,7 +8,6 @@ import TempDiskFile;
 #include "Util.hpp"
 
 #include "DebugLogger.hpp"
-#include "PboPatcher.hpp"
 
 #ifndef SEE_MASK_NOASYNC
 #define SEE_MASK_NOASYNC 0x00000100

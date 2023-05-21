@@ -2,7 +2,8 @@
 #include "PboDataObject.hpp"
 
 #define NOMINMAX
-#include <utility>
+import <utility>;
+import <numeric>;
 
 #include "PboFileStream.hpp"
 #include "PboPidl.hpp"
@@ -17,13 +18,13 @@
 const GUID IID_IAsyncOperation =
 { 0x3D8B0590,0xF691,0x11D2,{0x8E,0xA9,0x00,0x60,0x97,0xDF,0x5B,0xD4} };
 #endif
-#include "ClipboardFormatHandler.hpp"
-#include <numeric>
+
 #include "guid.hpp"
 import TempDiskFile;
 
 import Encoding;
 import Tracy;
+import ClipboardFormatHandler;
 
 HRESULT QLoadFromStream(IStream* pStm, LPITEMIDLIST* pidl)
 {

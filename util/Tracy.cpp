@@ -4,6 +4,8 @@
 #include <winsock2.h>
 #include <Windows.h>
 
+import <type_traits>;
+
 
 #define TRACY_ON_DEMAND
 #define TRACY_ENABLE

@@ -2,8 +2,8 @@
 #define NOMINMAX
 #include <ShlObj.h>
 #include <Windows.h>
-#include <filesystem>
 
+import <filesystem>;
 import ComRef;
 #include "PboPidl.hpp"
 class TempDiskFile;

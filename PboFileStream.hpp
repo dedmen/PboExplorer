@@ -1,12 +1,14 @@
 #pragma once
 #define NOMINMAX
-#include <memory>
+
 #include <ShlObj.h>
 #include <Windows.h>
 
+import <memory>;
+import <fstream>;
 import ComRef;
+import PboLib;
 #include "PboFolder.hpp"
-#include "PboPatcher.hpp"
 
 class PboFile;
 class TempDiskFile;

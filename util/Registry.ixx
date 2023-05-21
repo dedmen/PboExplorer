@@ -4,6 +4,7 @@ export module Registry;
 
 import <format>;
 import <variant>;
+import <filesystem>;
 
 export
 class RegistryEntry {
@@ -129,3 +130,29 @@ public:
 			rootKey == other.rootKey;
 	}
 };
+
+export std::filesystem::path ReadRegistryFilePathKey(HKEY hkey, std::wstring path, std::wstring key) {
+
+	HKEY hKey;
+	auto lRes = RegOpenKeyExW(hkey, path.data(), 0, KEY_READ, &hKey);
+	if (!SUCCEEDED(lRes))
+		return {};
+
+	WCHAR szBuffer[MAX_PATH];
+	DWORD dwBufferSize = sizeof(szBuffer);
+	DWORD type = 0;
+	lRes = RegQueryValueExW(hKey, key.data(), 0, &type, (LPBYTE)szBuffer, &dwBufferSize);
+	if (!SUCCEEDED(lRes))
+		return {};
+
+	if (type == REG_SZ && std::filesystem::exists(szBuffer))
+		return szBuffer;
+	if (type == REG_EXPAND_SZ) {
+		WCHAR szBufferEx[512];
+		ExpandEnvironmentStringsW(szBuffer, szBufferEx, sizeof(szBufferEx));
+		if (std::filesystem::exists(szBufferEx))
+			return szBufferEx;
+	}
+
+	return {};
+}

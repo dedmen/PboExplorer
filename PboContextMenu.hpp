@@ -1,9 +1,9 @@
 #pragma once
 #define NOMINMAX
 #include <ShlObj.h>
-#include <vector>
 #include <Windows.h>
 
+import <vector>;
 import ComRef;
 
 class PboFolder;

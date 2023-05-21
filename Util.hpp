@@ -1,11 +1,11 @@
 #pragma once
 #define NOMINMAX
-#include <algorithm>
-#include <array>
-#include <filesystem>
-#include <string>
-#include <stdexcept>
-#include <unordered_map>
+import <algorithm>;
+import <array>;
+import <filesystem>;
+import <string>;
+import <stdexcept>;
+import <unordered_map>;
 
 import Version;
 
@@ -25,21 +25,21 @@ constexpr CharSeq<Cs...> operator"" _cs() {
 
 namespace Util
 {
-    inline std::string random_string(size_t length)
-    {
-        auto randchar = []() -> char
-        {
-            const char charset[] =
-                "0123456789"
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                "abcdefghijklmnopqrstuvwxyz";
-            const size_t max_index = (sizeof(charset) - 1);
-            return charset[rand() % max_index];
-        };
-        std::string str(length, 0);
-        std::generate_n(str.begin(), length, randchar);
-        return str;
-    }
+    //inline std::string random_string(size_t length)
+    //{
+    //    auto randchar = []() -> char
+    //    {
+    //        const char charset[] =
+    //            "0123456789"
+    //            "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    //            "abcdefghijklmnopqrstuvwxyz";
+    //        const size_t max_index = (sizeof(charset) - 1);
+    //        return charset[rand() % max_index];
+    //    };
+    //    std::string str(length, 0);
+    //    std::generate_n(str.begin(), length, randchar);
+    //    return str;
+    //}
 
     void TryDebugBreak();
 

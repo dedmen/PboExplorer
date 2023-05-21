@@ -1,9 +1,11 @@
 #include <Windows.h>
 #include <ShlObj.h>
 #include <OleCtl.h>
-#include <fstream>
-#include <string>
-#include <variant>
+
+import <fstream>;
+import <string>;
+import <variant>;
+#include <future>
 
 
 #pragma data_seg(".text")
@@ -21,7 +23,7 @@
 #include "Util.hpp"
 
 
-#include <future>
+
 #include "Updater.hpp"
 
 import Registry;

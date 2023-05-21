@@ -1,12 +1,12 @@
-#pragma once
+module;
 
-#include <any>
-#include <functional>
-#include <mutex>
-#include <type_traits>
-#include "Util.hpp"
+#include "../Util.hpp"
 
+export module GlobalCache;
 
+import <any>;
+import <functional>;
+import <mutex>;
 
 
 class GlobalCache
@@ -33,7 +33,7 @@ public:
 
 };
 
-inline GlobalCache GCache;
+export GlobalCache GCache;
 
 
 

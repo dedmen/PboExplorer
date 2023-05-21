@@ -2,14 +2,14 @@
 
 #include <Shlwapi.h>
 
-#include "PboPatcher.hpp"
 #include "Util.hpp"
-#include "lib/ArmaPboLib/src/pbo.hpp"
 #include "DebugLogger.hpp"
 
 import Encoding;
 import TempDiskFile;
 import Tracy;
+import PboPatcher;
+import PboLib;
 
 PboFileStream::PboFileStream(std::shared_ptr<PboFile> pboFile, std::filesystem::path filePath) :
     pboFile(pboFile),

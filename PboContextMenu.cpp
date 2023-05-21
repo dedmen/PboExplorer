@@ -1,12 +1,11 @@
-
 #include "PboContextMenu.hpp"
-
 #include <shlwapi.h>
 
 #include "FileWatcher.hpp"
 #include "PboFolder.hpp"
 #include "PboPidl.hpp"
 import TempDiskFile;
+import ContextMenu;
 #include "Util.hpp"
 
 #ifndef SEE_MASK_NOASYNC
@@ -16,13 +15,32 @@ import TempDiskFile;
 #ifndef CMF_EXTENDEDVERBS
 #define CMF_EXTENDEDVERBS 0x00000100
 #endif
-#include "PboPatcher.hpp"
 #ifndef CMIC_MASK_SHIFT_DOWN
 #define CMIC_MASK_SHIFT_DOWN 0x10000000
 #endif
-#include "PboPatcherLocked.hpp"
 
 import Tracy;
+import PboPatcherLocked;
+
+namespace Util {
+    std::string random_string(size_t length)
+    {
+        auto randchar = []() -> char
+            {
+                const char charset[] =
+                    "0123456789"
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                    "abcdefghijklmnopqrstuvwxyz";
+                const size_t max_index = (sizeof(charset) - 1);
+                return charset[rand() % max_index];
+            };
+        std::string str(length, 0);
+        std::generate_n(str.begin(), length, randchar);
+        return str;
+    }
+}
+
+
 
 static bool copyIStreamToFile(IStream* is, std::filesystem::path& fileName, INT64 size = 0, FILETIME* ft = nullptr)
 {

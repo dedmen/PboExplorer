@@ -1,6 +1,172 @@
-#include "PboPatcher.hpp"
-#include <execution>
+module;
+
+#include "lib/ArmaPboLib/src/pbo.hpp"
 #include "Util.hpp"
+
+export module PboPatcher;
+
+import <shared_mutex>;
+import <utility>;
+import <execution>;
+
+
+
+class PboPatcher;
+class IPatchOperation;
+
+
+export enum class PatchType {
+    Add,
+    Update,
+    Delete
+};
+
+class IPatchOperation {
+    PatchType type;
+public:
+    IPatchOperation(PatchType type) : type(type) {}
+    virtual ~IPatchOperation() = default;
+
+    [[nodiscard]] PatchType GetType() const { return type; }
+
+    virtual void Process(PboPatcher& patcher) = 0;
+};
+
+export class PatchAddFileFromDisk final : public IPatchOperation {
+    std::filesystem::path inputFile;
+    std::filesystem::path pboFilePath;
+public:
+    PatchAddFileFromDisk(std::filesystem::path inputFile, std::filesystem::path pboFilePath) : IPatchOperation(PatchType::Add), inputFile(std::move(inputFile)), pboFilePath(std::move(pboFilePath)) {}
+    void Process(PboPatcher& patcher) override;
+};
+
+export class PatchUpdateFileFromDisk final : public IPatchOperation {
+    std::filesystem::path inputFile;
+    std::filesystem::path pboFilePath;
+public:
+    PatchUpdateFileFromDisk(std::filesystem::path inputFile, std::filesystem::path pboFilePath) : IPatchOperation(PatchType::Update), inputFile(std::move(inputFile)), pboFilePath(std::move(pboFilePath)) {}
+    void Process(PboPatcher& patcher) override;
+};
+
+export class PatchRenameFile final : public IPatchOperation {
+    std::filesystem::path pboFilePathOld;
+    std::filesystem::path pboFilePathNew;
+public:
+    PatchRenameFile(std::filesystem::path pboFilePathOld, std::filesystem::path pboFilePathNew) : IPatchOperation(PatchType::Update), pboFilePathOld(std::move(pboFilePathOld)), pboFilePathNew(std::move(pboFilePathNew)) {}
+    void Process(PboPatcher& patcher) override;
+};
+
+export class PatchDeleteFile final : public IPatchOperation {
+    std::filesystem::path pboFilePath;
+public:
+    PatchDeleteFile(std::filesystem::path pboFilePath) : IPatchOperation(PatchType::Delete), pboFilePath(std::move(pboFilePath)) {}
+    void Process(PboPatcher& patcher) override;
+};
+
+export class PatchAddProperty final : public IPatchOperation {
+    std::pair<std::string, std::string> property;
+public:
+    PatchAddProperty(std::pair<std::string, std::string> property) : IPatchOperation(PatchType::Add), property(std::move(property)) {}
+    void Process(PboPatcher& patcher) override;
+};
+
+// Add will overwrite if key already exists, currently
+export using PatchUpdateProperty = PatchAddProperty;
+
+export class PatchDeleteProperty final : public IPatchOperation {
+    std::string propertyName;
+public:
+    PatchDeleteProperty(std::string propertyName) : IPatchOperation(PatchType::Delete), propertyName(std::move(propertyName)) {}
+    void Process(PboPatcher& patcher) override;
+};
+
+export template<typename T>
+concept PatchOperation = std::derived_from<T, IPatchOperation>;
+
+
+export class PboPatcher
+{
+    friend class IPatchOperation;
+    friend class PatchAddFileFromDisk;
+    friend class PatchUpdateFileFromDisk;
+    friend class PatchRenameFile;
+    friend class PatchDeleteFile;
+    friend class PatchAddProperty;
+    friend class PatchDeleteProperty;
+
+    // active data read from input file, will be modified by patch operations before used to target output file
+    std::vector<PboEntry> files;
+    std::vector<PboProperty> properties;
+    std::vector<std::shared_ptr<PboFileToWrite>> filesToWrite;
+    // mutex protecting against filesToWrite iterator invalidation
+    std::shared_mutex ftwMutex;
+    std::mutex propertyMutex;
+    // start offset if you were to insert a new file at the end
+    uint32_t endStartOffset = 0;
+
+    PatchType currentPatchStep = PatchType::Add;
+
+    std::vector<std::unique_ptr<IPatchOperation>> patches;
+
+    // is only valid at ReadInputFile and ProcessPatches();
+    const PboReader* readerRef;
+
+    // move a file inside pbo from wherever to its end and create dummy space in old slot
+    void MoveFileToEnd(std::filesystem::path file, uint32_t indexHint = std::numeric_limits<uint32_t>::max());
+
+    // move a file inside pbo from wherever to a dummy space further towards the end of the file
+    void MoveFileToEndOrDummy(std::filesystem::path file, uint32_t indexHint = std::numeric_limits<uint32_t>::max());
+
+    // Deletes a file from filesToWrite by replacing it with a dummy
+    void ReplaceWithDummyFile(std::filesystem::path file, uint32_t indexHint = std::numeric_limits<uint32_t>::max());
+
+    // you need to hold a shared ftwMutex lock when calling this
+    [[nodiscard]] decltype(filesToWrite)::iterator GetFTWIteratorToFile(const std::filesystem::path& file, uint32_t indexHint = std::numeric_limits<uint32_t>::max());
+
+    [[nodiscard]] bool CheckFTWIteratorValid(decltype(PboPatcher::filesToWrite)::iterator);
+
+    [[nodiscard]] decltype(filesToWrite)::iterator FindFreeSpace(uint32_t size);
+
+    [[nodiscard]] decltype(filesToWrite)::iterator FindFreeSpaceAfter(uint32_t size, uint32_t startOffset);
+
+    [[nodiscard]] bool InsertFileIntoDummySpace(std::shared_ptr<PboFileToWrite> newFile);
+
+    static std::filesystem::path GetNewDummyFileName(uint32_t startOffset);
+
+    // convert a NoTouch file to a in-memory string buffer file
+    std::shared_ptr<PboFileToWrite> ConvertNoTouchFile(std::shared_ptr<PboFileToWrite> input);
+
+
+public:
+    // apply file writelock to current process
+    // open and parseHeaders PboReader
+    // ReadInputFile
+    // ProcessPatches
+    // close PboReader
+    // WriteOutputFile
+
+
+    PboPatcher() {}
+
+
+
+    template<PatchOperation T, typename ... Args>
+    void AddPatch(Args&& ...args) {
+        patches.emplace_back(new T(std::forward<Args>(args)...));
+    }
+
+    void ReadInputFile(const PboReader* inputFile);
+
+    // process patch operations, PboReader needs to be valid still
+    void ProcessPatches();
+
+    // write to target
+    void WriteOutputFile(std::iostream& outputStream);
+};
+
+
+
+
 
 /*
 
@@ -26,7 +192,7 @@
     During pbo writing there will be a new file reader type for both Null-Space (free space filled with nulls or whatever data) and a IgnoreFile writer that doesn't actually write to output, but reads the output into the SHA1 hasher while it skips over unpatched files.
     That way we only iterate through the file once at final write.
 
- 
+
  */
 
 void PboPatcher::MoveFileToEnd(std::filesystem::path file, uint32_t indexHint) {
@@ -160,7 +326,7 @@ decltype(PboPatcher::filesToWrite)::iterator PboPatcher::GetFTWIteratorToFile(co
 
                 foundFile = std::find_if(std::execution::par_unseq, filesToWrite.begin(), filesToWrite.end(), [&file](const std::shared_ptr<PboFileToWrite>& ftw) {
                     return ftw->getEntryInformation().name == file;
-                });
+                    });
             } while (foundFile != filesToWrite.end() && (*foundFile)->getEntryInformation().name != file);
     }
 
@@ -183,7 +349,7 @@ decltype(PboPatcher::filesToWrite)::iterator PboPatcher::FindFreeSpace(uint32_t 
             return false; // either not a dummy space, or too small. Rule it out by moving it to the right
 
         return l->getEntryInformation().data_size < r->getEntryInformation().data_size;
-    });
+        });
 
 
     //auto found = std::ranges::find_if(filesToWrite, [size](const std::shared_ptr<PboFileToWrite>& file) {
@@ -260,7 +426,8 @@ bool PboPatcher::InsertFileIntoDummySpace(std::shared_ptr<PboFileToWrite> newFil
         newFile->getEntryInformation().startOffset = (*freeSpace)->getEntryInformation().startOffset;
         (*freeSpace)->getEntryInformation().startOffset += newFile->getEntryInformation().data_size;
         filesToWrite.insert(freeSpace, ConvertNoTouchFile(newFile));
-    } else {
+    }
+    else {
         // fits exactly, we can just replace our dummy space
         auto startOffset = (*freeSpace)->getEntryInformation().startOffset;
         *freeSpace = ConvertNoTouchFile(newFile);
@@ -329,7 +496,7 @@ void PatchUpdateFileFromDisk::Process(PboPatcher& patcher) {
             // file invalidated, find it again
             foundFile = patcher.GetFTWIteratorToFile(pboFilePath);
         }
-    };
+        };
 
     if (oldFileSize == newFileSize) {
         // size is exactly the same, we can just exchange them and we're done
@@ -361,7 +528,7 @@ void PatchUpdateFileFromDisk::Process(PboPatcher& patcher) {
 
     // new file is larger, turn old file into dummy space, and insert new file wherever it fits
 
-    patcher.ReplaceWithDummyFile(pboFilePath, std::distance(patcher.filesToWrite.begin(),foundFile));
+    patcher.ReplaceWithDummyFile(pboFilePath, std::distance(patcher.filesToWrite.begin(), foundFile));
 
 
     // first try if we can fit into dummy space

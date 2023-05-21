@@ -1,8 +1,8 @@
 #include "FileWatcher.hpp"
 #include <Windows.h>
+
 #include <fstream>
 #include <future>
-
 import TempDiskFile;
 
 void FileWatcher::Run() {

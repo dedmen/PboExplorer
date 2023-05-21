@@ -402,11 +402,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="ClipboardFormatHandler.hpp" />
-    <ClInclude Include="ContextMenu.hpp" />
     <ClInclude Include="DebugLogger.hpp" />
     <ClInclude Include="FileWatcher.hpp" />
-    <ClInclude Include="GlobalCache.hpp" />
     <ClInclude Include="guid.hpp" />
     <ClInclude Include="ClassFactory.hpp" />
     <ClInclude Include="PboContextMenu.hpp" />
@@ -415,11 +412,8 @@
     <ClInclude Include="PboFileStream.hpp" />
     <ClInclude Include="PboFolder.hpp" />
     <ClInclude Include="PboFolderContextMenu.hpp" />
-    <ClInclude Include="PboPatcher.hpp" />
-    <ClInclude Include="PboPatcherLocked.hpp" />
     <ClInclude Include="PboPidl.hpp" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="ProgressDialogOperation.hpp" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="ShellExt.hpp" />
     <ClInclude Include="Updater.hpp" />
@@ -427,12 +421,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ClassFactory.ixx" />
-    <ClCompile Include="ClipboardFormatHandler.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="ContextMenu.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
-    </ClCompile>
+    <ClCompile Include="ClipboardFormatHandler.ixx" />
+    <ClCompile Include="ContextMenu.ixx" />
     <ClCompile Include="dllmain.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
     </ClCompile>
@@ -461,14 +451,13 @@
     <ClCompile Include="PboFolderContextMenu.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="PboPatcher.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="ProgressDialogOperation.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
-    </ClCompile>
+    <ClCompile Include="PboLib.ixx" />
+    <ClCompile Include="PboPatcher.ixx" />
+    <ClCompile Include="PboPatcherLocked.ixx" />
+    <ClCompile Include="ProgressDialogOperation.ixx" />
     <ClCompile Include="PropertyKeyLookup.ixx" />
     <ClCompile Include="TempDiskFile.ixx" />
+    <ClCompile Include="ThirdPartyTools.ixx" />
     <ClCompile Include="UpdateHelperExe.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">false</ExcludedFromBuild>
     </ClCompile>
@@ -489,6 +478,7 @@
     <ClCompile Include="util\DebugLogger.ixx" />
     <ClCompile Include="util\Encoding.ixx" />
     <ClCompile Include="util\FileUtil.ixx" />
+    <ClCompile Include="util\GlobalCache.ixx" />
     <ClCompile Include="util\Hashing.ixx" />
     <ClCompile Include="util\Registry.ixx" />
     <ClCompile Include="util\Sentry.ixx" />

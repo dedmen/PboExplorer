@@ -1,6 +1,7 @@
 #include <iostream>
-#include "PboPatcher.hpp"
 #include "Updater.hpp"
+
+import PboPatcher;
 
 extern uint64_t GetFileHash(std::filesystem::path file);
 

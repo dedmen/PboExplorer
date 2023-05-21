@@ -1,13 +1,13 @@
 #pragma once
 
-#include <filesystem>
-#include <functional>
-#include <mutex>
-#include <string>
-#include <unordered_map>
-#include <vector>
-#include <string>
-#include <memory>
+import <filesystem>;
+import <functional>;
+import <mutex>;
+import <string>;
+import <unordered_map>;
+import <vector>;
+import <string>;
+import <memory>;
 
 #include "PboPidl.hpp"
 
