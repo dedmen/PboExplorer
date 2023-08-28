@@ -24,6 +24,8 @@ import PboPatcher;
 import PboPatcherLocked;
 
 
+using namespace std::string_view_literals;
+
 ShellExt::ShellExt()
 {
 
@@ -645,7 +647,7 @@ std::vector<ContextMenuItem> ShellExt::CreateContextMenu_SingleFolder()
 				sei.fMask = SEE_MASK_NOASYNC | SEE_MASK_INVOKEIDLIST;
 				auto path = (a3ToolsPath / "FileBank" / "FileBank.exe").native();
 				sei.lpFile = path.c_str();
-				auto params = std::format(L"dst \"{}\" \"{}\"", files.front().parent_path().native(), files.front().native());
+				auto params = std::format(L"-dst \"{}\" \"{}\"", files.front().parent_path().native(), files.front().native());
 				sei.lpParameters = params.c_str();
 				auto workDir = files.front().parent_path().native();
 				sei.lpDirectory = workDir.c_str();
@@ -693,6 +695,14 @@ std::vector<ContextMenuItem> ShellExt::CreateContextMenu_SingleFolder()
 						auto srcDirValEndOffs = str.find("</value>", srcDirValOffs);
 						if (srcDirValOffs != std::string::npos && srcDirValEndOffs != std::string::npos)
 							str.replace(srcDirValOffs + 7, srcDirValEndOffs - (srcDirValOffs + 7), files.front().string());
+					} else {
+						// Insert if it doesn't exist
+
+						auto preInsertionText = "<AddonBuilder.Properties.Settings>"sv;
+
+						auto insertionPoint = str.find(preInsertionText);
+						if (insertionPoint != std::string::npos)
+							str.insert(insertionPoint + preInsertionText.length(), std::format("\r\n<setting name=\"SourceDir\" serializeAs=\"String\">\r\n<value>{}</value>\r\n</setting>", files.front().string()));
 					}
 
 					auto dstDirOffs = str.find("<setting name=\"DestDir\" serializeAs=\"String\">");
@@ -701,7 +711,18 @@ std::vector<ContextMenuItem> ShellExt::CreateContextMenu_SingleFolder()
 						auto dstDirValOffs = str.find("<value>", dstDirOffs);
 						auto dstDirValEndOffs = str.find("</value>", dstDirValOffs);
 						if (dstDirValOffs != std::string::npos && dstDirValEndOffs != std::string::npos) 
-							str.replace(dstDirValOffs + 7, dstDirValEndOffs - (dstDirValOffs + 7), (files.front().parent_path() / (files.front().filename().string() + ".pbo")).string());
+							str.replace(dstDirValOffs + 7, dstDirValEndOffs - (dstDirValOffs + 7), (files.front().parent_path() /* / (files.front().filename().string() + ".pbo") */).string());
+					}
+					else {
+						// Insert if it doesn't exist
+
+						auto preInsertionText = "<AddonBuilder.Properties.Settings>"sv;
+
+						auto insertionPoint = str.find(preInsertionText);
+						if (insertionPoint != std::string::npos)
+							str.insert(insertionPoint + preInsertionText.length(), std::format("\r\n<setting name=\"DestDir\" serializeAs=\"String\">\r\n<value>{}</value>\r\n</setting>", 
+								(files.front().parent_path() / (files.front().filename().string() + ".pbo")).string()
+							));
 					}
 
 					std::ofstream to(addonBuilderConfig);
@@ -850,9 +871,9 @@ std::vector<ContextMenuItem> ShellExt::CreateContextMenu_SingleFolder()
 	}
 
 
-	rootItem.AddChild({ L"..PboExplorer", L"packWithNative", [MikeroToolsPath](const std::vector<std::filesystem::path>& files) {
-		return E_NOTIMPL;
-	} });
+	//rootItem.AddChild({ L"..PboExplorer", L"packWithNative", [MikeroToolsPath](const std::vector<std::filesystem::path>& files) {
+	//	return E_NOTIMPL;
+	//} });
 
 	if (rootItem.HasChildren())	// only if we have actual unpack options //#TODO remove when adding native unpack
 		return { rootItem };
