@@ -12,6 +12,8 @@ PboExplorer is a Windows explorer integration to provide PBO support. It works l
 Installing will overwrite already configured "open with" options for .pbo files.
 There should be no need to restart explorer.
 
+To uninstall PboExplorer, open the same folder and run unregister.cmd. You will then most likely have to restart explorer before you can delete the remaining files.
+Uninstalling will not restore previous pbo file associations.
 
 # Features
 
@@ -49,5 +51,6 @@ PBOExplorer will patch the PBO with minimal changes, so it even is very fast on 
 https://github.com/dedmen/PboExplorer/assets/3768165/eae19ac3-dbfd-4763-86f5-75f4f585ab5e
 
 
+# Known Issues/Todo's
 
-
+- Updates are forced, you cannot refuse a remote update #TODO https://github.com/dedmen/PboExplorer/blob/master/Updater.cpp#L324
