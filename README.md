@@ -21,7 +21,9 @@ Uninstalling will not restore previous pbo file associations.
 
 You can open PBO files by simply double-clicking them and then browse files as if it were just a zip folder.
 
-https://github.com/dedmen/PboExplorer/assets/3768165/a6c00b2f-2ffb-4af6-8b0f-d9cd6239cf53
+https://github.com/dedmen/PboExplorer/assets/3768165/d4c1e069-dc23-4d0e-b052-1333d27621af
+
+
 
 ## Integration with Various tools
 
@@ -29,16 +31,17 @@ PboExplorer tries to be a one-stop-shop and integrates with common modding tools
 
 For UI based tools it even tries to pre-fill the UI values, like in Addon Builder or Mikero's PboProject
 
-https://github.com/dedmen/PboExplorer/assets/3768165/ed8ae97a-9015-4d69-a552-b6aafaf2e923
+
+https://github.com/dedmen/PboExplorer/assets/3768165/23292cd1-c942-4e49-8170-807a6f904e05
 
 ## Viewing PBO properties
 
 (Still WIP Feature)
 The file properties have a Tab for PboExplorer, which currently only shows the PBO Properties as a (editable!) list.
 
-![explorer_2023-08-28_17-41-00](https://github.com/dedmen/PboExplorer/assets/3768165/6a11e9e4-a9e3-4ad0-b5bf-a8ff4b7c8938)
+![explorer_2023-08-28_17-41-00](https://github.com/dedmen/PboExplorer/assets/3768165/e2f2fc3e-3308-4271-b570-793a60217581)
 
-https://github.com/dedmen/PboExplorer/assets/3768165/674e0495-ba4a-425d-9d7b-6e426a2c3aba
+https://github.com/dedmen/PboExplorer/assets/3768165/52728087-50ba-4231-a832-910f6c30e2e7
 
 ## Quick Editing
 
@@ -48,7 +51,7 @@ PBOExplorer will patch the PBO with minimal changes, so it even is very fast on 
 
 (This feature is NOT compatible with bisigning. Signing PBO's will require a full repack or defragmentation (not implemented yet), otherwise the dummy/temporary files created inside the PBO will mess up signatures)
 
-https://github.com/dedmen/PboExplorer/assets/3768165/eae19ac3-dbfd-4763-86f5-75f4f585ab5e
+https://github.com/dedmen/PboExplorer/assets/3768165/3f4a132a-4a56-407f-b016-d10bf5d23130
 
 
 # Known Issues/Todo's
