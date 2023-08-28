@@ -190,6 +190,8 @@ bool Updater::VerifyDownloadedUpdate(const Updater::AvailableUpdateInfo& info)
     if (!hasDLL && !hasUpdateHelper && info.newVersionNo != VERSIONNO)
         return false; // our version is different, so we want an update, but we got none
 
+    //#TODO Digital signature verification, take from Intercept
+
     return true; // hashes match the desired ones
 }
 

@@ -54,3 +54,15 @@ https://github.com/dedmen/PboExplorer/assets/3768165/eae19ac3-dbfd-4763-86f5-75f
 # Known Issues/Todo's
 
 - Updates are forced, you cannot refuse a remote update #TODO https://github.com/dedmen/PboExplorer/blob/master/Updater.cpp#L324
+- Updates are not digitally signed, this is a security risk (If someone redirects your DNS or hacks my server) and is a #TODO
+
+
+# Support
+
+If you need help/information or want to contribute, feel free to join my Discord Server: https://discord.gg/vbFje5B
+
+
+You can support me on patreon!
+<a href="https://www.patreon.com/join/dedmen">
+    <img src="https://c5.patreon.com/external/logo/become_a_patron_button.png" alt="Become a Patron!">
+</a>
