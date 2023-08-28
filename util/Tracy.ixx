@@ -12,7 +12,9 @@ extern "C++" namespace tracy {
 }
 
 export class ProfilingScope {
+#if _DEBUG
     std::unique_ptr<tracy::ScopedZone> ___tracy_scoped_zone;
+#endif
 public:
     ProfilingScope(std::source_location sloc = std::source_location::current());
     ~ProfilingScope();

@@ -7,6 +7,7 @@ import <atomic>;
 import <source_location>;
 import <unordered_set>;
 import <utility>;
+import <mutex>;
 
 export template<class T>
 class ComRef
@@ -381,8 +382,10 @@ std::atomic_uint32_t g_DllRefCount;
 //}
 
 class GlobalRefCounted;
+//These may be used before global initializers run
 //this is so ugly, because I cannot import <memory> for unique_ptr, for some reason visual studio just implodes
-constinit std::unordered_set<GlobalRefCounted*>* DllRefCountList = nullptr;
+constinit inline std::unordered_set<GlobalRefCounted*>* DllRefCountList = nullptr;
+constinit inline std::mutex* DllRefCountMtx = nullptr;
 
 export class GlobalRefCounted {
 public:
@@ -391,11 +394,16 @@ public:
 
     GlobalRefCounted(std::source_location location = std::source_location::current()) : MyLocation(location) {
         ++g_DllRefCount;
-        if (!DllRefCountList) DllRefCountList = new std::unordered_set<GlobalRefCounted*>();
+        if (!DllRefCountList) {
+            DllRefCountList = new std::unordered_set<GlobalRefCounted*>();
+            DllRefCountMtx = new std::mutex();
+        }
+        std::unique_lock l(*DllRefCountMtx);
         DllRefCountList->insert(this);
     }
     virtual ~GlobalRefCounted() {
         --g_DllRefCount;
+        std::unique_lock l(*DllRefCountMtx);
         DllRefCountList->erase(this);
     }
 #else

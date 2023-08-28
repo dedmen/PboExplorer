@@ -1,6 +1,7 @@
 export module Hashing;
 
 import <array>;
+import <bit>;
 import <cstdint>;
 import <string_view>;
 

@@ -636,7 +636,7 @@ HRESULT PboFolder::CreateViewObject(HWND hwnd, const IID& riid, void** ppv)
 
      else RIID_TODO(IID_IContextMenu);
      // #TODO rightclick on empty space. This is needed for CTRL+V paste, we also want to implement the Refresh option properly 
-     // https://github.com/cryptoAlgorithm/nt5src/blob/daad8a087a4e75422ec96b7911f1df4669989611/Source/XPSP1/NT/shell/shell32/defcm.cpp#L617
+     // defcm.cpp#L617
      // defview.cpp L 5424, it creates context menu, and then executes verb "paste". There are also the other verbs we might need to implement. Delete,Cut,Copy,Properties!!!
 
     //#TODO https://github.com/microsoft/Windows-classic-samples/blob/master/Samples/Win7Samples/winui/shell/shellextensibility/explorerdataprovider/ExplorerDataProvider.cpp#L606
@@ -967,14 +967,13 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
 * https://www.google.com/search?client=firefox-b-d&q=IQueryAssociations+ERROR_NO_ASSOCIATION
 * https://github.com/wine-mirror/wine/blob/master/dlls/shell32/assoc.c
 * https://docs.microsoft.com/en-us/windows/win32/api/shlwapi/ne-shlwapi-assocstr
-* https://github.com/cryptoAlgorithm/nt5src/search?q=ERROR_NO_ASSOCIATION
+* ERROR_NO_ASSOCIATION
 *  !!!!!!!!!
-* https://github.com/cryptoAlgorithm/nt5src/blob/daad8a087a4e75422ec96b7911f1df4669989611/Source/XPSP1/NT/shell/shell32/defviewp.h
-* https://github.com/cryptoAlgorithm/nt5src/search?p=2&q=CShellBrowser
-* https://github.com/cryptoAlgorithm/nt5src/search?p=1&q=CShellBrowser
-* https://github.com/cryptoAlgorithm/nt5src/blob/daad8a087a4e75422ec96b7911f1df4669989611/Source/XPSP1/NT/shell/browseui/shbrows2.h
-* https://github.com/cryptoAlgorithm/nt5src/blob/daad8a087a4e75422ec96b7911f1df4669989611/Source/XPSP1/NT/shell/shell32/filefldr.cpp#L123
-* https://github.com/cryptoAlgorithm/nt5src/blob/daad8a087a4e75422ec96b7911f1df4669989611/Source/XPSP1/NT/shell/shell32/defview.cpp
+* defviewp.h
+* CShellBrowser
+* shbrows2.h
+* filefldr.cpp#L123
+* defview.cpp
 * https://www.google.com/search?client=firefox-b-d&q=IID_IExtractIconW+ERROR_NO_ASSOCIATION
 * https://docs.microsoft.com/en-us/windows/win32/api/shellapi/ns-shellapi-shellexecuteinfoa
          *
@@ -1217,9 +1216,14 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
     if (!PboPidl::IsValidPidl(&pidl->mkid))
         pidl = ILNext(pidl);
 
-
     const PboPidl* qp = (const PboPidl*)pidl;
     EXPECT_SINGLE_PIDL(qp);
+
+    if (qp->cb == 0)
+    {
+        Util::TryDebugBreak();
+        return E_FAIL; // ????
+    }
 
     DebugLogger::TraceLog(std::format("file {} Detail {}", (pboFile->GetFolder()->fullPath / qp->GetFilePath()).string(), DetailTypesLookup.GetName(*pscid)), std::source_location::current(), __FUNCTION__);
 

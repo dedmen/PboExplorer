@@ -321,5 +321,7 @@ void Updater::OnStartup()
 
     MessageBoxA(GetDesktopWindow(), textA.c_str(), "PboExplorer", MB_OK | MB_ICONINFORMATION | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST);
 
+    //#TODO Yes/No/Don't ask again for this version
+
     upd.RegisterUpdateInstallOnReboot();
 }
