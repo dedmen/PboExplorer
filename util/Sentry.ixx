@@ -121,7 +121,7 @@ export namespace Sentry {
 					"Transmitted data contains:\n"
 					"- explorer.exe crashdumps (they will be uploaded to a server and analyzed automatically)\n"
 					"- PboExplorer internal logmessages (when an error or unexpected thing happens somewhere)\n"
-					"- Your Username as identification so I can attribute crashes/errors for further equestions\n"
+					"- Your Username as identification so I can attribute crashes/errors for further questions\n"
 					"You can change your Username in the next message box after you click yes.",
 					"PboExplorer", MB_YESNO | MB_ICONINFORMATION | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST) == IDNO) {
 					sentry_user_consent_revoke();
@@ -190,6 +190,7 @@ export namespace Sentry {
 
 			SentryInit = true;
 
+			// Upload dumps from previous crashes
 			if (sentry_user_consent_get() == SENTRY_USER_CONSENT_GIVEN) {
 				auto uploadDump = [](std::filesystem::path file) {
 					crashpad::HTTPMultipartBuilder http_multipart_builder;
