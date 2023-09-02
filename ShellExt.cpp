@@ -436,7 +436,13 @@ std::vector<ContextMenuItem> ShellExt::QueryContextMenuFromCache()
 {
 	ProfilingScope pScope;
 	bool isFolders = std::ranges::all_of(selectedFiles, [](const std::filesystem::path path) -> bool {
-		return std::filesystem::is_directory(path);
+		std::error_code ec;
+		auto result = std::filesystem::is_directory(path, ec);
+
+		if (ec)
+			DebugLogger::WarnLog(ec.message(), std::source_location::current(), "TempDiskFile::GetCurrentSize");
+		
+		return result;
 	});
 
 	bool isSingleElement = selectedFiles.size() == 1;

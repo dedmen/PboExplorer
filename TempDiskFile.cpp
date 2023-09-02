@@ -43,7 +43,13 @@ uint64_t TempDiskFile::GetCurrentHash() const {
 }
 
 uint64_t TempDiskFile::GetCurrentSize() const {
-    return std::filesystem::file_size(filePath);
+    std::error_code ec;
+    auto result = std::filesystem::file_size(filePath, ec);
+
+    if (ec)
+        DebugLogger::WarnLog(ec.message(), std::source_location::current(), "TempDiskFile::GetCurrentSize");
+
+    return result;
 }
 
 std::filesystem::file_time_type TempDiskFile::GetCurrentModtime() const {
