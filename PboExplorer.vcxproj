@@ -397,7 +397,7 @@
       <EnableUAC>false</EnableUAC>
       <ModuleDefinitionFile>
       </ModuleDefinitionFile>
-      <AdditionalLibraryDirectories>O:\dev\pbofolder\PboExplorer\lib\sentry\build\RelWithDebInfo;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\client\RelWithDebInfo;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\third_party\mini_chromium\RelWithDebInfo;O:\dev\pbofolder\PboExplorer\lib\sentry\build\crashpad_build\util\RelWithDebInfo</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)lib\sentry\build\RelWithDebInfo;$(ProjectDir)lib\sentry\build\crashpad_build\client\RelWithDebInfo;$(ProjectDir)lib\sentry\build\crashpad_build\third_party\mini_chromium\RelWithDebInfo;$(ProjectDir)lib\sentry\build\crashpad_build\util\RelWithDebInfo</AdditionalLibraryDirectories>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -420,17 +420,27 @@
     <ClInclude Include="Util.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ClassFactory.ixx" />
-    <ClCompile Include="ClipboardFormatHandler.ixx" />
-    <ClCompile Include="ContextMenu.ixx" />
+    <ClCompile Include="ClassFactory.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="ClipboardFormatHandler.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="ContextMenu.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="dllmain.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="FileWatcher.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="FileWatcher.ixx" />
-    <ClCompile Include="GUIDLookup.ixx" />
+    <ClCompile Include="FileWatcher.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="GUIDLookup.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="lib\ArmaPboLib\lib\sha1.c" />
     <ClCompile Include="lib\ArmaPboLib\src\pbo.cpp" />
     <ClCompile Include="PboContextMenu.cpp">
@@ -451,13 +461,27 @@
     <ClCompile Include="PboFolderContextMenu.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="PboLib.ixx" />
-    <ClCompile Include="PboPatcher.ixx" />
-    <ClCompile Include="PboPatcherLocked.ixx" />
-    <ClCompile Include="ProgressDialogOperation.ixx" />
-    <ClCompile Include="PropertyKeyLookup.ixx" />
-    <ClCompile Include="TempDiskFile.ixx" />
-    <ClCompile Include="ThirdPartyTools.ixx" />
+    <ClCompile Include="PboLib.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="PboPatcher.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="PboPatcherLocked.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="ProgressDialogOperation.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="PropertyKeyLookup.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="TempDiskFile.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="ThirdPartyTools.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="UpdateHelperExe.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">false</ExcludedFromBuild>
     </ClCompile>
@@ -474,16 +498,30 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Util.cpp" />
-    <ClCompile Include="util\ComRef.ixx" />
-    <ClCompile Include="util\DebugLogger.ixx" />
+    <ClCompile Include="util\ComRef.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="util\DebugLogger.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="util\Encoding.ixx" />
     <ClCompile Include="util\FileUtil.ixx" />
-    <ClCompile Include="util\GlobalCache.ixx" />
+    <ClCompile Include="util\GlobalCache.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="util\Hashing.ixx" />
-    <ClCompile Include="util\Registry.ixx" />
-    <ClCompile Include="util\Sentry.ixx" />
-    <ClCompile Include="util\Tracy.cpp" />
-    <ClCompile Include="util\Tracy.ixx" />
+    <ClCompile Include="util\Registry.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="util\Sentry.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="util\Tracy.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="util\Tracy.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="util\Version.ixx" />
   </ItemGroup>
   <ItemGroup>

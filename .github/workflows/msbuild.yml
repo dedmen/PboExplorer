@@ -1,0 +1,191 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: MSBuild
+
+on:
+  #push:
+  #  branches: [ "master" ]
+  #pull_request:
+  #  branches: [ "master" ]
+  workflow_dispatch:
+
+env:
+  # Path to the solution file relative to the root of the project.
+  SOLUTION_FILE_PATH: .
+
+  # Configuration type to build.
+  # You can convert this to a build matrix if you need coverage of multiple configuration types.
+  # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+  BUILD_CONFIGURATION: Release
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps: 
+    - name: Get current timestamp
+      id: date
+      shell: pwsh
+      run: |
+        $dateString = Get-Date -format yyyyMMddHHmm
+        Write-Output "DATE_STAMP=$($dateString)" >> $Env:GITHUB_OUTPUT
+
+    - name: Test current timestamp
+      run: | 
+        echo "${{ steps.date.outputs.DATE_STAMP }}"
+
+    - name: Checkout repository and submodules
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.3.1
+
+    #- name: Restore NuGet packages
+    #  working-directory: ${{env.GITHUB_WORKSPACE}}
+    #  run: nuget restore ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Setup Sentry CLI
+      uses: mathieu-bour/setup-sentry-cli@v1.3.0
+      with:
+        version: latest
+        url: ${{ SECRETS.SENTRY_URL }}
+        token: ${{ SECRETS.SENTRY_AUTH_TOKEN }}
+        organization: ${{ SECRETS.SENTRY_ORG }}
+        project: ${{ SECRETS.SENTRY_PROJECT }}
+
+    - name: Set Version number in code
+      shell: pwsh
+      run: (Get-Content util\Version.ixx) -replace '= \d*ull','= ${{ steps.date.outputs.DATE_STAMP }}ull' | Set-Content util\Version.ixx
+
+    - name: Remove Sentry zlib # That breaks the build, I don't understand why but I'm fine without gzip compressed uploads
+      shell: pwsh
+      run: (Get-Content lib\sentry\external\crashpad\util\net\http_multipart_builder.cc).replace('if (gzip_enabled_)', 'if (false)') | Set-Content lib\sentry\external\crashpad\util\net\http_multipart_builder.cc
+
+    - name: Cache sentry build
+      id: cache-sentry
+      uses: actions/cache@v3
+      env:
+        cache-name: cache-sentry
+      with:
+        path: lib/sentry/build
+        key: cache-sentry
+
+    - name: Build Sentry lib
+      working-directory: lib/sentry   
+      run: |
+          cmake -B build -D SENTRY_BACKEND=crashpad -D CMAKE_BUILD_TYPE=RelWithDebInfo -D SENTRY_BUILD_SHARED_LIBS=OFF -D SENTRY_BUILD_RUNTIMESTATIC=ON -D SENTRY_BUILD_TESTS=OFF -D SENTRY_BUILD_EXAMPLES=OFF -D CRASHPAD_ZLIB_SYSTEM=OFF
+          cmake --build build --parallel --config RelWithDebInfo
+
+    - name: Build PboExplorer
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: |
+        msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
+        
+    - name: Build UpdateHelper
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: |
+        msbuild /m /p:Configuration=UpdateHelperExe ${{env.SOLUTION_FILE_PATH}}
+
+    #- name: Release Changelog Builder
+    #  id: github_release
+    #  uses: mikepenz/release-changelog-builder-action@v4
+    #  env:
+    #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: my-artifact
+        path: |
+          x64/Release/PboExplorer.dll
+          x64/Release/PboExplorer.pdb
+          x64/UpdateHelperExe/PboExplorerUpdateHelper.exe
+          lib/sentry/build/crashpad_build/handler/RelWithDebInfo/crashpad_handler.exe
+
+    - name: Put AIO files into one place
+      run: |
+          copy x64/Release/PboExplorer.dll PboExplorer.dll
+          copy lib/sentry/build/crashpad_build/handler/RelWithDebInfo/crashpad_handler.exe crashpad_handler.exe
+          copy .github/releaseAssets/register.cmd register.cmd
+          copy .github/releaseAssets/unregister.cmd unregister.cmd
+
+    - uses: thedoctor0/zip-release@0.7.1
+      with:
+        type: 'zip'
+        filename: 'PboExplorerAIO.zip'
+        path: PboExplorer.dll crashpad_handler.exe register.cmd unregister.cmd
+
+    - name: Create Github Release
+      uses: softprops/action-gh-release@v1
+      with:
+        draft: true
+        prerelease: true
+        body: "Todo fill something in"
+        tag_name: ${{ steps.date.outputs.DATE_STAMP }}
+        files: |
+          x64/Release/PboExplorer.dll
+          x64/Release/PboExplorer.pdb
+          x64/UpdateHelperExe/PboExplorerUpdateHelper.exe
+          lib/sentry/build/crashpad_build/handler/RelWithDebInfo/crashpad_handler.exe
+          PboExplorerAIO.zip
+      
+            
+    - name: Create Sentry release
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      env:
+        SENTRY_ORG: ${{ SECRETS.SENTRY_ORG }}
+        SENTRY_PROJECT: ${{ SECRETS.SENTRY_PROJECT }}
+        SENTRY_URL: ${{ SECRETS.SENTRY_URL }}
+        SENTRY_AUTH_TOKEN: ${{ SECRETS.SENTRY_AUTH_TOKEN }}
+        SENTRY_LOG_LEVEL: debug
+        
+        # #TODO this doesn't work yet, uploda-dif isn't uploading built files
+      run: |
+          sentry-cli releases new ${{ steps.date.outputs.DATE_STAMP }}
+          sentry-cli releases set-commits --auto ${{ steps.date.outputs.DATE_STAMP }}
+          sentry-cli releases finalize ${{ steps.date.outputs.DATE_STAMP }}
+          
+          sentry-cli upload-dif --include-sources x64/Release/
+
+      
+      # #TODO https://github.com/softprops/action-gh-release/issues/20#issuecomment-1249997598
+      # otherwise https://github.com/marketplace/actions/create-release
+      # or draft https://github.com/Roslovets-Inc/zip-npm-files/blob/a605f8ee8ab56bf7a7996d38399a50083eb00777/.github/workflows/build_and_release.yml#L99
+      
+    - name: BuildInfo
+      run: | 
+        echo "Timestamp = ${{ steps.date.outputs.DATE_STAMP }}"
+        $expHash = cmd /c x64\UpdateHelperExe\PboExplorerUpdateHelper.exe GetFileHash x64\Release\PboExplorer.dll 2`>`&1
+        $helpHash = cmd /c x64\UpdateHelperExe\PboExplorerUpdateHelper.exe GetFileHash x64\UpdateHelperExe\PboExplorerUpdateHelper.exe 2`>`&1
+        echo "expHash = $expHash"
+        echo "helpHash = $helpHash"
+
+  #release:
+  #  needs: build
+  #  runs-on: windows-latest 
+  #  steps:
+  #    - name: Checkout
+  #      uses: actions/checkout@v3
+  #
+  #    - name: Download Artifact
+  #      uses: actions/download-artifact@v3
+  #      id: download
+  #      with:
+  #        name: ${{env.release_name}}
+  #        
+  #    # #TODO https://docs.github.com/en/actions/using-workflows/storing-workflow-data-as-artifacts#passing-data-between-jobs-in-a-workflow
+  #
+  #    #- name: 'Create Release'
+  #    #  shell: cmd
+  #    #  run: |
+  #    #    hub release create ${{ env.release_name }} -m ${{ env.release_name }} -a fileA -a fileB -a fileC
+  #    #  env:
+  #    #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
