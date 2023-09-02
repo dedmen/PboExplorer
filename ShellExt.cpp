@@ -264,16 +264,20 @@ BOOL OnInitDialog(HWND hwnd, LPARAM lParam)
 	auto file = GPboFileDirectory.GetPboFile(pboFile);
 	if (!file) return TRUE;
 
-	std::wstring buffer;
-	buffer.reserve(1024);
+	if (!file->properties.empty()) {
+		std::wstring buffer;
+		buffer.reserve(1024);
 
-	for (auto& it : file->properties) {
-		buffer.append(UTF8::Decode(std::format("{}={}\r\n", it.first, it.second)));
+		for (auto& it : file->properties) {
+			buffer.append(UTF8::Decode(std::format("{}={}\r\n", it.first, it.second)));
+		}
+
+		buffer.pop_back();
+		buffer.pop_back();
+
+		SetDlgItemText(hwnd, IDC_EDIT1, buffer.data());
 	}
-	buffer.pop_back();
-	buffer.pop_back();
 
-	SetDlgItemText(hwnd, IDC_EDIT1, buffer.data());
 	// SendDlgItemMessage(hwnd, IDC_EDIT1, EM_SETSEL, 0, 5); //#TODO figure out why this doesn't work?
 
 	return TRUE;
