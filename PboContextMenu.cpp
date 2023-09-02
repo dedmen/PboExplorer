@@ -1,5 +1,6 @@
 #include "PboContextMenu.hpp"
 #include <shlwapi.h>
+#include <stdexcept>
 
 #include "FileWatcher.hpp"
 #include "PboFolder.hpp"
@@ -444,9 +445,23 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
             //#TODO make sure that everyhwere where we actually access this file, we use the fullpath, relative to our parent folder, all pidls here are relative to parent
             //#TODO make this "m_folder->pboFile->GetFolder()->fullPath" shorter, maybe can put helper func directly into pboFile, it'll know whether its a subfolder or not. Just add GetFullPath to IPboFolder and IPboFile
             //#TODO rename qp->GetFilePath() to GetFullPath, use GetFileName here and in other placesto be clear what the meaning is
-            auto tempFile = TempDiskFile::GetFile(*m_folder->pboFile->GetRootFile(), m_folder->pboFile->GetFolder()->fullPath / qp->GetFilePath());
-            fileTarget = tempFile->GetPath();
-            GFileWatcher.WatchFile(tempFile);
+
+            try {
+
+                auto tempFile = TempDiskFile::GetFile(*m_folder->pboFile->GetRootFile(), m_folder->pboFile->GetFolder()->fullPath / qp->GetFilePath());
+                fileTarget = tempFile->GetPath();
+                GFileWatcher.WatchFile(tempFile);
+
+            } catch(std::runtime_error& ex) {
+                DebugLogger::CaptureException(ex, {
+                    {"pboFile", m_folder->pboFile->GetPboDiskPath().string()},
+                    {"subfile", (m_folder->pboFile->GetFolder()->fullPath / qp->GetFilePath()).string()}
+                });
+
+                MessageBoxA(0, "Oh no! PboExplorer failed to open this file, most likely you are working with a obfuscated PBO?", "PboExplorer", MB_ICONERROR | MB_APPLMODAL | MB_SETFOREGROUND | MB_TOPMOST);
+
+                // We will continue below and set error code E_UNEXPECTED
+            }
 
             //ComRef<IStream> is;
             //hr = m_folder->BindToObject(

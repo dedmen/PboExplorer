@@ -25,6 +25,7 @@ import <source_location>;
 import <string>;
 import <utility>;
 import <fstream>;
+import <map>;
 import Encoding;
 
 
@@ -47,6 +48,8 @@ public:
     static void TraceLog(const std::string& message, const std::source_location location, const char* funcName);
     static void TraceLog(const std::wstring& message, const std::source_location location, const char* funcName);
     static void WarnLog(const std::string& message, const std::source_location location, const char* funcName);
+
+    static void CaptureException(std::exception& exception, std::map<std::string, std::string> attributes = {});
 
     static bool IsIIDUninteresting(const GUID& riid);
     static LookupInfoT GetGUIDName(const GUID& guid);
@@ -690,7 +693,7 @@ void DebugLogger::OnQueryInterfaceExitUnhandled(const GUID& riid, const std::sou
             /* message */ prnt.c_str()
         );
 
-        auto thread = sentry_value_new_thread(0, "name");
+        auto thread = sentry_value_new_thread(GetCurrentThreadId(), "name");
         sentry_value_set_by_key(thread, "stacktrace", sentry_value_new_stacktrace(nullptr, 16));
         sentry_event_add_thread(event, thread);
 
@@ -735,9 +738,42 @@ void DebugLogger::WarnLog(const std::string& message, const std::source_location
         /* message */ prnt.c_str()
     );
 
-    auto thread = sentry_value_new_thread(0, "name");
+    auto thread = sentry_value_new_thread(GetCurrentThreadId(), "name");
     sentry_value_set_by_key(thread, "stacktrace", sentry_value_new_stacktrace(nullptr, 16));
     sentry_event_add_thread(event, thread);
+
+    sentry_capture_event(event);
+#endif
+}
+
+void DebugLogger::CaptureException(std::exception& exception, std::map<std::string, std::string> attributes)
+{
+#ifdef ENABLE_SENTRY
+    sentry_value_t event = sentry_value_new_event();
+
+    sentry_value_t exc = sentry_value_new_exception(typeid(exception).name(), exception.what());
+    sentry_event_add_exception(event, exc);
+
+    //#TODO but this is windows 10 only
+    /*
+     HRESULT GetThreadDescription(
+      [in]  HANDLE hThread,
+      [out] PWSTR  *ppszThreadDescription
+    );
+     */
+
+    auto thread = sentry_value_new_thread(GetCurrentThreadId(), "name");
+    sentry_value_set_by_key(thread, "stacktrace", sentry_value_new_stacktrace(nullptr, 16));
+    sentry_event_add_thread(event, thread);
+
+    if (!attributes.empty()) {
+        sentry_value_t attribs = sentry_value_new_object();
+        for (auto& [key, value] : attributes) {
+            sentry_value_set_by_key(attribs, key.c_str(), sentry_value_new_string(value.c_str()));
+        }
+
+        sentry_value_set_by_key(event, "extra", attribs); // "extra" must be named like that https://develop.sentry.dev/sdk/event-payloads/
+    }
 
     sentry_capture_event(event);
 #endif
