@@ -264,9 +264,9 @@ static GUIDLookup<LookupInfoStorageT> guidLookupTable{
 
 
         // ShObjIdl_core.h IUnknown
-        LookupFromType<IContextMenu>(DebugInterestLevel::Interested),
-        LookupFromType<IContextMenu2>(DebugInterestLevel::Interested),
-        LookupFromType<IContextMenu3>(DebugInterestLevel::Interested),
+        LookupFromType<IContextMenu>(DebugInterestLevel::Interested), // Want to know if contextMenu is missing somewhere somewhere
+        LookupFromType<IContextMenu2>(DebugInterestLevel::Normal), // 2/3 are just for menu messages which we don't use
+        LookupFromType<IContextMenu3>(DebugInterestLevel::Normal),
         LookupFromType<IExecuteCommand>(),
         LookupFromType<IPersistFolder>(DebugInterestLevel::Interested),
         LookupFromType<IRunnableTask>(),
@@ -460,8 +460,8 @@ static GUIDLookup<LookupInfoStorageT> guidLookupTable{
 
         // ShlObj_core.h DECLARE_INTERFACE_IID_
 
-        LookupFromType<IExtractIconA>(DebugInterestLevel::Interested),
-        LookupFromType<IExtractIconW>(DebugInterestLevel::Interested),
+        LookupFromType<IExtractIconA>(DebugInterestLevel::Normal),
+        LookupFromType<IExtractIconW>(DebugInterestLevel::Normal),
         LookupFromType<IShellIconOverlayManager>(),
         LookupFromType<IShellIconOverlay>(),
         LookupFromType<IShellExecuteHookA>(),

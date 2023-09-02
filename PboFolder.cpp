@@ -762,7 +762,7 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
         return S_OK;
     }
 
-    else if (riid == IID_IExtractIconW)
+    else if (riid == IID_IExtractIconW) //#TODO IExtractIconA
     {
 
         //#TODO zipfldr uses SHCreateFileExtractIconW
@@ -1008,6 +1008,7 @@ HRESULT PboFolder::GetUIObjectOf(HWND hwndOwner, UINT cidl, LPCITEMIDLIST* apidl
 
     RIID_TODO(IID_IDropTarget); //#TODO
     RIID_TODO(IID_IItemNameLimits); //#TODO
+    RIID_TODO(IID_IExtractIconA); //#TODO
 
     DebugLogger_OnQueryInterfaceExitUnhandled(riid);
 

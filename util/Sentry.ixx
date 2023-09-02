@@ -182,7 +182,7 @@ export namespace Sentry {
 				/* message */ "It works!"
 			);
 
-			auto thread = sentry_value_new_thread(0, "name");
+			auto thread = sentry_value_new_thread(GetCurrentThreadId(), "name");
 			sentry_value_set_by_key(thread, "stacktrace", sentry_value_new_stacktrace(nullptr, 16));
 			sentry_event_add_thread(event, thread);
 
