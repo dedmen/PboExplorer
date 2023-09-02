@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
         }
     } else if (std::string_view(argv[1]) == "GetFileHash"sv) {
         auto hash = GetFileHash(std::string_view(argv[2]));
-        std::cout << std::hex << hash;
+        std::cout << hash << " hex " << std::hex << hash;
     }
 
     return 0;
