@@ -144,9 +144,7 @@ jobs:
         SENTRY_PROJECT: ${{ SECRETS.SENTRY_PROJECT }}
         SENTRY_URL: ${{ SECRETS.SENTRY_URL }}
         SENTRY_AUTH_TOKEN: ${{ SECRETS.SENTRY_AUTH_TOKEN }}
-        SENTRY_LOG_LEVEL: debug
-        
-        # #TODO this doesn't work yet, uploda-dif isn't uploading built files
+        #SENTRY_LOG_LEVEL: debug
       run: |
           sentry-cli releases new ${{ steps.date.outputs.DATE_STAMP }}
           sentry-cli releases set-commits --auto ${{ steps.date.outputs.DATE_STAMP }}
