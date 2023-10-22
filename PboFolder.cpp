@@ -1,4 +1,4 @@
-#include "PboFolder.hpp"
+﻿#include "PboFolder.hpp"
 
 
 #include <Shlwapi.h>
@@ -1073,7 +1073,7 @@ HRESULT PboFolder::SetNameOf(HWND hwnd, LPCITEMIDLIST pidl, LPCOLESTR pszName, S
     //#TODO OOM check
     PboPidl::CreatePidlAt(newPidl, newFilePath, qp->type);
     // last cbSize is 0
-    uint16_t* afterCB = (uint16_t*)(((uintptr_t)qp) + pidlSize);
+    uint16_t* afterCB = reinterpret_cast<uint16_t*>(reinterpret_cast<uintptr_t>(newPidl) + pidlSize);
     *afterCB = 0;
 
     *ppidlOut = (LPITEMIDLIST)newPidl;
