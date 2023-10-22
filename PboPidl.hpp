@@ -36,6 +36,11 @@ public:
     std::filesystem::path GetFilePath() const {
         std::filesystem::path retPath;
         auto pidl = this;
+
+        // Skip non-PboPidl ones infront
+        while (!pidl->IsValidPidl() && pidl->cb)
+            pidl = reinterpret_cast<PboPidl*>(reinterpret_cast<uintptr_t>(pidl) + pidl->cb);
+
         uint32_t pidlCount = 0;
         do {
             retPath /= pidl->GetFileName();
@@ -81,7 +86,7 @@ public:
     static uint16_t GetPidlSizeForPath(const std::filesystem::path& path) {
         return 
             sizeof(PboPidl) +
-            (path.native().length() - 1) * sizeof(wchar_t);
+            (path.native().length()) * sizeof(wchar_t);
     }
 
     /// <summary>
@@ -99,6 +104,19 @@ public:
         std::memcpy(dst->filePath, path.native().c_str(), path.native().length() * sizeof(wchar_t));
         dst->filePath[path.native().length()] = 0;
         return reinterpret_cast<PboPidl*>(reinterpret_cast<uintptr_t>(dst) + dst->cb);
+    }
+
+
+    static std::vector<const PboPidl*> SplitPidl(const PboPidl* src) {
+        std::vector<const PboPidl*> res;
+
+        // Separate pointer for each pidl in sequence
+        while (src->cb) {
+            res.emplace_back(src);
+            src = reinterpret_cast<PboPidl*>(reinterpret_cast<uintptr_t>(src) + src->cb);
+        }
+
+        return res;
     }
 
 };
