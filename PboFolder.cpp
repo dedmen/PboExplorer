@@ -1,4 +1,4 @@
-﻿#include "PboFolder.hpp"
+#include "PboFolder.hpp"
 
 
 #include <Shlwapi.h>
@@ -376,7 +376,7 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
         //if (!dir) return(E_FAIL);
 
         auto qf = ComRef<PboFolder>::Create();
-        qf->pboFile = std::make_shared<PboSubFolderActiveRef>(pboFile->GetFolderByPath(subPidl->GetFilePath()));
+        qf->pboFile = std::make_shared<PboSubFolderActiveRef>(pboFile->GetFolderByPath(pboFile->GetFolder()->fullPath / subPidl->GetFilePath()));
 
         if (!qf)
         {
@@ -385,7 +385,6 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
 
         LPITEMIDLIST pidlAbs = ILCombine(m_pidl, pidl);
         qf->m_pidl = pidlAbs;
-
 
         auto hr = qf->QueryInterface(riid, ppv);
 
@@ -716,6 +715,7 @@ HRESULT PboFolder::GetAttributesOf(UINT cidl, LPCITEMIDLIST* apidl, SFGAOF* rgfI
         }
 
         Util::WaitForDebuggerPrompt();
+        return {};
     };
 
     for (size_t i = 0; i < cidl; i++)
