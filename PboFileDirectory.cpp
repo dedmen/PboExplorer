@@ -203,9 +203,10 @@ void PboFile::ReadFrom(std::filesystem::path inputPath)
                 curFolder = *subfolderFound;
                 continue;
             }
+
             auto newSub = std::make_shared<PboSubFolder>();
             newSub->filename = it;
-            newSub->fullPath = filePath.parent_path();
+            newSub->fullPath = curFolder->fullPath / it;
             newSub->rootFile = weak_from_this();
             curFolder->subfolders.emplace_back(std::move(newSub));
             curFolder = curFolder->subfolders.back();
