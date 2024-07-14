@@ -128,7 +128,7 @@ Updater::Updater()
     wchar_t appPath[MAX_PATH];
     SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, NULL, SHGFP_TYPE_CURRENT, appPath);
 
-    UpdateTempDir = std::filesystem::path(appPath) / "Arma 3" / "PboExplorer";
+    UpdateTempDir = std::filesystem::path(appPath) / "Arma 3" / "PboExplorer" / "UpdateTemp";
 
     std::filesystem::create_directories(UpdateTempDir);
 }
@@ -342,14 +342,15 @@ void Updater::PostUpdateInstalled()
 void Updater::CleanupUpdateFiles()
 {
     try {
-        if (std::filesystem::exists(UpdateTempDir / "PboExplorer.dll"))
-            std::filesystem::remove(UpdateTempDir / "PboExplorer.dll");
+        std::error_code ec;
+        if (std::filesystem::exists(UpdateTempDir / "PboExplorer.dll", ec))
+            std::filesystem::remove(UpdateTempDir / "PboExplorer.dll", ec);
 
-        if (std::filesystem::exists(UpdateTempDir / "PboExplorerUpdateHelper.exe"))
-            std::filesystem::remove(UpdateTempDir / "PboExplorerUpdateHelper.exe");
+        if (std::filesystem::exists(UpdateTempDir / "PboExplorerUpdateHelper.exe", ec))
+            std::filesystem::remove(UpdateTempDir / "PboExplorerUpdateHelper.exe", ec);
 
-        if (std::filesystem::exists(UpdateTempDir / "OldVersion.txt"))
-            std::filesystem::remove(UpdateTempDir / "OldVersion.txt");
+        if (std::filesystem::exists(UpdateTempDir / "OldVersion.txt", ec))
+            std::filesystem::remove(UpdateTempDir / "OldVersion.txt", ec);
     }
     catch (...) {}
 }
