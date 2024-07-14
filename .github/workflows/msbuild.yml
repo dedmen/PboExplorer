@@ -49,7 +49,7 @@ jobs:
       uses: microsoft/setup-msbuild@v1.3.1
 
     #- name: Restore NuGet packages
-    #  working-directory: ${{env.GITHUB_WORKSPACE}}
+    #  working-directory: ${{github.workspace}}
     #  run: nuget restore ${{env.SOLUTION_FILE_PATH}}
 
     - name: Setup Sentry CLI
@@ -63,11 +63,11 @@ jobs:
 
     - name: Set Version number in code
       shell: pwsh
-      run: (Get-Content util\Version.ixx) -replace '= \d*ull','= ${{ steps.date.outputs.DATE_STAMP }}ull' | Set-Content util\Version.ixx
+      run: (Get-Content src\util\Version.ixx) -replace '= \d*ull','= ${{ steps.date.outputs.DATE_STAMP }}ull' | Set-Content src\util\Version.ixx
 
     - name: Remove Sentry zlib # That breaks the build, I don't understand why but I'm fine without gzip compressed uploads
       shell: pwsh
-      run: (Get-Content lib\sentry\external\crashpad\util\net\http_multipart_builder.cc).replace('if (gzip_enabled_)', 'if (false)') | Set-Content lib\sentry\external\crashpad\util\net\http_multipart_builder.cc
+      run: (Get-Content src\lib\sentry\external\crashpad\util\net\http_multipart_builder.cc).replace('if (gzip_enabled_)', 'if (false)') | Set-Content src\lib\sentry\external\crashpad\util\net\http_multipart_builder.cc
 
     - name: Cache sentry build
       id: cache-sentry
@@ -75,22 +75,22 @@ jobs:
       env:
         cache-name: cache-sentry
       with:
-        path: lib/sentry/build
+        path: src/lib/sentry/build
         key: cache-sentry
 
     - name: Build Sentry lib
-      working-directory: lib/sentry   
+      working-directory: src/lib/sentry   
       run: |
           cmake -B build -D SENTRY_BACKEND=crashpad -D CMAKE_BUILD_TYPE=RelWithDebInfo -D SENTRY_BUILD_SHARED_LIBS=OFF -D SENTRY_BUILD_RUNTIMESTATIC=ON -D SENTRY_BUILD_TESTS=OFF -D SENTRY_BUILD_EXAMPLES=OFF -D CRASHPAD_ZLIB_SYSTEM=OFF
           cmake --build build --parallel --config RelWithDebInfo
 
     - name: Build PboExplorer
-      working-directory: ${{env.GITHUB_WORKSPACE}}
+      working-directory: ${{github.workspace}}/src
       run: |
         msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}}
         
     - name: Build UpdateHelper
-      working-directory: ${{env.GITHUB_WORKSPACE}}
+      working-directory: ${{github.workspace}}/src
       run: |
         msbuild /m /p:Configuration=UpdateHelperExe ${{env.SOLUTION_FILE_PATH}}
 
@@ -104,15 +104,15 @@ jobs:
       with:
         name: my-artifact
         path: |
-          x64/Release/PboExplorer.dll
-          x64/Release/PboExplorer.pdb
-          x64/UpdateHelperExe/PboExplorerUpdateHelper.exe
-          lib/sentry/build/crashpad_build/handler/RelWithDebInfo/crashpad_handler.exe
+          src/x64/Release/PboExplorer.dll
+          src/x64/Release/PboExplorer.pdb
+          src/x64/UpdateHelperExe/PboExplorerUpdateHelper.exe
+          src/lib/sentry/build/crashpad_build/handler/RelWithDebInfo/crashpad_handler.exe
 
     - name: Put AIO files into one place
       run: |
-          copy x64/Release/PboExplorer.dll PboExplorer.dll
-          copy lib/sentry/build/crashpad_build/handler/RelWithDebInfo/crashpad_handler.exe crashpad_handler.exe
+          copy src/x64/Release/PboExplorer.dll PboExplorer.dll
+          copy src/lib/sentry/build/crashpad_build/handler/RelWithDebInfo/crashpad_handler.exe crashpad_handler.exe
           copy .github/releaseAssets/register.cmd register.cmd
           copy .github/releaseAssets/unregister.cmd unregister.cmd
 
@@ -130,15 +130,15 @@ jobs:
         body: "Todo fill something in"
         tag_name: ${{ steps.date.outputs.DATE_STAMP }}
         files: |
-          x64/Release/PboExplorer.dll
-          x64/Release/PboExplorer.pdb
-          x64/UpdateHelperExe/PboExplorerUpdateHelper.exe
-          lib/sentry/build/crashpad_build/handler/RelWithDebInfo/crashpad_handler.exe
+          src/x64/Release/PboExplorer.dll
+          src/x64/Release/PboExplorer.pdb
+          src/x64/UpdateHelperExe/PboExplorerUpdateHelper.exe
+          src/lib/sentry/build/crashpad_build/handler/RelWithDebInfo/crashpad_handler.exe
           PboExplorerAIO.zip
       
             
     - name: Create Sentry release
-      working-directory: ${{env.GITHUB_WORKSPACE}}
+      working-directory: ${{github.workspace}}
       env:
         SENTRY_ORG: ${{ SECRETS.SENTRY_ORG }}
         SENTRY_PROJECT: ${{ SECRETS.SENTRY_PROJECT }}
@@ -150,7 +150,7 @@ jobs:
           sentry-cli releases set-commits --auto ${{ steps.date.outputs.DATE_STAMP }}
           sentry-cli releases finalize ${{ steps.date.outputs.DATE_STAMP }}
           
-          sentry-cli upload-dif --include-sources x64/Release/
+          sentry-cli upload-dif --include-sources src/x64/Release/
 
       
       # #TODO https://github.com/softprops/action-gh-release/issues/20#issuecomment-1249997598
@@ -160,8 +160,8 @@ jobs:
     - name: BuildInfo
       run: | 
         echo "Timestamp = ${{ steps.date.outputs.DATE_STAMP }}"
-        $expHash = cmd /c x64\UpdateHelperExe\PboExplorerUpdateHelper.exe GetFileHash x64\Release\PboExplorer.dll 2`>`&1
-        $helpHash = cmd /c x64\UpdateHelperExe\PboExplorerUpdateHelper.exe GetFileHash x64\UpdateHelperExe\PboExplorerUpdateHelper.exe 2`>`&1
+        $expHash = cmd /c src\x64\UpdateHelperExe\PboExplorerUpdateHelper.exe GetFileHash src\x64\Release\PboExplorer.dll 2`>`&1
+        $helpHash = cmd /c src\x64\UpdateHelperExe\PboExplorerUpdateHelper.exe GetFileHash src\x64\UpdateHelperExe\PboExplorerUpdateHelper.exe 2`>`&1
         echo "expHash = $expHash"
         echo "helpHash = $helpHash"
 
