@@ -7,3 +7,12 @@
 [submodule "lib/ArmaPboLib"]
 	path = lib/ArmaPboLib
 	url = https://github.com/arma3/ArmaPboLib.git
+[submodule "lib/s3tc-dxt-decompression"]
+	path = lib/s3tc-dxt-decompression
+	url = https://github.com/Benjamin-Dobell/s3tc-dxt-decompression.git
+[submodule "lib/MipMapTool"]
+	path = lib/MipMapTool
+	url = https://github.com/arma3/MipMapTool.git
+[submodule "lib/minilzo"]
+	path = lib/minilzo
+	url = https://github.com/yuhaoth/minilzo.git

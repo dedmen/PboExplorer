@@ -336,7 +336,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <EnableModules>true</EnableModules>
@@ -389,7 +389,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>lib/sentry/external/crashpad/third_party/mini_chromium/mini_chromium/;lib/sentry/external/crashpad;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <EnableModules>true</EnableModules>
@@ -417,8 +417,16 @@
     <ClInclude Include="PboFileStream.hpp" />
     <ClInclude Include="PboFolder.hpp" />
     <ClInclude Include="PboFolderContextMenu.hpp" />
-    <ClCompile Include="MipMapTool.ixx" />
+    <ClCompile Include="MipMapTool.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="PaaThumbnailHandler.ixx">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="PboPidl.ixx">
+      <FileType>Document</FileType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='UpdateHelperExe|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClInclude Include="pch.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="ShellExt.hpp" />

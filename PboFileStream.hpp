@@ -19,6 +19,7 @@ class PboFileStream :
 {
 public:
     PboFileStream(std::shared_ptr<PboFile> pboFile, std::filesystem::path filePath);
+    PboFileStream(std::shared_ptr<PboFile> pboFile, const PboSubFile& subFile);
     ~PboFileStream() override;
 
     // IUnknown

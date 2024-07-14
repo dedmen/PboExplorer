@@ -1,4 +1,4 @@
-#include "PboFolder.hpp"
+﻿#include "PboFolder.hpp"
 
 
 #include <Shlwapi.h>
@@ -28,6 +28,7 @@ import ProgressDialogOperation;
 import ClipboardFormatHandler;
 import PboPatcherLocked;
 import PboPatcher;
+import PaaThumbnailProvider;
 
 #define CHECK_INIT() \
   if( !checkInit() ) return( E_FAIL )
@@ -351,7 +352,7 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
 #ifdef _DEBUG
     if (IsEqualIID(riid, IID_IPropertyStoreCache) ||
         IsEqualIID(riid, IID_IPropertyStoreFactory) ||
-        IsEqualIID(riid, IID_IPreviewItem) ||
+        IsEqualIID(riid, IID_IPreviewItem) || //#TODO this is required for preview frame (right side panel in explorer). We need to have a IShellItem2 class. That will be spawned here, and bound to the pboFolder and PboSubFile
         IsEqualIID(riid, IID_IPropertyStore)
         )
         return(E_NOINTERFACE);
@@ -388,8 +389,7 @@ HRESULT PboFolder::BindToObject(LPCITEMIDLIST pidl, LPBC bindContext, const IID&
     }
     else if (IsEqualIID(riid, IID_IStream))
     {
-
-        Util::WaitForDebuggerPrompt("PboFolder IStream bind");
+        //Util::WaitForDebuggerPrompt("PboFolder IStream bind");
 
         CoTaskMemRefS<ITEMIDLIST> pidld = ILClone(pidl);
         ILRemoveLastID(pidld);
@@ -1224,7 +1224,7 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
 
     if (*pscid == PKEY_ItemNameDisplay)
     {
-        return(stringToVariant(qp->GetFileName().filename().wstring(), pv));
+        return(stringToVariant(qp->GetFileNameRaw(), pv));
     }
     else if (*pscid == PKEY_Size)
     {
@@ -1258,13 +1258,16 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
     //
     //    return(S_OK);
     //}
-    //else if (pscid->fmtid == PKEY_PerceivedType.fmtid &&
-    //    pscid->pid == PKEY_PerceivedType.pid)
-    //{
-    //    const wchar_t* type = L"";
-    //
-    //    return(stringToVariant(type, pv));
-    //}
+    else if (pscid->fmtid == PKEY_PerceivedType.fmtid &&
+        pscid->pid == PKEY_PerceivedType.pid)
+    {
+        const wchar_t* type = L"";
+
+
+        pv->vt = VT_I4;
+        pv->intVal = qp->GetFileNameRaw().ends_with(L"paa"sv) ? PERCEIVED_TYPE_IMAGE : PERCEIVED_TYPE_UNKNOWN;
+        return S_OK;
+    }
     else if (pscid->fmtid == FMTID_WebView && pscid->pid == PID_DISPLAY_PROPERTIES)
     {
         return(stringToVariant(L"prop:Name;Write;Size", pv));
@@ -1339,7 +1342,7 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
     else if (*pscid == PKEY_PropList_PreviewTitle)
         return stringToVariant(UTF8::Decode("lol funni preview title"), pv);
     else if (*pscid == PKEY_PropList_PreviewDetails)
-        return stringToVariant(UTF8::Decode("lol funni preview details"), pv);
+        return stringToVariant(UTF8::Decode("lol funni preview details"), pv); //#TODO paa size? Compression algo? number of mips?
 
     DebugLogger::TraceLog(std::format("Unimplemented prop file {} Detail {}", (pboFile->GetFolder()->fullPath / qp->GetFilePath()).string(), DetailTypesLookup.GetName(*pscid)), std::source_location::current(), __FUNCTION__);
 
@@ -1497,7 +1500,8 @@ HRESULT PboFolder::Initialize(LPCITEMIDLIST pidl)
     m_pidl = ILClone(pidl);
     if (!m_pidl) return(E_OUTOFMEMORY);
 
-    checkInit();
+    if (!checkInit())
+        return E_INVALIDARG;
 
     auto subPidl = pidl;
     int count = 0;
@@ -1554,8 +1558,21 @@ HRESULT PboFolder::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg)
     {
-    case SFVM_DEFVIEWMODE:
-        *(FOLDERVIEWMODE*)lParam = FVM_DETAILS;
+        case SFVM_DEFVIEWMODE:
+
+            auto imageCount = std::ranges::count_if(pboFile->GetFolder()->subfiles, [](const PboSubFile& sf) {
+                return sf.filename.ends_with(L"paa"sv);
+            });
+
+            
+
+        if (static_cast<float>(pboFile->GetFolder()->subfiles.size()) / imageCount > 0.4) { // More than 40% images
+            *(FOLDERVIEWMODE*)lParam = FVM_TILE;
+        } else {
+            *(FOLDERVIEWMODE*)lParam = FVM_DETAILS;
+        }
+
+        
         return(S_OK);
         //#TODO custom status bar handling so we can display size of all selected elements? https://learn.microsoft.com/en-us/windows/win32/shell/sfvm-updatestatusbar
     }
@@ -1567,10 +1584,35 @@ HRESULT PboFolder::MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lParam)
 HRESULT PboFolder::GetThumbnailHandler(LPCITEMIDLIST pidlChild, IBindCtx* pbc, const IID& riid, void** ppv)
 {
     ProfilingScope pScope;
+    pScope.SetValue(DebugLogger::GetGUIDName(riid).first);
+    DebugLogger_OnQueryInterfaceEntry(riid);
+
+    // riid == 000214FA-0000-0000-C000-000000000046 IExtractIconW
+    // riid == IExtractImage
+    
+    // Which file?
+    const PboPidl* qp = (const PboPidl*)pidlChild;
+
+    if (!qp->IsFile()) return(E_FAIL);
+
+    auto fileT = pboFile->GetFileByPath(qp->GetFileName());
+    if (!fileT)
+        return E_FAIL;
+    const PboSubFile& file = fileT->get();
+
+    if (file.filename.ends_with(L"paa"sv)) {
+        
+        if (IsEqualIID(riid, IID_IThumbnailProvider)) {
+            ComRef<PaaThumbnailProvider>::CreateForReturn<IThumbnailProvider>(ppv, file, pboFile, lastHwnd);
+            return S_OK;
+        }
+        // Its a paa file, special handling
+    }
 
     //SHCreateFileExtractIcon()
-    //#TODO just do this?? https://github.com/imwuzhh/repo1/blob/58f52ee3b7501c65683591909c095d48f11ae68e/vdrivense/ShFrwk/NseFileItem.cpp#L96//#
+    //#TODO just do this?? 
     //#TODO learn more from that
+
 
     ComRef<IQueryAssociations> qa;
     HRESULT hr = GetUIObjectOf(nullptr, 1, &pidlChild, IID_IQueryAssociations, nullptr, qa.AsQueryInterfaceTarget());

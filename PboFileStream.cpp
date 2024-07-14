@@ -38,6 +38,18 @@ PboFileStream::PboFileStream(std::shared_ptr<PboFile> pboFile, std::filesystem::
 {
     m_pos = 0;
 }
+
+PboFileStream::PboFileStream(std::shared_ptr<PboFile> pboFile, const PboSubFile& subFile) :
+    pboFile(pboFile),
+    filePath(filePath),
+    pboInputStream(pboFile->diskPath, std::ios::in | std::ios::binary),
+    pboReader(pboInputStream),
+    fileBuffer(pboReader, PboEntry{ "", subFile.filesize, subFile.dataSize, subFile.startOffset, PboEntryPackingMethod::none }), //#TODO compression, store value in SubFile. Also update PaaThumbnailHandler
+    sourceStream(&fileBuffer)
+{
+    m_pos = 0;
+}
+
 PboFileStream::~PboFileStream()
 {
     //dirMutex.lock();

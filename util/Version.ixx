@@ -1,3 +1,4 @@
 export module Version;
 
-export constexpr auto VERSIONNO = 202308281830ull;
+// YMD H M
+export constexpr auto VERSIONNO = 202408142239ull;
