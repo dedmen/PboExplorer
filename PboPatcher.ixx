@@ -1,14 +1,10 @@
 module;
-
 #include "lib/ArmaPboLib/src/pbo.hpp"
-#include "Util.hpp"
-
 export module PboPatcher;
 
-import <shared_mutex>;
-import <utility>;
-import <execution>;
-
+import std;
+import std.compat;
+import Util;
 
 
 class PboPatcher;

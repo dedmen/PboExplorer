@@ -2,7 +2,8 @@
 #define NOMINMAX
 #include <shlobj.h>
 
-import <memory>;
+import std;
+import std.compat;
 import ComRef;
 
 #include "PboFileDirectory.hpp"

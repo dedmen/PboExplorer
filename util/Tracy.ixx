@@ -2,9 +2,8 @@ module;
 
 
 export module Tracy;
-import <source_location>;
-import <memory>;
-import <string_view>;
+import std;
+import std.compat;
 
 
 extern "C++" namespace tracy {

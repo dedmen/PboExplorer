@@ -3,7 +3,8 @@
 #include <ShlObj.h>
 #include <Windows.h>
 
-import <vector>;
+import std;
+import std.compat;
 import ComRef;
 
 class PboFolder;

@@ -1,8 +1,7 @@
 export module FileUtil;
 
-import <array>;
-import <filesystem>;
-import <fstream>;
+import std;
+import std.compat;
 import Hashing;
 
 export uint64_t GetFileHash(std::filesystem::path file)

@@ -3,12 +3,8 @@ module;
 
 export module TempDiskFile;
 
-import <array>;
-import <filesystem>;
-import <mutex>;
-import <unordered_map>;
-import <fstream>;
-import <source_location>;
+import std;
+import std.compat;
 
 
 

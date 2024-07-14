@@ -1,12 +1,8 @@
-module;
-
-#include "../Util.hpp"
-
 export module GlobalCache;
 
-import <any>;
-import <functional>;
-import <mutex>;
+import std;
+import std.compat;
+import Util;
 
 
 class GlobalCache

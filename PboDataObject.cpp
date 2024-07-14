@@ -2,17 +2,17 @@
 #include "PboDataObject.hpp"
 
 #define NOMINMAX
-import <utility>;
-import <numeric>;
+import std;
+import std.compat;
 
 #include "PboFileStream.hpp"
-#include "PboPidl.hpp"
+import PboPidl;
 
 #ifndef FD_PROGRESSUI
 #define FD_PROGRESSUI 0x00004000
 #endif
 #include "DebugLogger.hpp"
-#include "Util.hpp"
+import Util;
 
 #ifndef __MINGW64_VERSION_MAJOR
 const GUID IID_IAsyncOperation =

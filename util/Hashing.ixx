@@ -1,9 +1,7 @@
 export module Hashing;
 
-import <array>;
-import <bit>;
-import <cstdint>;
-import <string_view>;
+import std;
+import std.compat;
 
 export class FNV1A_Hash {
     static constexpr uint64_t FNV_PRIME = 0x100000001b3;

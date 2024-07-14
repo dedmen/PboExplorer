@@ -3,17 +3,12 @@ module;
 #include <shtypes.h>
 #include <Shlwapi.h>
 #include <shlobj.h>
-#include "Util.hpp"
 
 export module ClipboardFormatHandler;
 
 
-import <vector>;
-import <variant>;
-import <any>;
-import <filesystem>;
-import <format>;
-
+import std;
+import Util;
 #include "DebugLogger.hpp"
 
 

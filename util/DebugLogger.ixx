@@ -1,5 +1,4 @@
 module;
-#include <filesystem>
 #include <guiddef.h>
 
 #include <Windows.h>
@@ -18,14 +17,8 @@ module;
 export module DebugLogger;
 
 
-import <chrono>;
-import <format>;
-import <unordered_map>;
-import <source_location>;
-import <string>;
-import <utility>;
-import <fstream>;
-import <map>;
+import std;
+import std.compat;
 import Encoding;
 
 

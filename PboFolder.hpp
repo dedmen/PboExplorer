@@ -3,9 +3,10 @@
 #include <ShlObj.h>
 #include <Windows.h>
 
-import <filesystem>;
+import std;
+import std.compat;
 import ComRef;
-#include "PboPidl.hpp"
+import PboPidl;
 class TempDiskFile;
 
 #include "PboFileDirectory.hpp"

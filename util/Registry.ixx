@@ -2,9 +2,8 @@ module;
 #include <Windows.h>
 export module Registry;
 
-import <format>;
-import <variant>;
-import <filesystem>;
+import std;
+import std.compat;
 
 export
 class RegistryEntry {

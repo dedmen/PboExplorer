@@ -1,8 +1,7 @@
 export module FileWatcher;
 
-import <filesystem>;
-import <mutex>;
-import <unordered_map>;
+import std;
+import std.compat;
 
 import TempDiskFile;
 

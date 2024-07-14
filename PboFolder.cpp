@@ -1,27 +1,21 @@
-﻿#include "PboFolder.hpp"
+#include "PboFolder.hpp"
 
 
 #include <Shlwapi.h>
 #pragma comment( lib, "Shlwapi" )
 
 #include <propkey.h>
+#include <thumbcache.h>
 
-import <fstream>;
-#include <codecvt>
-#include <ranges>
-import <functional>;
-import <mutex>;
-import <utility>;
-import <unordered_set>;
-import <numeric>;
-import <string_view>;
+import std;
+import std.compat;
 
 #include "PboContextMenu.hpp"
 #include "PboDataObject.hpp"
 #include "PboFileStream.hpp"
-#include "PboPidl.hpp"
+import PboPidl;
 
-#include "Util.hpp"
+import Util;
 
 #include "DebugLogger.hpp"
 
@@ -2221,10 +2215,10 @@ bool PboFolder::checkInit()
     //dirMutex.unlock();
 
     //return(m_dir != NULL);
-    return true;
+    return pboFile != nullptr;
 }
 
-
+#include <stdio.h>
 
 std::filesystem::path PboFolder::GetTempDir()
 {

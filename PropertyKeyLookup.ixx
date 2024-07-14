@@ -6,7 +6,8 @@ module;
 
 export module PropertyKeyLookup;
 
-import <string_view>;
+import std;
+import std.compat;
 
 import GUIDLookup;
 

@@ -7,10 +7,8 @@ module;
 
 export module ContextMenu;
 
-import <filesystem>;
-import <functional>;
-import <string>;
-import <vector>;
+import std;
+import std.compat;
 
 
 export class ContextMenuItem {

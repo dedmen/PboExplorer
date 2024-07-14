@@ -1,13 +1,12 @@
 #include "PboContextMenu.hpp"
 #include <shlwapi.h>
-#include <stdexcept>
 
 #include "FileWatcher.hpp"
 #include "PboFolder.hpp"
-#include "PboPidl.hpp"
+import PboPidl;
 import TempDiskFile;
 import ContextMenu;
-#include "Util.hpp"
+import Util;
 
 #ifndef SEE_MASK_NOASYNC
 #define SEE_MASK_NOASYNC 0x00000100
@@ -357,7 +356,7 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
                 else
                 {
                     auto subFolder = m_folder->pboFile->GetFolderByPath(qp->GetFileName());
-                    TRY_ASSERT(subFolder);
+                    TRY_ASSERT(static_cast<bool>(subFolder));
                     if (!subFolder)
                         continue;
 

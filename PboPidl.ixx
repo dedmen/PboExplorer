@@ -1,7 +1,9 @@
-#pragma once
-#include <filesystem>
+export module PboPidl;
 
-enum class PboPidlFileType
+import std;
+import std.compat;
+
+export enum class PboPidlFileType
 {
 	Folder,
 	File
@@ -9,7 +11,7 @@ enum class PboPidlFileType
 
 //#TODO total size needs to be 4B aligned
 #pragma pack(push,1)
-struct PboPidl
+export struct PboPidl
 {
 
     uint16_t cb;
@@ -72,6 +74,14 @@ public:
     std::filesystem::path GetFileName() const {
         auto pathLen = cb - sizeof(PboPidl);
         return { std::wstring_view((const wchar_t*)filePath) };
+    }
+
+    /// <summary>
+    /// Gets the name of the current pidl, if this is a Combined/multi-level pidl it only returns the name of the current one!
+    /// </summary>
+    std::wstring_view GetFileNameRaw() const {
+        auto pathLen = cb - sizeof(PboPidl);
+        return std::wstring_view((const wchar_t*)filePath);
     }
 
     bool IsValidPidl() const {

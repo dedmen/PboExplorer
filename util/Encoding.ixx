@@ -1,9 +1,8 @@
 module;
 #include <Windows.h>
 export module Encoding;
-import <array>;
-import <string>;
-import <span>;
+import std;
+import std.compat;
 
 
 export namespace UTF8 {

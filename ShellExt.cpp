@@ -3,7 +3,8 @@
 #include "resource.h"
 #include "DebugLogger.hpp"
 
-#include <fstream> // Addon builder reading config file
+import std;
+import std.compat;
 #include "PboFileDirectory.hpp"
 
 // CreatePropertySheetPageW
@@ -14,7 +15,7 @@
 // https://www.codeproject.com/Articles/11674/The-Mini-Shell-Extension-Framework-Part-III#ishellfolder_interface
 // https://github.com/vbaderks/msf/blob/4e91fcc409d196f8ddc350a467f484daf40fc0e1/include/msf/shell_folder_impl.h#L1146
 
-import <span>;
+import std;
 import Encoding;
 import Tracy;
 import Registry;
@@ -294,7 +295,7 @@ BOOL OnApply(HWND hwnd, PSHNOTIFY* phdr)
 	// parse out properties
 	std::vector<std::pair<std::string, std::string>> newProperties;
 
-	uint32_t curOffs = 0;
+	size_t curOffs = 0;
 
 	while (buffer[curOffs]) {
 
@@ -513,7 +514,7 @@ HRESULT MikeroExtractPboToSubfolders(const std::vector<std::filesystem::path>& f
 		sei.lpParameters = params.c_str();
 		auto workDir = it.parent_path().native();
 		sei.lpDirectory = workDir.c_str();
-		allGood &= ShellExecuteEx(&sei);
+		allGood &= ShellExecuteEx(&sei) == TRUE;
 	}
 
 	return allGood ? S_OK : E_UNEXPECTED;
@@ -553,7 +554,7 @@ HRESULT BankRevExtractPboToSubfolders(const std::vector<std::filesystem::path>& 
 		auto workDir = it.parent_path().native();
 		sei.lpDirectory = workDir.c_str();
 
-		allGood &= ShellExecuteEx(&sei);
+		allGood &= ShellExecuteEx(&sei) == TRUE;
 	}
 
 	return allGood ? S_OK : E_UNEXPECTED;
@@ -608,7 +609,7 @@ HRESULT SignPbos(const std::vector<std::filesystem::path>& files) {
 		auto workDir = it.parent_path().native();
 		sei.lpDirectory = workDir.c_str();
 
-		allGood &= ShellExecuteEx(&sei);
+		allGood &= ShellExecuteEx(&sei) == TRUE;
 	}
 
 	return allGood ? S_OK : E_UNEXPECTED;
@@ -995,7 +996,7 @@ std::vector<ContextMenuItem> ShellExt::CreateContextMenu_MultiPbo()
 			auto workDir = it.parent_path().native();
 			sei.lpDirectory = workDir.c_str();
 
-			allGood &= ShellExecuteEx(&sei);
+			allGood &= ShellExecuteEx(&sei) == TRUE;
 		}
 
 		return allGood ? S_OK : E_UNEXPECTED;
@@ -1039,7 +1040,7 @@ std::vector<ContextMenuItem> ShellExt::CreateContextMenu_MultiPbo()
 			auto workDir = it.parent_path().native();
 			sei.lpDirectory = workDir.c_str();
 
-			allGood &= ShellExecuteEx(&sei);
+			allGood &= ShellExecuteEx(&sei) == TRUE;
 		}
 
 		return allGood ? S_OK : E_UNEXPECTED;

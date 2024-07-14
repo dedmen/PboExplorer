@@ -38,10 +38,8 @@ module;
 
 export module Sentry;
 
-import <filesystem>;
-import <format>;
-import <fstream>;
-import <source_location>;
+import std;
+import std.compat;
 import DebugLogger;
 import FileUtil;
 import Version;

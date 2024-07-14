@@ -1,16 +1,14 @@
 module;
 
 #include "PboFileDirectory.hpp"
-#include "Util.hpp"
+
 #include <Windows.h>
-
-
 export module PboPatcherLocked;
 
-import <fstream>;
-import <format>;
-import <numeric>;
+import std;
+import std.compat;
 import PboPatcher;
+import Util;
 
 export
 class PboPatcherLocked {

@@ -2,7 +2,8 @@
 
 #define NOMINMAX
 #include <ShlObj.h>
-import <vector>;
+import std;
+import std.compat;
 
 import ComRef;
 

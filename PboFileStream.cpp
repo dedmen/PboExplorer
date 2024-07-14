@@ -2,7 +2,7 @@
 
 #include <Shlwapi.h>
 
-#include "Util.hpp"
+import Util;
 #include "DebugLogger.hpp"
 
 import Encoding;

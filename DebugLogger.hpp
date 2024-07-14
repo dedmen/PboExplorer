@@ -1,5 +1,5 @@
 #pragma once
-import <source_location>;
+import std;
 
 import DebugLogger;
 

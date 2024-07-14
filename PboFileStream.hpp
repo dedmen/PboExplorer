@@ -4,8 +4,8 @@
 #include <ShlObj.h>
 #include <Windows.h>
 
-import <memory>;
-import <fstream>;
+import std;
+import std.compat;
 import ComRef;
 import PboLib;
 #include "PboFolder.hpp"

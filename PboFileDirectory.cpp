@@ -1,10 +1,8 @@
 #include "PboFileDirectory.hpp"
-#include "Util.hpp"
+import Util;
 
-import <fstream>;
-import <functional>;
-import <numeric>;
-import <unordered_set>;
+import std;
+import std.compat;
 
 #include <windows.h>
 
@@ -409,6 +407,10 @@ PboSubFolderActiveRef::PboSubFolderActiveRef(std::shared_ptr<PboSubFolder> subFo
 std::shared_ptr<PboFile> PboFileDirectory::GetPboFile(std::filesystem::path path)
 {
     ProfilingScope pScope;
+
+    if (!std::filesystem::exists(path))
+        return nullptr;
+
     std::unique_lock lck(openLock);
     auto found = openFiles.find(path.lexically_normal().wstring());
 

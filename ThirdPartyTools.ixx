@@ -6,11 +6,8 @@ export module ThirdPartyTools;
 
 
 
-import <filesystem>;
-import <span>;
-import <tuple>;
-import <type_traits>;
-import <functional>;
+import std;
+import std.compat;
 import Registry;
 
 //ReadRegistryFilePathKey
@@ -177,7 +174,7 @@ struct A3Tools_BankRevUnpack : public IToolBase {
 			auto workDir = it.parent_path().native();
 			sei.lpDirectory = workDir.c_str();
 
-			allGood &= ShellExecuteEx(&sei);
+			allGood &= ShellExecuteEx(&sei) == TRUE;
 		}
 
 		return allGood ? S_OK : E_UNEXPECTED;
@@ -253,7 +250,7 @@ struct A3Tools_DSSignFile : public IToolBase {
 			auto workDir = it.parent_path().native();
 			sei.lpDirectory = workDir.c_str();
 
-			allGood &= ShellExecuteEx(&sei);
+			allGood &= ShellExecuteEx(&sei) == TRUE;
 		}
 
 		return allGood ? S_OK : E_UNEXPECTED;
@@ -326,7 +323,7 @@ struct Mikero_ExtractPboDos : public IToolBase {
 			sei.lpParameters = params.c_str();
 			auto workDir = it.parent_path().native();
 			sei.lpDirectory = workDir.c_str();
-			allGood &= ShellExecuteEx(&sei);
+			allGood &= ShellExecuteEx(&sei) == TRUE;
 		}
 
 		return allGood ? S_OK : E_UNEXPECTED;

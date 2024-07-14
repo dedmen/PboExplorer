@@ -45,13 +45,7 @@
     <ClInclude Include="PboFileStream.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Util.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="PboDataObject.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PboPidl.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FileWatcher.hpp">
@@ -67,9 +61,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PboFolderContextMenu.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Updater.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -89,7 +80,7 @@
     <ClCompile Include="PboFileStream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Util.cpp">
+    <ClCompile Include="Util.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="PboDataObject.cpp">
@@ -116,7 +107,7 @@
     <ClCompile Include="PboFolderContextMenu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Updater.cpp">
+    <ClCompile Include="Updater.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="UpdateHelperExe.cpp">
@@ -189,6 +180,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="PboLib.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PboPidl.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="PaaThumbnailHandler.ixx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="MipMapTool.ixx">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

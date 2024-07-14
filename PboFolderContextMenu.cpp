@@ -3,9 +3,9 @@
 
 #include "FileWatcher.hpp"
 #include "PboFolder.hpp"
-#include "PboPidl.hpp"
+import PboPidl;
 import TempDiskFile;
-#include "Util.hpp"
+import Util;
 
 #include "DebugLogger.hpp"
 

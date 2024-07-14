@@ -3,10 +3,8 @@ module;
 
 export module GUIDLookup;
 
-import <algorithm>;
-import <compare>;
-import <string_view>;
-import <vector>;
+import std;
+import std.compat;
 
 export std::strong_ordering operator <=> (const GUID& a, const GUID& b) noexcept {
     if (const auto c = a.Data1 <=> b.Data1; c != 0) return c;

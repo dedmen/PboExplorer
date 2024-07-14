@@ -3,11 +3,8 @@ module;
 
 export module ComRef;
 
-import <atomic>;
-import <source_location>;
-import <unordered_set>;
-import <utility>;
-import <mutex>;
+import std;
+import std.compat;
 
 export template<class T>
 class ComRef

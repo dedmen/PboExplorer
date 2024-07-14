@@ -4,12 +4,15 @@
 #include <winsock2.h>
 #include <Windows.h>
 
-import <type_traits>;
+// Cannot do this, because tracy's headers themselves do #include
+//import std;
+//import std.compat;
 
 
 #define TRACY_ON_DEMAND
 #define TRACY_ENABLE
 #define TRACY_CALLSTACK 8
+#define TRACY_TIMER_FALLBACK
 #include "../lib/tracy/public/tracy/Tracy.hpp"
 
 #include "../lib/tracy/public/client/TracyAlloc.cpp"
@@ -29,7 +32,6 @@ import <type_traits>;
 #pragma comment(lib, "ws2_32.lib")
 #endif
 import Tracy;
-import <source_location>;
 
 
 ProfilingScope::ProfilingScope(std::source_location sloc)

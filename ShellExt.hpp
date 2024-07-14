@@ -1,6 +1,6 @@
 #pragma once
 
-#include <filesystem>
+import std;
 
 #define NOMINMAX
 #include <ShlObj.h>

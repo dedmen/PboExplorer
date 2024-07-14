@@ -1,15 +1,9 @@
 #pragma once
 
-import <filesystem>;
-import <functional>;
-import <mutex>;
-import <string>;
-import <unordered_map>;
-import <vector>;
-import <string>;
-import <memory>;
+import std;
+import std.compat;
 
-#include "PboPidl.hpp"
+import PboPidl;
 
 class IPboSub
 {

@@ -2,10 +2,8 @@
 #include <ShlObj.h>
 #include <OleCtl.h>
 
-import <fstream>;
-import <string>;
-import <variant>;
-#include <future>
+import std;
+import std.compat;
 
 
 #pragma data_seg(".text")
@@ -20,18 +18,17 @@ import <variant>;
 #include "ClassFactory.hpp"
 #include "FileWatcher.hpp"
 #include "PboFolder.hpp"
-#include "Util.hpp"
+import Util;
 
 
-
-#include "Updater.hpp"
+import Updater;
 
 import Registry;
 import Sentry;
 import Tracy;
 
 // data
-HINSTANCE   g_hInst;
+HINSTANCE g_hInst;
 
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,

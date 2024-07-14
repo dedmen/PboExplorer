@@ -1,6 +1,6 @@
-#include <iostream>
-#include "Updater.hpp"
-
+import std;
+import std.compat;
+import Updater;
 import PboPatcher;
 
 extern uint64_t GetFileHash(std::filesystem::path file);

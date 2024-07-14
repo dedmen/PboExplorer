@@ -3,15 +3,13 @@ module;
 #include <Unknwnbase.h>
 #include <ShlObj.h>
 #include <Windows.h>
-#include "Util.hpp"
 
 export module ProgressDialogOperation;
 
-import <functional>;
-import <string>;
-import <thread>;
+import std;
+import std.compat;
 import ComRef;
-
+import Util;
 
 
 
