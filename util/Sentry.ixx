@@ -126,10 +126,12 @@ export namespace Sentry {
 				}
 				else
 				{
-					if (MessageBoxA(GetDesktopWindow(),
+					bool customName = MessageBoxA(GetDesktopWindow(),
 						"Thank you! If you want to have a custom username, please copy the text into your Clipboard and click Yes.\n\n"
 						"If you press No I will use your windows username",
-						"PboExplorer", MB_YESNO | MB_ICONINFORMATION | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST) == IDYES) {
+						"PboExplorer", MB_YESNO | MB_ICONINFORMATION | MB_SYSTEMMODAL | MB_SETFOREGROUND | MB_TOPMOST) == IDYES;
+
+					if (customName) {
 
 						// custom username selection loop
 
@@ -153,6 +155,10 @@ export namespace Sentry {
 							}
 
 						} while (res != IDYES);
+					}
+					else
+					{
+						sentry_user_consent_give();
 					}
 				}
 			}
