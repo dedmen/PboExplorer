@@ -23,8 +23,11 @@ int main(int argc, char* argv[]) {
         wchar_t appPath[MAX_PATH];
         SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, NULL, SHGFP_TYPE_CURRENT, appPath);
 
-        auto UpdateTempDir = std::filesystem::path(appPath) / "Arma 3" / "PboExplorer";
+        auto UpdateTempDir = std::filesystem::path(appPath) / "Arma 3" / "PboExplorer" / "UpdateTemp";
 
+        if (!std::filesystem::exists(UpdateTempDir)) { // Backwards compat
+            UpdateTempDir = std::filesystem::path(appPath) / "Arma 3" / "PboExplorer";
+        }
 
         std::filesystem::create_directories(UpdateTempDir);
 
