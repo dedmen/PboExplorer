@@ -6,7 +6,7 @@ PboExplorer is a Windows explorer integration to provide PBO support. It works l
 # Installation
 
 1. Download the latest [Release](https://github.com/dedmen/PboExplorer/releases). Use the AIO zip file unless you know how to install manually.
-2. Unpack the files into some directory that will be permanent. For example create a folder in %appdata% or in %programfiles% and place all files in there.
+2. Create folder `%localappdata%\Arma 3\PboExplorer\` and unpack all files into it.
 3. Run "register.cmd" as Administrator. This will register PboExplorer with the windows explorer.
 
 Installing will overwrite already configured "open with" options for .pbo files.
