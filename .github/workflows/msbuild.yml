@@ -150,7 +150,8 @@ jobs:
           sentry-cli releases set-commits --auto ${{ steps.date.outputs.DATE_STAMP }}
           sentry-cli releases finalize ${{ steps.date.outputs.DATE_STAMP }}
           
-          sentry-cli upload-dif --include-sources src/x64/Release/
+          sentry-cli upload-dif src/x64/Release/
+          # --include-sources wtf? Suddenly broken? Only google result https://github.com/getsentry/sentry-unreal/issues/542 "file could not be read as UTF-8"
 
       
       # #TODO https://github.com/softprops/action-gh-release/issues/20#issuecomment-1249997598
