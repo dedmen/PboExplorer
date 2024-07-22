@@ -1,6 +1,7 @@
 module;
 #include <windows.h>
 #include <shlobj.h>
+#include <thumbcache.h>
 
 #include "PboFolder.hpp"
 #include "PboDataObject.hpp"
@@ -14,6 +15,7 @@ export module ClassFactory;
 
 import ComRef;
 import Tracy;
+import PaaThumbnailProvider;
 
 extern HINSTANCE  g_hInst;
 
@@ -85,12 +87,14 @@ public:
 			return S_OK;
 		}
 
+		if (IsEqualIID(riid, IID_IThumbnailProvider))
+		{
+			ComRef<PaaThumbnailProvider>::CreateForReturn<IThumbnailProvider>(ppvObject);
+			return S_OK;
+		}
+
 		if (!IsEqualIID(riid, IID_IUnknown) && !IsEqualIID(riid, IID_IContextMenu) && !IsEqualIID(riid, IID_IShellPropSheetExt))
 			__debugbreak();
-
-
-
-
 
 
 		// creates the namespace's main class

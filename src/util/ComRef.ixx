@@ -17,6 +17,7 @@ class ComRef
 
 public:
     ComRef() : _ref(nullptr) {}
+    ComRef(ComRef&& o) noexcept : _ref(o._ref) { o._ref = nullptr; }
 
     ComRef(T* ref) : _ref(ref)
     {
@@ -108,6 +109,14 @@ public:
         if (_ref)
             _ref->Release();
         _ref = ref;
+
+        return *this;
+    }
+
+    ComRef& operator=(ComRef&& o) noexcept
+    {
+        _ref = o._ref;
+        o._ref = nullptr;
 
         return *this;
     }

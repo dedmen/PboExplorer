@@ -51,7 +51,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 		break;
     case DLL_PROCESS_DETACH:
 #if _DEBUG
-		Util::WaitForDebuggerPrompt("DLL Detach", true);
+		//Util::WaitForDebuggerPrompt("DLL Detach", true);
 #endif
 #ifdef ENABLE_SENTRY
 		Sentry::Close();
@@ -103,7 +103,6 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppReturn)
 		Util::TryDebugBreak(); // should be done via ClassFactory
 		//*ppReturn = static_cast<IShellFolder2*>(new PboFolder());
 	}
-		
 
 	if (!IsEqualIID(riid, IID_IClassFactory))
 		__debugbreak();
@@ -233,7 +232,12 @@ WAVtoWSS.bat
 
 		// Same thing again? just for CLSID? Dunno.
 		{HKEY_CLASSES_ROOT, L"SystemFileAssociations\\.pbo",																	true},
-		{HKEY_CLASSES_ROOT, L"SystemFileAssociations\\.pbo\\CLSID",				L"",					L"{0}",				true}
+		{HKEY_CLASSES_ROOT, L"SystemFileAssociations\\.pbo\\CLSID",				L"",					L"{0}",				true},
+
+
+		// Thumbnail provider for PAA
+		// IID_IThumbnailProvider == {e357fccd-a995-4576-b01f-234630154e96}
+		{ HKEY_CLASSES_ROOT, L".paa\\ShellEx\\{{e357fccd-a995-4576-b01f-234630154e96}}",L"",					L"PboExplorer",		true },
 	};
 
 	//#TODO Computer\HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.pbo\OpenWithProgids
@@ -356,7 +360,11 @@ STDAPI DllUnregisterServer(VOID)
 
 	// Same thing again? just for CLSID? Dunno.
 	{HKEY_CLASSES_ROOT, L"SystemFileAssociations\\.pbo",																	true},
-	{HKEY_CLASSES_ROOT, L"SystemFileAssociations\\.pbo\\CLSID",				L"",					L"{0}",				true}
+	{HKEY_CLASSES_ROOT, L"SystemFileAssociations\\.pbo\\CLSID",				L"",					L"{0}",				true},
+
+	// Thumbnail provider for PAA
+    // IID_IThumbnailProvider == {e357fccd-a995-4576-b01f-234630154e96}
+    { HKEY_CLASSES_ROOT, L".paa\\ShellEx\\{e357fccd-a995-4576-b01f-234630154e96}",L"",					L"PboExplorer",		true },
 	};
 
 	// register the extension as approved by NT

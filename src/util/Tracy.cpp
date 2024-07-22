@@ -13,6 +13,11 @@
 #define TRACY_ENABLE
 #define TRACY_CALLSTACK 8
 #define TRACY_TIMER_FALLBACK
+
+#ifndef _DEBUG
+#define TRACY_NO_SYSTEM_TRACING
+#endif
+
 #include "../lib/tracy/public/tracy/Tracy.hpp"
 
 #include "../lib/tracy/public/client/TracyAlloc.cpp"

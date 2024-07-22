@@ -634,6 +634,7 @@ static GUIDLookup<LookupInfoStorageT> guidLookupTable{
         LookupFromText("IID_IDataObject", L"{3CEE8CC1-1ADB-327F-9B97-7A9C8089BFB3}"), // https://microsoft.public.platformsdk.shell.narkive.com/t6GVO0vR/sendmail-in-xp
         LookupFromText("IID_IViewResultRelatedItem", L"{50BC72DA-9633-47CB-80AC-727661FB9B9F}", DebugInterestLevel::NotInterested),
         LookupFromText("IID_IFolderViewCapabilities", L"{7B88EA95-1C91-42AA-BAE5-6D730CBEC794}", DebugInterestLevel::NotInterested),
+        LookupFromText("CIconAndThumbnailOplockWrapper", L"{2968087C-7490-430F-BB8B-2156610D825A}", DebugInterestLevel::NotInterested),
 
 
         // general ref https://gist.github.com/invokethreatguy/b2482f4204d2e71dcb5f9a081ccf7baf
