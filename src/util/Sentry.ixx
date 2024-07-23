@@ -109,7 +109,11 @@ export namespace Sentry {
 			sentry_set_level(SENTRY_LEVEL_DEBUG);
 
 
-			sentry_init(options);
+			if (sentry_init(options) != 0) {
+				// Sentry init failed. Abort all our other sentry handling. Doesn't make sense to ask for consent if we are never going to send anything, nor storing the consent
+				// Most common reason for this is not being able to start crashpad_handler.exe, usually due to VC redist being missing
+				return;
+			}
 
 
 			if (sentry_user_consent_get() == SENTRY_USER_CONSENT_UNKNOWN) {
