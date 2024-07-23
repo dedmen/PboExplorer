@@ -14,9 +14,9 @@
 #define TRACY_CALLSTACK 8
 #define TRACY_TIMER_FALLBACK
 
-#ifndef _DEBUG
+//#ifndef _DEBUG
 #define TRACY_NO_SYSTEM_TRACING
-#endif
+//#endif
 
 #include "../lib/tracy/public/tracy/Tracy.hpp"
 

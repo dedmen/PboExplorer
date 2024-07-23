@@ -650,8 +650,61 @@ std::string GetDebugLogName() {
     return std::filesystem::path(fname).filename().string();
 }
 
+#if _DEBUG
+#define LOGFILE 1
+#else
+#define LOGFILE 0
+#endif
+
+#if LOGFILE
 std::ofstream logFile = std::ofstream(std::format("P:\\PboEx_{}.log", GetDebugLogName()), std::ofstream::app | std::ofstream::out);
 std::ofstream logFileBad = std::ofstream(std::format("P:\\PboEx_{}_Bad.log", GetDebugLogName()), std::ofstream::app | std::ofstream::out);
+#endif
+
+void PrintMainLog(const std::string& prnt)
+{
+#if LOGFILE
+    logFile.write(prnt.c_str(), prnt.length());
+    logFile.flush();
+#endif
+
+#if _DEBUG
+    OutputDebugStringA(prnt.c_str());
+#endif
+}
+
+void PrintBadLog(const std::string& prnt)
+{
+#if LOGFILE
+    logFileBad.write(prnt.c_str(), prnt.length());
+    logFileBad.flush();
+#endif
+}
+
+template <class... _Types>
+void FormatPrintMainLog(const std::format_string<_Types...> _Fmt, _Types&&... _Args)
+{
+#if LOGFILE || defined(_DEBUG)
+    auto prnt = std::format(_Fmt, std::forward<_Types>(_Args)...);
+    PrintMainLog(prnt);
+#endif
+}
+
+template <class... _Types>
+void FormatPrintMainLogNoFlush(const std::format_string<_Types...> _Fmt, _Types&&... _Args)
+{
+#if LOGFILE || defined(_DEBUG)
+    auto prnt = std::format(_Fmt, std::forward<_Types>(_Args)...);
+#endif
+
+#if LOGFILE
+    logFile.write(prnt.c_str(), prnt.length());
+#endif
+
+#if _DEBUG
+    OutputDebugStringA(prnt.c_str());
+#endif
+}
 
 void DebugLogger::OnQueryInterfaceEntry(const GUID& riid, const std::source_location location, const char* funcName)
 {
@@ -659,28 +712,20 @@ void DebugLogger::OnQueryInterfaceEntry(const GUID& riid, const std::source_loca
     if (guidName.second == DebugInterestLevel::NotInterested)
         return;
 
-    auto prnt = std::format("[{:%T}] Trace - {} - {}\n", std::chrono::system_clock::now(), funcName, guidName.first);
-    OutputDebugStringA(prnt.c_str());
-    //logFile.write(prnt.c_str(), prnt.length());
+    FormatPrintMainLogNoFlush("[{:%T}] Trace - {} - {}\n", std::chrono::system_clock::now(), funcName, guidName.first);
 }
-
-
 
 void DebugLogger::OnQueryInterfaceExitUnhandled(const GUID& riid, const std::source_location location, const char* funcName)
 {
     auto guidName = GetGUIDName(riid);
-    auto prnt = std::format("[{:%T}] Unimplemented GUID - {} - {}\n", std::chrono::system_clock::now(), funcName, guidName.first);
     if (guidName.second == DebugInterestLevel::NotInterested)
         return;
 
-    OutputDebugStringA(prnt.c_str());
-    logFile.write(prnt.c_str(), prnt.length());
-    logFile.flush();
+    auto prnt = std::format("[{:%T}] Unimplemented GUID - {} - {}\n", std::chrono::system_clock::now(), funcName, guidName.first);
 
+    PrintMainLog(prnt);
     if (guidName.second == DebugInterestLevel::Interested) {
-        logFileBad.write(prnt.c_str(), prnt.length());
-        logFileBad.flush();
-
+        PrintBadLog(prnt);
 
 #ifdef ENABLE_SENTRY
         prnt = std::format("Unimplemented GUID - {} - {}\n", funcName, guidName.first);
@@ -704,28 +749,20 @@ void DebugLogger::OnQueryInterfaceExitUnhandled(const GUID& riid, const std::sou
 //#TODO take string view
 void DebugLogger::TraceLog(const std::string& message, const std::source_location location, const char* funcName)
 {
-    auto prnt = std::format("[{:%T}] T [{}] - {}\n", std::chrono::system_clock::now(), funcName, message);
-    OutputDebugStringA(prnt.c_str());
-    logFile.write(prnt.c_str(), prnt.length());
-    logFile.flush();
+    FormatPrintMainLog("[{:%T}] T [{}] - {}\n", std::chrono::system_clock::now(), funcName, message);
 }
 
 void DebugLogger::TraceLog(const std::wstring& message, const std::source_location location, const char* funcName)
 {
-    auto prnt = std::format("[{:%T}] T [{}] - {}\n", std::chrono::system_clock::now(), funcName, UTF8::Encode(message));
-    OutputDebugStringA(prnt.c_str());
-    logFile.write(prnt.c_str(), prnt.length());
-    logFile.flush();
+    FormatPrintMainLog("[{:%T}] T [{}] - {}\n", std::chrono::system_clock::now(), funcName, UTF8::Encode(message));
 }
 
 void DebugLogger::WarnLog(const std::string& message, const std::source_location location, const char* funcName)
 {
     auto prnt = std::format("[{:%T}] W [{}] - {}\n", std::chrono::system_clock::now(), funcName, message);
-    OutputDebugStringA(prnt.c_str());
-    logFile.write(prnt.c_str(), prnt.length());
-    logFile.flush();
-    logFileBad.write(prnt.c_str(), prnt.length());
-    logFileBad.flush();
+
+    PrintMainLog(prnt);
+    PrintBadLog(prnt);
 
 #ifdef ENABLE_SENTRY
     prnt = std::format("W [{}] - {}\n", funcName, message);
