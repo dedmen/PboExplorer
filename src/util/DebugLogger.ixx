@@ -5,7 +5,7 @@ module;
 #include <shlobj.h>
 #include <Shlwapi.h>
 #include <inspectable.h>
-
+#include <thumbcache.h>
 
 
 #ifdef ENABLE_SENTRY
@@ -143,6 +143,7 @@ static GUIDLookup<LookupInfoStorageT> guidLookupTable{
 
         LookupFromText("IID_Unknown_1", L"{93F81976-6A0D-42C3-94DD-AA258A155470}", DebugInterestLevel::NotInterested),
         LookupFromText("IID_Unknown_2", L"{CAD9AE9F-56E2-40F1-AFB6-3813E320DCFD}", DebugInterestLevel::NotInterested),
+        LookupFromText("IID_Unknown_3", L"{C3933843-C24B-45A2-8298-B462F59DAAF}", DebugInterestLevel::NotInterested),
 
 
         // ObjIdl.h
@@ -587,7 +588,8 @@ static GUIDLookup<LookupInfoStorageT> guidLookupTable{
         LookupFromType<IEnumACString>(),
         LookupFromType<IDataObjectAsyncCapability>(),
 
-
+        // thumbcache.h
+        LookupFromType<IThumbnailProvider>(),
 
         // Unknwnbase.h
         LookupFromType<AsyncIUnknown>(),
@@ -823,21 +825,32 @@ std::shared_mutex guidLookupMutex;
 
 LookupInfoT DebugLogger::GetGUIDName(const GUID& guid)
 {
-    std::shared_lock lckRead(guidLookupMutex);
-    auto found = guidLookupTable.find(guid);
+    {
+        std::shared_lock lckRead(guidLookupMutex);
+        auto found = guidLookupTable.find(guid);
 
-    if (found != guidLookupTable.end()) {
-        return found->second;
+        if (found != guidLookupTable.end()) {
+            return found->second;
+        }
     }
-    else
+
     {
         wchar_t* guidString;
         StringFromCLSID(guid, &guidString);
         auto guidName = UTF8::Encode(guidString);
         ::CoTaskMemFree(guidString);
 
-        lckRead.release();
         std::unique_lock lckWrite(guidLookupMutex);
+
+        // Race condition, make sure no-one else inserted this while we were waiting on the lock
+        {
+            auto found = guidLookupTable.find(guid);
+
+            if (found != guidLookupTable.end()) {
+                return found->second;
+            }
+        }
+
 
         // Every entry must be in lookup table, because we return stringview
         auto inserted = guidLookupTable.insert({ guid, { guidName, DebugInterestLevel::Interested } }); // we are very interested in unknown GUIDs

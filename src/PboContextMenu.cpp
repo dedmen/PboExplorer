@@ -225,7 +225,7 @@ HRESULT PboContextMenu::QueryContextMenu(
     {
         EXPECT_SINGLE_PIDL((PboPidl*)m_apidl[0].GetRef());
 
-        DebugLogger::TraceLog(std::format("file {}", (m_folder->pboFile->GetFolder()->fullPath / ((PboPidl*)m_apidl[0].GetRef())->GetFilePath()).string()), std::source_location::current(), __FUNCTION__);
+        DebugLogger::TraceLog(std::format(L"file {}", (m_folder->pboFile->GetFolder()->fullPath / ((PboPidl*)m_apidl[0].GetRef())->GetFilePath()).wstring()), std::source_location::current(), __FUNCTION__);
 
         InsertMenu(hmenu, indexMenu++, MF_STRING | MF_BYPOSITION,
             idCmdFirst + CONTEXT_OPEN, getContextText(CONTEXT_OPEN));

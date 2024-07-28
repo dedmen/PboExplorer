@@ -92,7 +92,7 @@ PboDataObject::PboDataObject(std::shared_ptr<PboSubFolder> rootfolder, PboFolder
         m_apidl.emplace_back(ILClone(apidl[i]));
         auto file = (PboPidl*)m_apidl.back().GetRef();
         EXPECT_SINGLE_PIDL(file);
-        DebugLogger::TraceLog(std::format("Create PboDataObject for [{}] {}", i, (rootFolder->fullPath / file->GetFilePath()).string()), std::source_location::current(), __FUNCTION__);
+        DebugLogger::TraceLog(std::format(L"Create PboDataObject for [{}] {}", i, (rootFolder->fullPath / file->GetFilePath()).wstring()), std::source_location::current(), __FUNCTION__);
     }
         
 

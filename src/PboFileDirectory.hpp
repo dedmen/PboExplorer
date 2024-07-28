@@ -160,6 +160,7 @@ public:
 class PboFileDirectory
 {
     std::unordered_map<std::wstring, std::weak_ptr<PboFile>> openFiles;
+    std::vector<std::pair<std::chrono::system_clock::time_point, std::shared_ptr<PboFile>>> openCache;
     std::mutex openLock;
 public:
 

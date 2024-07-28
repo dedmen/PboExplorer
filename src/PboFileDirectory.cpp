@@ -3,6 +3,7 @@ import Util;
 
 import std;
 import std.compat;
+using namespace std::chrono_literals;
 
 #include <windows.h>
 
@@ -163,6 +164,16 @@ PboFile::PboFile()
     rootFolder = std::make_shared<PboSubFolder>();
 }
 
+template<typename T, typename Pred>
+typename std::vector<T>::iterator insert_sorted(std::vector<T>& vec, T&& item, Pred pred)
+{
+    return vec.emplace
+    (
+        std::upper_bound(vec.begin(), vec.end(), item, pred),
+        std::forward<T>(item)
+    );
+}
+
 void PboFile::ReadFrom(std::filesystem::path inputPath)
 {
     ProfilingScope pScope;
@@ -189,14 +200,31 @@ void PboFile::ReadFrom(std::filesystem::path inputPath)
 
         std::shared_ptr<PboSubFolder> curFolder = rootFolder;
         rootFolder->rootFile = weak_from_this();
+
+        //#TODO performance bad
+        // Insert sorted and binary search made it better, but inserting in middle alot, is still expensive
+
         for (auto& it : segments)
         {
-            auto subfolderFound = std::ranges::find_if(curFolder->subfolders, [it](const std::shared_ptr<PboSubFolder>& subf)
-            {
-                return subf->filename == it;
-            });
+            if (it.empty()) // Obfuscation trick, double backslash
+                continue;
+            //auto subfolderFound = std::find_if(std::execution::par_unseq, curFolder->subfolders.begin(), curFolder->subfolders.end(), [it = it.wstring()](const std::shared_ptr<PboSubFolder>& subf)
+            //{
+            //    return subf->filename == it;
+            //});
+            //auto subfolderFound = std::ranges::find_if(curFolder->subfolders, [it = it.wstring()](const std::shared_ptr<PboSubFolder>& subf)
+            //{
+            //    return subf->filename == it;
+            //});
 
-            if (subfolderFound != curFolder->subfolders.end())
+            auto subfolderFound = std::lower_bound(curFolder->subfolders.begin(), curFolder->subfolders.end(), it.wstring(),
+                [](const std::shared_ptr<PboSubFolder>& subf, const std::wstring& it)
+                {
+                    return subf->filename < it;
+                });
+
+
+            if (subfolderFound != curFolder->subfolders.end() && subfolderFound->get()->filename == it.wstring())
             {
                 curFolder = *subfolderFound;
                 continue;
@@ -206,8 +234,11 @@ void PboFile::ReadFrom(std::filesystem::path inputPath)
             newSub->filename = it;
             newSub->fullPath = curFolder->fullPath / it;
             newSub->rootFile = weak_from_this();
-            curFolder->subfolders.emplace_back(std::move(newSub));
-            curFolder = curFolder->subfolders.back();
+            auto inserted = insert_sorted(curFolder->subfolders, std::move(newSub), [](const std::shared_ptr<PboSubFolder>& l, const std::shared_ptr<PboSubFolder>& r) {
+                return l->filename < r->filename;
+            });
+            //curFolder->subfolders.emplace_back(std::move(newSub));
+            curFolder = *inserted;
         }
 
         PboSubFile newFile;
@@ -429,7 +460,17 @@ std::shared_ptr<PboFile> PboFileDirectory::GetPboFile(std::filesystem::path path
         result->ReadFrom(path);
 
         openFiles.insert({ path.lexically_normal().wstring(), result });
+        openCache.emplace_back(std::chrono::system_clock::now(), result); // Keep it open/loaded for a bit
     }
+
+    // Clear old openCache entries
+    {
+        const auto [first, last] = std::ranges::remove_if(openCache, [now = std::chrono::system_clock::now() - 60s](const std::pair<std::chrono::system_clock::time_point, std::shared_ptr<PboFile>>& data) -> bool {
+            return data.first < now; // after 60 seconds, we delete them
+        });
+        openCache.erase(first, last); // This will decrement the refcounter and let it go, if its still open by something else it will be held by that
+    }
+
 
     return result;
 }

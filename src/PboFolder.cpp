@@ -1220,7 +1220,7 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
         return E_FAIL; // ????
     }
 
-    DebugLogger::TraceLog(std::format("file {} Detail {}", (pboFile->GetFolder()->fullPath / qp->GetFilePath()).string(), DetailTypesLookup.GetName(*pscid)), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format(L"file {} Detail {}", (pboFile->GetFolder()->fullPath / qp->GetFilePath()).wstring(), UTF8::Decode(DetailTypesLookup.GetName(*pscid))), std::source_location::current(), __FUNCTION__);
 
     if (*pscid == PKEY_ItemNameDisplay)
     {
@@ -1344,7 +1344,7 @@ HRESULT PboFolder::GetDetailsEx(LPCITEMIDLIST pidl, const SHCOLUMNID* pscid, VAR
     else if (*pscid == PKEY_PropList_PreviewDetails)
         return stringToVariant(UTF8::Decode("lol funni preview details"), pv); //#TODO paa size? Compression algo? number of mips?
 
-    DebugLogger::TraceLog(std::format("Unimplemented prop file {} Detail {}", (pboFile->GetFolder()->fullPath / qp->GetFilePath()).string(), DetailTypesLookup.GetName(*pscid)), std::source_location::current(), __FUNCTION__);
+    DebugLogger::TraceLog(std::format(L"Unimplemented prop file {} Detail {}", (pboFile->GetFolder()->fullPath / qp->GetFilePath()).wstring(), UTF8::Decode(DetailTypesLookup.GetName(*pscid))), std::source_location::current(), __FUNCTION__);
 
     // https://github.com/google/google-drive-shell-extension/blob/master/DriveFusion/PropertyHelper.cpp#L105
     // https://github.com/mvaneerde/blog/blob/d1c51904bf2403beacfc46282a31bc4f817bd55f/shellproperty/shellproperty/properties.cpp#L157
