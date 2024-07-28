@@ -819,18 +819,25 @@ bool DebugLogger::IsIIDUninteresting(const GUID& riid)
     return GetGUIDName(riid).second == DebugInterestLevel::NotInterested;
 }
 
+std::shared_mutex guidLookupMutex;
+
 LookupInfoT DebugLogger::GetGUIDName(const GUID& guid)
 {
+    std::shared_lock lckRead(guidLookupMutex);
     auto found = guidLookupTable.find(guid);
 
     if (found != guidLookupTable.end()) {
         return found->second;
     }
-    else {
+    else
+    {
         wchar_t* guidString;
         StringFromCLSID(guid, &guidString);
         auto guidName = UTF8::Encode(guidString);
         ::CoTaskMemFree(guidString);
+
+        lckRead.release();
+        std::unique_lock lckWrite(guidLookupMutex);
 
         // Every entry must be in lookup table, because we return stringview
         auto inserted = guidLookupTable.insert({ guid, { guidName, DebugInterestLevel::Interested } }); // we are very interested in unknown GUIDs
