@@ -100,9 +100,9 @@ jobs:
     #  env:
     #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
-        name: my-artifact
+        name: my-artifact-${{ matrix.runs-on }}
         path: |
           src/x64/Release/PboExplorer.dll
           src/x64/Release/PboExplorer.pdb
