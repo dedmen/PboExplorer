@@ -23,7 +23,9 @@ You can open PBO files by simply double-clicking them and then browse files as i
 
 https://github.com/dedmen/PboExplorer/assets/3768165/d4c1e069-dc23-4d0e-b052-1333d27621af
 
+It also includes previewing .paa texture files
 
+https://github.com/user-attachments/assets/bf1495de-8f2d-44df-b617-9884a1672f18
 
 ## Integration with Various tools
 
