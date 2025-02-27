@@ -139,7 +139,7 @@ TempDiskFile::TempDiskFile(const PboFile& pboRef, std::filesystem::path subfile)
             }
         }
         catch (const std::runtime_error& error) {
-            DebugLogger::WarnLog(std::format("Exception ({}) thrown while trying to open pbo file {} subfile {}", error.what(), pboRef.diskPath, subfile), std::source_location::current(), __FUNCTION__);
+            DebugLogger::WarnLog(std::format("Exception ({}) thrown while trying to open pbo file {} subfile {}", error.what(), UTF8::Encode(pboRef.diskPath.wstring()), UTF8::Encode(subfile.wstring())), std::source_location::current(), __FUNCTION__);
 
             // Probable source for the exception is PboEntryBuffer, trying to load a compressed file, and the compressed file being malformed (obfuscated)
             std::ofstream outFile(filePath, std::ios::out | std::ios::binary);

@@ -7,6 +7,7 @@ import PboPidl;
 import TempDiskFile;
 import ContextMenu;
 import Util;
+import Encoding;
 
 #ifndef SEE_MASK_NOASYNC
 #define SEE_MASK_NOASYNC 0x00000100
@@ -454,7 +455,7 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
             } catch(std::runtime_error& ex) {
                 DebugLogger::CaptureException(ex, {
                     {"pboFile", m_folder->pboFile->GetPboDiskPath().string()},
-                    {"subfile", (m_folder->pboFile->GetFolder()->fullPath / qp->GetFilePath()).string()}
+                    {"subfile", UTF8::Encode((m_folder->pboFile->GetFolder()->fullPath / qp->GetFilePath()).wstring())}
                 });
 
                 MessageBoxA(0, "Oh no! PboExplorer failed to open this file, most likely you are working with a obfuscated PBO?", "PboExplorer", MB_ICONERROR | MB_APPLMODAL | MB_SETFOREGROUND | MB_TOPMOST);

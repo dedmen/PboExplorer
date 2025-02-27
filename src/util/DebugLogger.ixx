@@ -41,6 +41,7 @@ public:
     static void TraceLog(const std::string& message, const std::source_location location, const char* funcName);
     static void TraceLog(const std::wstring& message, const std::source_location location, const char* funcName);
     static void WarnLog(const std::string& message, const std::source_location location, const char* funcName);
+    static void AddBreadcrumb(const std::string& message, const std::source_location location, const char* funcName);
 
     static void CaptureException(std::exception& exception, std::map<std::string, std::string> attributes = {});
 
@@ -591,6 +592,7 @@ static GUIDLookup<LookupInfoStorageT> guidLookupTable{
 
         // thumbcache.h
         LookupFromType<IThumbnailProvider>(),
+        LookupFromType<IThumbnailSettings>(),
 
         // Unknwnbase.h
         LookupFromType<AsyncIUnknown>(),
@@ -619,6 +621,10 @@ static GUIDLookup<LookupInfoStorageT> guidLookupTable{
         LookupFromText("IID_Unknown_17", L"{4C1E39E1-E3E3-4296-AA86-EC938D896E92}", DebugInterestLevel::NotInterested), // This is an MMC private interface used to support property sheets in a managed(MCF) snap - in. https://microsoft.public.management.mmc.narkive.com/YqDkkOuN/queried-for-4c1e39e1-e3e3-4296-aa86-ec938d896e92-interface
         LookupFromText("IID_Unknown_18", L"{6C72B11B-DBE0-4C87-B1A8-7C8A36BD563D}", DebugInterestLevel::NotInterested),
         LookupFromText("IID_Unknown_19", L"{E0EECF93-8B48-44AF-A377-07852487B85C}", DebugInterestLevel::NotInterested),
+        LookupFromText("IID_Unknown_20", L"{A914F499-4633-4B26-A93E-707EB5BDC0B6}", DebugInterestLevel::NotInterested),
+        LookupFromText("IID_Unknown_21", L"{DA807A0B-DD2B-452B-A390-D79C351B6D8D}", DebugInterestLevel::NotInterested),
+        LookupFromText("IID_Unknown_22", L"{F93F9470-36A7-4A92-AFDB-AED751464F32}", DebugInterestLevel::NotInterested),
+        LookupFromText("IID_Unknown_23", L"{A8E312A2-2E49-4FFC-8EF8-AEBA1F727C76}", DebugInterestLevel::NotInterested),
 
         // https://gist.github.com/olafhartong/980e9cd51925ff06a5a3fdfb24fb96c2
 
@@ -631,6 +637,7 @@ static GUIDLookup<LookupInfoStorageT> guidLookupTable{
         LookupFromText("IID_IPropertyStoreFactory", L"{BC110B6D-57E8-4148-A9C6-91015AB2F3A5}"),
         LookupFromText("IID_IPropertyStore", L"{886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99}"), // https://www.pinvoke.net/default.aspx/Interfaces/IPropertyStore.html
 
+
         LookupFromType<IInspectable>(DebugInterestLevel::NotInterested),
         LookupFromType<IQueryAssociations>(),
 
@@ -638,7 +645,8 @@ static GUIDLookup<LookupInfoStorageT> guidLookupTable{
         LookupFromText("IID_IViewResultRelatedItem", L"{50BC72DA-9633-47CB-80AC-727661FB9B9F}", DebugInterestLevel::NotInterested),
         LookupFromText("IID_IFolderViewCapabilities", L"{7B88EA95-1C91-42AA-BAE5-6D730CBEC794}", DebugInterestLevel::NotInterested),
         LookupFromText("CIconAndThumbnailOplockWrapper", L"{2968087C-7490-430F-BB8B-2156610D825A}", DebugInterestLevel::NotInterested),
-
+        LookupFromText("IFilter", L"{89BCB740-6119-101A-BCB7-00DD010655AF}", DebugInterestLevel::NotInterested), //#TODO https://learn.microsoft.com/en-us/windows/win32/search/-search-ifilter-registering-filters
+        LookupFromText("IID_IObjectWithShellItem", L"{1D3DB207-7AD5-4376-AD5B-56474FA7CC68}", DebugInterestLevel::NotInterested),
 
         // general ref https://gist.github.com/invokethreatguy/b2482f4204d2e71dcb5f9a081ccf7baf
     // https://www.magnumdb.com/search?q=value%3A%227b88ea95-1c91-42aa-bae5-6d730cbec794%22
@@ -781,6 +789,21 @@ void DebugLogger::WarnLog(const std::string& message, const std::source_location
     sentry_event_add_thread(event, thread);
 
     sentry_capture_event(event);
+#endif
+}
+
+void DebugLogger::AddBreadcrumb(const std::string& message, const std::source_location location, const char* funcName) {
+
+#ifdef ENABLE_SENTRY
+    sentry_value_t crumb = sentry_value_new_breadcrumb("default", message.c_str());
+    sentry_value_set_by_key(crumb, "level", sentry_value_new_string("info"));
+
+    sentry_value_t data = sentry_value_new_object();
+    sentry_value_set_by_key(data, "location", sentry_value_new_string(std::format("({}) {}:{}", location.function_name(), location.file_name(), location.line()).c_str()));
+    sentry_value_set_by_key(data, "func", sentry_value_new_string(funcName));
+
+    sentry_value_set_by_key(crumb, "data", data);
+    sentry_add_breadcrumb(crumb);
 #endif
 }
 

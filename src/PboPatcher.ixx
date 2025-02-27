@@ -374,7 +374,8 @@ decltype(PboPatcher::filesToWrite)::iterator PboPatcher::FindFreeSpaceAfter(uint
         if (!dynamic_cast<PboFTW_DummySpace*>(l.get()) || l->getEntryInformation().data_size < size || l->getEntryInformation().startOffset < startOffset)
             return false; // either not a dummy space, or too small or too early in the file. Rule it out by moving it to the right
 
-        return l->getEntryInformation().data_size >= size < r->getEntryInformation().data_size;
+
+        return l->getEntryInformation().data_size < r->getEntryInformation().data_size;
         });
 
 

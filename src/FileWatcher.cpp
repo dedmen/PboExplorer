@@ -3,6 +3,8 @@
 
 import std;
 import TempDiskFile;
+import DebugLogger;
+import Encoding;
 
 void FileWatcher::Run() {
     auto tempPath = std::filesystem::temp_directory_path() / "PboExplorer";
@@ -49,6 +51,8 @@ void FileWatcher::Run() {
 
                             std::wstring_view filename(change.FileName, change.FileNameLength / sizeof(wchar_t));
                             std::unique_lock lck(mainMutex);
+
+                            DebugLogger::AddBreadcrumb(UTF8::Encode(filename), std::source_location::current(), __FUNCTION__);
 
                             auto found = watchedFiles.find(std::filesystem::path(filename));
                             if (found == watchedFiles.end())
