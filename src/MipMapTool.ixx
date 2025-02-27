@@ -69,5 +69,20 @@ public:
 
         return { output, width, height };
     }
+
+
+    static std::tuple<int, int, std::string_view> LoadTextureMetaInfo(std::istream& is) {
+        TextureFile texFile;
+        texFile.doLogging = false;
+
+        texFile.readFromStream(is);
+
+        if (texFile.mipmaps.empty())
+            return {}; // ??? Happened once, probably corrupted mod. paaData was 26k of null bytes
+
+        //#TODO actually return all mip's, not just biggest, might be useful for other things later
+
+        return { texFile.mipmaps.front()->getRealSize(), texFile.mipmaps.front()->height, TypeToString(texFile.type) };
+    }
 };
 

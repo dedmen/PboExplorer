@@ -215,6 +215,8 @@ public:
     }
 
     auto LoadTextureFromPbo(uint16_t maxSize, const PboFileContent& arg) {
+
+        //#TODO somehow unify these, std::istream sublass that just stores these wrappers internally?
         std::ifstream pboInputStream(arg.pboFile->GetRootFile()->diskPath, std::ios::in | std::ios::binary);
         PboReader pboReader(pboInputStream);
         PboEntry ent{ "", arg.imageFile.filesize, arg.imageFile.dataSize, arg.imageFile.startOffset, PboEntryPackingMethod::none }; // PAA could be compressed, but I've never seen one
@@ -264,6 +266,36 @@ public:
         //        else
         //            static_assert(false, "non-exhaustive visitor!");
         //    }, contentSource);
+    }
+
+
+    std::tuple<int, int, std::string_view> GetTextureMetaInfo()
+    {
+        if (contentSource.index() == 0) {
+            auto& arg = std::get<PboFileContent>(contentSource);
+
+            std::ifstream pboInputStream(arg.pboFile->GetRootFile()->diskPath, std::ios::in | std::ios::binary);
+            PboReader pboReader(pboInputStream);
+            PboEntry ent{ "", arg.imageFile.filesize, arg.imageFile.dataSize, arg.imageFile.startOffset, PboEntryPackingMethod::none }; // PAA could be compressed, but I've never seen one
+            PboEntryBuffer fileBuffer(pboReader, ent);
+            std::istream sourceStream(&fileBuffer);
+            return MipMapTool::LoadTextureMetaInfo(sourceStream);
+        }
+
+        if (contentSource.index() == 1) {
+            auto& arg = std::get<ComRef<IStream>>(contentSource);
+            IStreamBufWrapper wrapper(arg);
+            std::istream sourceStream(&wrapper);
+
+            return MipMapTool::LoadTextureMetaInfo(sourceStream);
+        }
+        if (contentSource.index() == 2) {
+            auto& arg = std::get<std::filesystem::path>(contentSource);
+            std::ifstream sourceStream(arg);
+
+            return MipMapTool::LoadTextureMetaInfo(sourceStream);
+        }
+        return { 0,0, std::string_view() };
     }
 
     HRESULT GetThumbnail(UINT cx, HBITMAP* phbmp, WTS_ALPHATYPE* pdwAlpha) override
