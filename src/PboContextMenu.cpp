@@ -307,7 +307,7 @@ HRESULT PboContextMenu::InvokeCommand(LPCMINVOKECOMMANDINFO pici)
     else cmd = LOWORD(pici->lpVerb);
 
     if (cmd < 0 || cmd >= CONTEXT_QTY) {
-        DebugLogger::WarnLog(std::format("NOT IMPLEMENTED COMMAND"), std::source_location::current(), __FUNCTION__);
+        DebugLogger::WarnLog(std::format("NOT IMPLEMENTED COMMAND {}({})", HIWORD(pici->lpVerb) ? pici->lpVerb : "?", LOWORD(pici->lpVerb)), std::source_location::current(), __FUNCTION__);
         return(E_INVALIDARG);
     }
 

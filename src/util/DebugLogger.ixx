@@ -46,6 +46,7 @@ public:
 
     static bool IsIIDUninteresting(const GUID& riid);
     static LookupInfoT GetGUIDName(const GUID& guid);
+    static std::string GetGUIDRawName(const GUID& guid); // Converts the GUID into string of numbers
 };
 
 
@@ -730,7 +731,7 @@ void DebugLogger::OnQueryInterfaceExitUnhandled(const GUID& riid, const std::sou
         PrintBadLog(prnt);
 
 #ifdef ENABLE_SENTRY
-        prnt = std::format("Unimplemented GUID - {} - {}\n", funcName, guidName.first);
+        prnt = std::format("Unimplemented GUID - {} - {} ({})\n", funcName, guidName.first, GetGUIDRawName(riid));
 
         auto event = sentry_value_new_message_event(
             /*   level */ SENTRY_LEVEL_WARNING,
@@ -835,10 +836,7 @@ LookupInfoT DebugLogger::GetGUIDName(const GUID& guid)
     }
 
     {
-        wchar_t* guidString;
-        StringFromCLSID(guid, &guidString);
-        auto guidName = UTF8::Encode(guidString);
-        ::CoTaskMemFree(guidString);
+        auto guidName = GetGUIDRawName(guid);
 
         std::unique_lock lckWrite(guidLookupMutex);
 
@@ -857,5 +855,14 @@ LookupInfoT DebugLogger::GetGUIDName(const GUID& guid)
 
         return inserted->second;
     }
+}
+
+std::string DebugLogger::GetGUIDRawName(const GUID& guid) {
+    wchar_t* guidString;
+    StringFromCLSID(guid, &guidString);
+    auto guidName = UTF8::Encode(guidString);
+    ::CoTaskMemFree(guidString);
+
+    return guidName;
 }
 
