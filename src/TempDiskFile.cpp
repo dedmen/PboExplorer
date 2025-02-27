@@ -25,6 +25,7 @@ import PboPatcherLocked;
 
 import Encoding;
 import Hashing;
+import Util;
 
 std::mutex TempDiskFileCreationLock;
 struct opt_path_hash {
@@ -86,51 +87,64 @@ TempDiskFile::TempDiskFile(const PboFile& pboRef, std::filesystem::path subfile)
 
     //#TODO properly handle existing file, this is bad. We should never do that
     {
-        std::ifstream pboInputStream(pboRef.diskPath, std::ios::in | std::ios::binary);
-        PboReader pboReader(pboInputStream);
+        try {
+            std::ifstream pboInputStream(pboRef.diskPath, std::ios::in | std::ios::binary);
+            PboReader pboReader(pboInputStream);
 
-        PboEntryBuffer fileBuffer(pboReader, *[&, filePath = subfile]()
+            PboEntryBuffer fileBuffer(pboReader, *[&, filePath = subfile]()
+                {
+                    pboReader.readHeaders();
+
+                    auto& pboFiles = pboReader.getFiles();
+                    const auto found = std::ranges::find_if(pboFiles, [&](const PboEntry& entry)
+                        {
+                            return UTF8::Decode(entry.name) == filePath;
+                        });
+
+                    if (found == pboFiles.end()) {
+                        Util::TryDebugBreak();
+                        throw std::runtime_error("File not found inside pbo?");
+                    }
+                        
+                    return found;
+                }());
+
+
+            bool wantWrite = true;
+
+            std::istream sourceStream(&fileBuffer); // We need this for hash checking so we already open source here
+
+            if (std::filesystem::exists(filePath)) // handle already existing file, don't update if we don't need
             {
-                pboReader.readHeaders();
+                wantWrite = false;
+                if (GetCurrentSize() != fileBuffer.GetEntryInfo().original_size) // size check is cheap
+                    wantWrite = true;
+                else if (GetCurrentHash() != GetHashOf(sourceStream)) { // I rather read the file once than writing it needlessly, save SSD lifetime plox
+                    wantWrite = true;
+                    sourceStream.seekg(0);
+                    sourceStream.clear(); // reset fail state
+                    fileBuffer.seekpos(0, std::ios_base::out); // seek buffer back to start, oof this is more complicated than it should be really
+                }
+            }
 
-                auto& pboFiles = pboReader.getFiles();
-                const auto found = std::ranges::find_if(pboFiles, [&](const PboEntry& entry)
-                    {
-                        return UTF8::Decode(entry.name) == filePath;
-                    });
+            if (wantWrite)
+            {
+                std::ofstream outFile(filePath, std::ios::out | std::ios::binary);
 
-                if (found == pboFiles.end())
-                    __debugbreak();
-                return found;
-            }());
-
-
-        bool wantWrite = true;
-
-        std::istream sourceStream(&fileBuffer); // We need this for hash checking so we already open source here
-
-        if (std::filesystem::exists(filePath)) // handle already existing file, don't update if we don't need
-        {
-            wantWrite = false;
-            if (GetCurrentSize() != fileBuffer.GetEntryInfo().original_size) // size check is cheap
-                wantWrite = true;
-            else if (GetCurrentHash() != GetHashOf(sourceStream)) { // I rather read the file once than writing it needlessly, save SSD lifetime plox
-                wantWrite = true;
-                sourceStream.seekg(0);
-                sourceStream.clear(); // reset fail state
-                fileBuffer.seekpos(0, std::ios_base::out); // seek buffer back to start, oof this is more complicated than it should be really
+                std::array<char, 4096> buf;
+                do {
+                    sourceStream.read(buf.data(), buf.size());
+                    outFile.write(buf.data(), sourceStream.gcount());
+                } while (sourceStream.gcount() > 0);
             }
         }
+        catch (const std::runtime_error& error) {
+            DebugLogger::WarnLog(std::format("Exception ({}) thrown while trying to open pbo file {} subfile {}", error.what(), pboRef.diskPath, subfile), std::source_location::current(), __FUNCTION__);
 
-        if (wantWrite)
-        {
+            // Probable source for the exception is PboEntryBuffer, trying to load a compressed file, and the compressed file being malformed (obfuscated)
             std::ofstream outFile(filePath, std::ios::out | std::ios::binary);
-
-            std::array<char, 4096> buf;
-            do {
-                sourceStream.read(buf.data(), buf.size());
-                outFile.write(buf.data(), sourceStream.gcount());
-            } while (sourceStream.gcount() > 0);
+            outFile << "PboExplorer failed to open file\n";
+            outFile << error.what();
         }
     }
     //else __debugbreak();
