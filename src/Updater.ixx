@@ -326,7 +326,6 @@ void Updater::PostUpdateInstalled()
 
         return; // Update is WIP but not actually installed yet
     }
-        
 
     CleanupUpdateFiles();
 
@@ -351,6 +350,9 @@ void Updater::CleanupUpdateFiles()
 
         if (std::filesystem::exists(UpdateTempDir / "OldVersion.txt", ec))
             std::filesystem::remove(UpdateTempDir / "OldVersion.txt", ec);
+
+        if (std::filesystem::exists(PboExplorerDir / "PboExplorerOld.dll", ec))
+            std::filesystem::remove(PboExplorerDir / "PboExplorerOld.dll", ec);
     }
     catch (...) {}
 }

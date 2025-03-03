@@ -34,6 +34,22 @@ int main(int argc, char* argv[]) {
         bool hasDLL = std::filesystem::exists(UpdateTempDir / "PboExplorer.dll");
         bool hasUpdateHelper = std::filesystem::exists(UpdateTempDir / "PboExplorerUpdateHelper.exe");
 
+        // The problem with the DLL is that our target is generally already in use, it's currently loaded in explorer
+        // But maybe, we are lucky and windows lets us rename it while its in use. This generally works
+        try {
+            std::filesystem::rename(PboExplorerDir / "PboExplorer.dll", PboExplorerDir / "PboExplorerOld.dll");
+            // If we didn't throw an exception till here, we succeeded! We can just move in the new one and mark the old one for deletion
+            std::filesystem::rename(UpdateTempDir / "PboExplorer.dll", PboExplorerDir / "PboExplorer.dll");
+
+            auto sourceFile = (PboExplorerDir / "PboExplorerOld.dll").lexically_normal().wstring();
+            MoveFileExW(sourceFile.c_str(), nullptr, MOVEFILE_DELAY_UNTIL_REBOOT);
+
+            hasDLL = false; // We already handled it
+        } catch (...) {
+
+        }
+
+        // The DLL is present, and it's currently loaded in explorer so we cannot touch it, mark it for windows to be swapped out at next reboot
         if (hasDLL) {
             // Windows cannot move between different drives. We are running in Admin, lets just place it into the correct directory right away
             std::filesystem::rename(UpdateTempDir / "PboExplorer.dll", PboExplorerDir / "PboExplorerNew.dll");
